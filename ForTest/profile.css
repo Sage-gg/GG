@@ -1,0 +1,46 @@
+/* Profile Picture */
+.image-container img {
+    border: 2px solid #ddd;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#remove-image {
+    margin-top: 10px;
+    display: block;
+    border-radius: 5px;
+}
+
+/* Input and Textarea Styling */
+.form-control, .form-select {
+    border-radius: 10px;
+    padding: 12px;
+}
+
+/* Button Styling */
+.btn {
+    border-radius: 25px;
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+/* Centered Form Elements */
+.text-center {
+    text-align: center;
+}
+
+/* Add spacing to the sections */
+.mb-4 {
+    margin-bottom: 2rem;
+}
+
+/* Heading Styling */
+h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Form Input Styling */
+input[type="text"], textarea {
+    width: 100%;
+    font-size: 1.1rem;
+}

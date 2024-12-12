@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammar Guard - Home</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        /* General Body Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        /* Language Button Styling */
+        .language-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .language-button img {
+            width: 70px;
+            height: auto;
+            margin-right: 15px;
+        }
+
+        .language-button a {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Specific Button Colors */
+        .btn-korean {
+            background-color: #db4437; /* Red */
+        }
+
+        .btn-korean:hover {
+            background-color: #c1351d;
+        }
+
+        /* Hover Effects */
+        .language-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .language-button a:hover {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Features Section Styling */
+        .features-section {
+            background-color: #ffffff;
+            padding: 60px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-card {
+            text-align: center;
+            padding: 25px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .feature-description {
+            font-size: 1rem;
+            color: #6c757d;
+        }
+
+        /* Footer Styling */
+        footer {
+            background-color: #f8f9fa;
+            padding: 20px 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        /* About Us Section Styling */
+        .about-us-section {
+            padding: 60px 0;
+            background-color: #fff;
+            text-align: center;
+        }
+
+        .about-us-header {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .about-us-header:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+        .about-us-content {
+            font-size: 1.1rem;
+            color: #6c757d;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .language-button {
+                flex-direction: column;
+            }
+
+            .language-button img {
+                margin-bottom: 10px;
+            }
+
+            .features-section {
+                padding: 40px 15px;
+            }
+
+            .feature-card {
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">Grammar Guard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link fs-5" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fs-5" href="profile.html">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fs-5" href="settings.html">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+<!-- Landing Page -->
+<div class="container mt-5 pt-5">
+    <h2 class="text-center mb-4">Welcome to Grammar Guard</h2>
+    <p class="text-center mb-5">Your personal language learning companion</p>
+
+    <!-- Language Buttons -->
+    <div class="language-buttons-container d-flex flex-column align-items-center">
+        <!-- Learn Alphabets Button (on top) -->
+        <div class="language-button mb-3">
+            <a href="alphabets.html" class="btn btn-primary btn-lg">Learn Alphabets</a>
+        </div>
+        <!-- Mini Games Button (below) -->
+        <div class="language-button mb-3">
+            <a href="korean.html" class="btn btn-korean btn-lg">Mini Games</a>
+        </div>
+    </div>
+</div>
+
+
+    <!-- Features Section -->
+    <div class="features-section">
+        <div class="container text-center">
+            <h2 class="mb-5">Why Choose Grammar Guard?</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">🎮</div>
+                        <h4 class="feature-title">Interactive Lessons</h4>
+                        <p class="feature-description">Learn languages through fun and engaging activities.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h4 class="feature-title">Track Your Progress</h4>
+                        <p class="feature-description">Monitor your improvement over time.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">⚙️</div>
+                        <h4 class="feature-title">Personalized Plans</h4>
+                        <p class="feature-description">Tailor lessons to match your learning pace and style.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Us Section -->
+    <div class="about-us-section">
+        <a href="aboutus.html" class="about-us-header">About Us</a>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <p class="mb-0">&copy; 2024 Grammar Guard. All rights reserved.</p>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

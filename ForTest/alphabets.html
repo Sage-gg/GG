@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammar Guard - Learn Alphabets</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .language-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .language-button img {
+            width: 70px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        .language-button a {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn-korean {
+            background-color: #db4437;
+        }
+
+        .btn-korean:hover {
+            background-color: #c1351d;
+        }
+
+        .language-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .language-button a:hover {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .alphabet-page {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .alphabet-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .alphabet-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+        }
+
+        .alphabet-item span {
+            font-size: 1.2rem;
+            display: block;
+            margin: 5px 0;
+        }
+
+        .alphabet-item .letter {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .alphabet-item .translation {
+            font-size: 1rem;
+            color: #888;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-evenly;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .col-4 {
+            flex: 1;
+            margin: 10px 0;
+            max-width: 300px;
+        }
+
+        .img-fluid {
+            width: 50px;
+            height: auto;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">Grammar Guard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link fs-5" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fs-5" href="profile.html">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fs-5" href="settings.html">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" id="lesson-container">
+        <h1 class="text-center mt-5 pt-5">Learn Alphabets of Different Languages</h1>
+
+        <!-- Language Selection Buttons -->
+        <div class="row text-center mt-4">
+            <div class="col-4">
+                <button class="language-button" onclick="showFrenchAlphabets()">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg" alt="French Flag" class="img-fluid" />
+                    <br/>French Alphabet
+                </button>
+            </div>
+            <div class="col-4">
+                <button class="language-button" onclick="showKoreanAlphabets()">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg" alt="Korean Flag" class="img-fluid" />
+                    <br/>Korean Alphabet
+                </button>
+            </div>
+            <div class="col-4">
+                <button class="language-button" onclick="showJapaneseAlphabets()">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/9/9e/Flag_of_Japan.svg" alt="Japanese Flag" class="img-fluid" />
+                    <br/>Japanese Alphabet
+                </button>
+            </div>
+        </div>
+
+       <!-- French Alphabet Section -->
+<div id="french-alphabets" class="alphabet-page" style="display: none;">
+    <h2>French Alphabet</h2>
+    <div class="alphabet-list">
+        <div class="alphabet-item"><span class="letter">A</span><span class="translation">ah</span></div>
+        <div class="alphabet-item"><span class="letter">B</span><span class="translation">bay</span></div>
+        <div class="alphabet-item"><span class="letter">C</span><span class="translation">say</span></div>
+        <div class="alphabet-item"><span class="letter">D</span><span class="translation">day</span></div>
+        <div class="alphabet-item"><span class="letter">E</span><span class="translation">uh</span></div>
+        <div class="alphabet-item"><span class="letter">F</span><span class="translation">eff</span></div>
+        <div class="alphabet-item"><span class="letter">G</span><span class="translation">jay</span></div>
+        <div class="alphabet-item"><span class="letter">H</span><span class="translation">ahsh</span></div>
+        <div class="alphabet-item"><span class="letter">I</span><span class="translation">ee</span></div>
+        <div class="alphabet-item"><span class="letter">J</span><span class="translation">zhee</span></div>
+        <div class="alphabet-item"><span class="letter">K</span><span class="translation">kah</span></div>
+        <div class="alphabet-item"><span class="letter">L</span><span class="translation">ell</span></div>
+        <div class="alphabet-item"><span class="letter">M</span><span class="translation">em</span></div>
+        <div class="alphabet-item"><span class="letter">N</span><span class="translation">en</span></div>
+        <div class="alphabet-item"><span class="letter">O</span><span class="translation">oh</span></div>
+        <div class="alphabet-item"><span class="letter">P</span><span class="translation">pay</span></div>
+        <div class="alphabet-item"><span class="letter">Q</span><span class="translation">koo</span></div>
+        <div class="alphabet-item"><span class="letter">R</span><span class="translation">air</span></div>
+        <div class="alphabet-item"><span class="letter">S</span><span class="translation">ess</span></div>
+        <div class="alphabet-item"><span class="letter">T</span><span class="translation">tay</span></div>
+        <div class="alphabet-item"><span class="letter">U</span><span class="translation">oo</span></div>
+        <div class="alphabet-item"><span class="letter">V</span><span class="translation">vay</span></div>
+        <div class="alphabet-item"><span class="letter">W</span><span class="translation">doo-bluh-vay</span></div>
+        <div class="alphabet-item"><span class="letter">X</span><span class="translation">eeks</span></div>
+        <div class="alphabet-item"><span class="letter">Y</span><span class="translation">ee-grek</span></div>
+        <div class="alphabet-item"><span class="letter">Z</span><span class="translation">zed</span></div>
+    </div>
+</div>
+
+
+        <!-- Korean Alphabet Section -->
+        <div id="korean-alphabets" class="alphabet-page" style="display: none;">
+            <h2>Korean Alphabet (Hangul)</h2>
+            
+            <!-- Vowels -->
+            <h3>Vowels</h3>
+            <div class="alphabet-list">
+                <div class="alphabet-item"><span class="letter">ㅏ</span><span class="translation">a</span></div>
+                <div class="alphabet-item"><span class="letter">ㅑ</span><span class="translation">ya</span></div>
+                <div class="alphabet-item"><span class="letter">ㅓ</span><span class="translation">eo</span></div>
+                <div class="alphabet-item"><span class="letter">ㅕ</span><span class="translation">yeo</span></div>
+                <div class="alphabet-item"><span class="letter">ㅗ</span><span class="translation">o</span></div>
+                <div class="alphabet-item"><span class="letter">ㅛ</span><span class="translation">yo</span></div>
+                <div class="alphabet-item"><span class="letter">ㅜ</span><span class="translation">u</span></div>
+                <div class="alphabet-item"><span class="letter">ㅠ</span><span class="translation">yu</span></div>
+                <div class="alphabet-item"><span class="letter">ㅡ</span><span class="translation">eu</span></div>
+                <div class="alphabet-item"><span class="letter">ㅣ</span><span class="translation">i</span></div>
+            </div>
+        
+            <!-- Consonants -->
+            <h3>Consonants</h3>
+            <div class="alphabet-list">
+                <div class="alphabet-item"><span class="letter">ㄱ</span><span class="translation">g/k</span></div>
+                <div class="alphabet-item"><span class="letter">ㄴ</span><span class="translation">n</span></div>
+                <div class="alphabet-item"><span class="letter">ㄷ</span><span class="translation">d/t</span></div>
+                <div class="alphabet-item"><span class="letter">ㄹ</span><span class="translation">r/l</span></div>
+                <div class="alphabet-item"><span class="letter">ㅁ</span><span class="translation">m</span></div>
+                <div class="alphabet-item"><span class="letter">ㅂ</span><span class="translation">b/p</span></div>
+                <div class="alphabet-item"><span class="letter">ㅅ</span><span class="translation">s</span></div>
+                <div class="alphabet-item"><span class="letter">ㅇ</span><span class="translation">ng</span></div>
+                <div class="alphabet-item"><span class="letter">ㅈ</span><span class="translation">j</span></div>
+                <div class="alphabet-item"><span class="letter">ㅊ</span><span class="translation">ch</span></div>
+                <div class="alphabet-item"><span class="letter">ㅋ</span><span class="translation">k</span></div>
+                <div class="alphabet-item"><span class="letter">ㅌ</span><span class="translation">t</span></div>
+                <div class="alphabet-item"><span class="letter">ㅍ</span><span class="translation">p</span></div>
+                <div class="alphabet-item"><span class="letter">ㅎ</span><span class="translation">h</span></div>
+            </div>
+        
+            <!-- Syllables -->
+            <h3>Syllables</h3>
+            <div class="alphabet-list">
+                <div class="alphabet-item"><span class="letter">가</span><span class="translation">ga</span></div>
+                <div class="alphabet-item"><span class="letter">나</span><span class="translation">na</span></div>
+                <div class="alphabet-item"><span class="letter">다</span><span class="translation">da</span></div>
+                <div class="alphabet-item"><span class="letter">라</span><span class="translation">ra</span></div>
+                <div class="alphabet-item"><span class="letter">마</span><span class="translation">ma</span></div>
+                <div class="alphabet-item"><span class="letter">바</span><span class="translation">ba</span></div>
+                <div class="alphabet-item"><span class="letter">사</span><span class="translation">sa</span></div>
+                <div class="alphabet-item"><span class="letter">자</span><span class="translation">ja</span></div>
+                <div class="alphabet-item"><span class="letter">차</span><span class="translation">cha</span></div>
+                <div class="alphabet-item"><span class="letter">카</span><span class="translation">ka</span></div>
+                <div class="alphabet-item"><span class="letter">타</span><span class="translation">ta</span></div>
+                <div class="alphabet-item"><span class="letter">파</span><span class="translation">pa</span></div>
+                <div class="alphabet-item"><span class="letter">하</span><span class="translation">ha</span></div>
+            </div>
+            
+            <!-- Compound Syllables (additional combinations) -->
+            <h3>Compound Syllables</h3>
+            <div class="alphabet-list">
+                <div class="alphabet-item"><span class="letter">기</span><span class="translation">gi</span></div>
+                <div class="alphabet-item"><span class="letter">니</span><span class="translation">ni</span></div>
+                <div class="alphabet-item"><span class="letter">디</span><span class="translation">di</span></div>
+                <div class="alphabet-item"><span class="letter">리</span><span class="translation">ri</span></div>
+                <div class="alphabet-item"><span class="letter">미</span><span class="translation">mi</span></div>
+                <div class="alphabet-item"><span class="letter">비</span><span class="translation">bi</span></div>
+                <div class="alphabet-item"><span class="letter">시</span><span class="translation">si</span></div>
+                <div class="alphabet-item"><span class="letter">지</span><span class="translation">ji</span></div>
+                <div class="alphabet-item"><span class="letter">치</span><span class="translation">chi</span></div>
+                <div class="alphabet-item"><span class="letter">키</span><span class="translation">ki</span></div>
+                <div class="alphabet-item"><span class="letter">티</span><span class="translation">ti</span></div>
+                <div class="alphabet-item"><span class="letter">피</span><span class="translation">pi</span></div>
+                <div class="alphabet-item"><span class="letter">히</span><span class="translation">hi</span></div>
+            </div>
+        </div>
+        
+        <!-- Japanese Alphabet Section -->
+        <div id="japanese-alphabets" class="alphabet-page" style="display: none;">
+            <h2>Japanese Alphabet</h2>
+            <h3>Hiragana</h3>
+            <div class="alphabet-list">
+                <div class="alphabet-item"><span class="letter">あ</span><span class="translation">a</span></div>
+                <div class="alphabet-item"><span class="letter">い</span><span class="translation">i</span></div>
+                <div class="alphabet-item"><span class="letter">う</span><span class="translation">u</span></div>
+                <div class="alphabet-item"><span class="letter">え</span><span class="translation">e</span></div>
+                <div class="alphabet-item"><span class="letter">お</span><span class="translation">o</span></div>
+                <div class="alphabet-item"><span class="letter">か</span><span class="translation">ka</span></div>
+                <div class="alphabet-item"><span class="letter">き</span><span class="translation">ki</span></div>
+                <div class="alphabet-item"><span class="letter">く</span><span class="translation">ku</span></div>
+                <div class="alphabet-item"><span class="letter">け</span><span class="translation">ke</span></div>
+                <div class="alphabet-item"><span class="letter">こ</span><span class="translation">ko</span></div>
+                <div class="alphabet-item"><span class="letter">さ</span><span class="translation">sa</span></div>
+                <div class="alphabet-item"><span class="letter">し</span><span class="translation">shi</span></div>
+                <div class="alphabet-item"><span class="letter">す</span><span class="translation">su</span></div>
+                <div class="alphabet-item"><span class="letter">せ</span><span class="translation">se</span></div>
+                <div class="alphabet-item"><span class="letter">そ</span><span class="translation">so</span></div>
+                <div class="alphabet-item"><span class="letter">た</span><span class="translation">ta</span></div>
+                <div class="alphabet-item"><span class="letter">ち</span><span class="translation">chi</span></div>
+                <div class="alphabet-item"><span class="letter">つ</span><span class="translation">tsu</span></div>
+                <div class="alphabet-item"><span class="letter">て</span><span class="translation">te</span></div>
+                <div class="alphabet-item"><span class="letter">と</span><span class="translation">to</span></div>
+            </div>
+
+            <h3>Katakana</h3>
+            <div class="alphabet-list">
+                <div class="alphabet-item"><span class="letter">ア</span><span class="translation">a</span></div>
+                <div class="alphabet-item"><span class="letter">イ</span><span class="translation">i</span></div>
+                <div class="alphabet-item"><span class="letter">ウ</span><span class="translation">u</span></div>
+                <div class="alphabet-item"><span class="letter">エ</span><span class="translation">e</span></div>
+                <div class="alphabet-item"><span class="letter">オ</span><span class="translation">o</span></div>
+                <div class="alphabet-item"><span class="letter">カ</span><span class="translation">ka</span></div>
+                <div class="alphabet-item"><span class="letter">キ</span><span class="translation">ki</span></div>
+                <div class="alphabet-item"><span class="letter">ク</span><span class="translation">ku</span></div>
+                <div class="alphabet-item"><span class="letter">ケ</span><span class="translation">ke</span></div>
+                <div class="alphabet-item"><span class="letter">コ</span><span class="translation">ko</span></div>
+                <div class="alphabet-item"><span class="letter">サ</span><span class="translation">sa</span></div>
+                <div class="alphabet-item"><span class="letter">シ</span><span class="translation">shi</span></div>
+                <div class="alphabet-item"><span class="letter">ス</span><span class="translation">su</span></div>
+                <div class="alphabet-item"><span class="letter">セ</span><span class="translation">se</span></div>
+                <div class="alphabet-item"><span class="letter">ソ</span><span class="translation">so</span></div>
+                <div class="alphabet-item"><span class="letter">タ</span><span class="translation">ta</span></div>
+                <div class="alphabet-item"><span class="letter">チ</span><span class="translation">chi</span></div>
+                <div class="alphabet-item"><span class="letter">ツ</span><span class="translation">tsu</span></div>
+                <div class="alphabet-item"><span class="letter">テ</span><span class="translation">te</span></div>
+                <div class="alphabet-item"><span class="letter">ト</span><span class="translation">to</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function showFrenchAlphabets() {
+            document.getElementById('french-alphabets').style.display = 'block';
+            document.getElementById('korean-alphabets').style.display = 'none';
+            document.getElementById('japanese-alphabets').style.display = 'none';
+        }
+
+        function showKoreanAlphabets() {
+            document.getElementById('french-alphabets').style.display = 'none';
+            document.getElementById('korean-alphabets').style.display = 'block';
+            document.getElementById('japanese-alphabets').style.display = 'none';
+        }
+
+        function showJapaneseAlphabets() {
+            document.getElementById('french-alphabets').style.display = 'none';
+            document.getElementById('korean-alphabets').style.display = 'none';
+            document.getElementById('japanese-alphabets').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
