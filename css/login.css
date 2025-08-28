@@ -1,0 +1,52 @@
+body {
+  height: 100vh;
+  background-color: #e5e7eb;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  background-color: #e1d9d9;
+  border: 1px solid #e5e7eb;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}
+
+.login-container h2 {
+  color: #372c1f;
+}
+
+.form-label {
+  color: #514337;
+}
+
+.form-control {
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5e1;
+}
+
+.form-control:focus {
+  border-color: #feb882;
+  box-shadow: 0 0 0 0.2rem #f6b37f;
+}
+
+.btn-primary {
+  background-color: #e69141;
+  border-color: #c27c3b;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.btn-primary:active {
+  background-color: #a85f26 !important; /* darker orange when clicked */
+  border-color: #8f4e1e !important;
+  box-shadow: none !important; /* optional: remove Bootstrap's inset shadow */
+}
+
+
+.btn-primary:hover {
+  background-color: #b6702f;
+  border-color: #9f622a;
+}

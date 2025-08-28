@@ -1,0 +1,183 @@
+/* === Your existing styles === */
+body {
+  background-color: #f8fafc;
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Top Navbar */
+nav.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1101; /* higher than sidebar */
+  background-color: #fba554 !important;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  height: calc(100vh - 64px); /* Adjust height under navbar */
+  position: fixed;
+  top: 64px; /* Same as navbar height */
+  left: 0;
+  background-color: #e6dfdf !important;
+  box-shadow: 4px 0 12px #0000000d;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  border-bottom: 1px solid #d0c5c5;
+}
+
+#toggleSidebar {
+  background-color: #ded7d7;
+  color: #272525;
+  border: none;
+}
+
+#toggleSidebar:hover {
+  background-color: #c8c2c2;
+  color: #1c1b1b;
+}
+
+.sidebar .nav-link {
+  color: #333;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+  background-color: transparent;
+}
+
+.sidebar .nav-link:hover {
+  background-color: #d3d2d0;
+  color: #1b1b1a;
+}
+
+/* Main Content */
+.main-content {
+  margin-left: 250px;
+  padding-top: 80px; /* Push below navbar */
+  transition: margin-left 0.3s ease;
+}
+
+.card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px #0000000d;
+  transition: transform 0.2s ease;
+}
+
+/* Collapsed mode */
+body.collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+body.collapsed .main-content {
+  margin-left: 0;
+}
+
+/* === New styles for General Ledger page === */
+
+/* Smaller date inputs */
+.date-input {
+  max-width: 140px;
+}
+
+/* Smaller filter account dropdown */
+.filter-account {
+  max-width: 180px;
+}
+
+/* Smaller search button */
+.btn-outline-secondary.btn-sm {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+/* Ledger summary (top-right) styling */
+.ledger-summary-small > div {
+  min-width: 90px;
+  font-size: 0.9rem;
+}
+
+/* Make Chart of Accounts and Journal Entries full width and same style as main table */
+.table-responsive > table.table {
+  font-size: 0.9rem;
+}
+
+.table-responsive > table.table thead th,
+.table-responsive > table.table tbody td {
+  padding: 0.4rem 0.75rem;
+}
+
+/* Reduce spacing for tables */
+.table > thead > tr > th,
+.table > tbody > tr > td {
+  vertical-align: middle;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Filters group - spacing */
+.filter-group input,
+.filter-group select {
+  height: 36px;
+  font-size: 0.9rem;
+}
+
+/* Summary and buttons group spacing */
+.summary-actions button {
+  font-size: 0.9rem;
+  padding: 0.35rem 0.8rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 575.98px) {
+  .filter-group input,
+  .filter-group select,
+  .summary-actions button {
+    font-size: 0.8rem;
+  }
+  .ledger-summary-small > div {
+    min-width: 70px;
+    font-size: 0.8rem;
+  }
+  .date-input {
+    max-width: 120px;
+  }
+  .filter-account {
+    max-width: 140px;
+  }
+}
+
+/* === Financial Reporting Modal Styles === */
+.modal-content {
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.modal-title {
+  font-weight: 600;
+}
+
+.table th {
+  background-color: #f1f3f5;
+}
+
+.table td, .table th {
+  vertical-align: middle;
+}
+
+.table-secondary {
+  background-color: #f7f7f7 !important;
+}
