@@ -2,6 +2,7 @@
     "name": "sage-gg/financial-system",
     "description": "Branch of CraneSYSTEM focusing on financials",
     "type": "project",
+    "license": "MIT",
     "require": {
         "php": "^8.1"
     },
