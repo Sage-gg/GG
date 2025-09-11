@@ -1,4 +1,5 @@
 <?php // financial_budgeting_modals.php ?>
+<?php include 'budget_forecast_modal.php'; ?>
 <!-- ADD Budget Modal -->
 <div class="modal fade" id="addBudgetModal" tabindex="-1" aria-labelledby="addBudgetModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -21,42 +22,35 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Department</label>
-            <select class="form-select" name="department" required>
+            <select class="form-select" name="department" id="add_department" onchange="updateCostCenter('add')" required>
               <option disabled selected value="">Select Department</option>
-              <option>Logistics</option>
-              <option>Operations</option>
-              <option>Maintenance</option>
-              <option>Accounting</option>
-              <option>Administration</option>
+              <option value="HR2">HR2</option>
+              <option value="HR4">HR4</option>
+              <option value="Core 2">Core 2</option>
+              <option value="Core 4">Core 4</option>
             </select>
           </div>
           <div class="col-md-6">
             <label class="form-label">Cost Center</label>
-            <select class="form-select" name="cost_center" required>
-              <option disabled selected value="">Select Cost Center</option>
-              <option>Fuel</option>
-              <option>RFID</option>
-              <option>Labor</option>
-              <option>Maintenance</option>
-              <option>Crane Rental</option>
-              <option>Truck Lease</option>
+            <select class="form-select" name="cost_center" id="add_cost_center" required>
+              <option disabled selected value="">Select Department First</option>
             </select>
           </div>
           <div class="col-md-6">
             <label class="form-label">Budgeted Amount</label>
-            <input type="number" class="form-control" step="0.01" name="amount_allocated" required />
+            <input type="number" class="form-control" step="0.01" name="amount_allocated" id="add_amount_allocated" required />
           </div>
           <div class="col-md-6">
             <label class="form-label">Amount Used (optional)</label>
-            <input type="number" class="form-control" step="0.01" name="amount_used" value="0" />
+            <input type="number" class="form-control" step="0.01" name="amount_used" id="add_amount_used" value="0" />
           </div>
           <div class="col-md-6">
             <label class="form-label">Approved By</label>
-            <input type="text" class="form-control" name="approved_by" />
+            <input type="text" class="form-control" name="approved_by" id="add_approved_by" />
           </div>
           <div class="col-md-6">
             <label class="form-label">Approval Status</label>
-            <select class="form-select" name="approval_status">
+            <select class="form-select" name="approval_status" id="add_approval_status">
               <option>Pending</option>
               <option>Approved</option>
               <option>Rejected</option>
@@ -64,12 +58,24 @@
           </div>
           <div class="col-12">
             <label class="form-label">Description / Justification</label>
-            <textarea class="form-control" name="description" rows="3"></textarea>
+            <textarea class="form-control" name="description" rows="3" id="add_description"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-          <button type="submit" class="btn btn-success">Save Budget</button>
+          <div class="d-flex justify-content-between w-100">
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-info btn-sm" onclick="notifyDepartment('add')" title="Send notification to department">
+                📧 Notify Department
+              </button>
+              <button type="button" class="btn btn-warning btn-sm" onclick="forwardToAdmin('add')" title="Forward request to admin">
+                📤 Forward to Admin
+              </button>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+              <button type="submit" class="btn btn-success">Save Budget</button>
+            </div>
+          </div>
         </div>
       </form>
     </div>
@@ -124,23 +130,17 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Department</label>
-            <select class="form-select" name="department" id="edit_department">
-              <option>Logistics</option>
-              <option>Operations</option>
-              <option>Maintenance</option>
-              <option>Accounting</option>
-              <option>Administration</option>
+            <select class="form-select" name="department" id="edit_department" onchange="updateCostCenter('edit')">
+              <option value="HR2">HR2</option>
+              <option value="HR4">HR4</option>
+              <option value="Core 2">Core 2</option>
+              <option value="Core 4">Core 4</option>
             </select>
           </div>
           <div class="col-md-6">
             <label class="form-label">Cost Center</label>
             <select class="form-select" name="cost_center" id="edit_cost_center">
-              <option>Fuel</option>
-              <option>RFID</option>
-              <option>Labor</option>
-              <option>Maintenance</option>
-              <option>Crane Rental</option>
-              <option>Truck Lease</option>
+              <!-- Options populated by JavaScript based on department selection -->
             </select>
           </div>
           <div class="col-md-6">
@@ -169,8 +169,20 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-          <button type="submit" class="btn btn-primary">Update Budget</button>
+          <div class="d-flex justify-content-between w-100">
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-info btn-sm" onclick="notifyDepartment('edit')" title="Send notification to department">
+                📧 Notify Department
+              </button>
+              <button type="button" class="btn btn-warning btn-sm" onclick="forwardToAdmin('edit')" title="Forward request to admin">
+                📤 Forward to Admin
+              </button>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+              <button type="submit" class="btn btn-primary">Update Budget</button>
+            </div>
+          </div>
         </div>
       </form>
     </div>

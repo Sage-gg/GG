@@ -76,8 +76,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Verify password
                     if (password_verify($password, $user['password'])) {
-                        // Login successful
+                        // Login successful - log success FIRST to clear failed attempts
                         logLoginAttempt($username, true);
+                        
+                        // Clean up old sessions for this user and IP before creating new one
+                        cleanupUserSession($user['id']);
+                        
+                        // Also clean up any expired sessions from this IP
+                        $cleanup_stmt = $conn->prepare("DELETE FROM user_sessions WHERE ip_address = ? AND expires_at < NOW()");
+                        $cleanup_stmt->bind_param("s", $_SERVER['REMOTE_ADDR']);
+                        $cleanup_stmt->execute();
+                        $cleanup_stmt->close();
                         
                         // Set session variables
                         $_SESSION['user_id'] = $user['id'];
@@ -91,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         session_regenerate_id(true);
                         $session_id = session_id();
                         
-                        // Store session in database
+                        // Store NEW session in database (only one per user now)
                         $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
                         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
                         $expires_at = date('Y-m-d H:i:s', time() + SESSION_TIMEOUT);
@@ -231,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="POST" action="login.php" id="loginForm" class="<?php echo $is_locked_out ? 'form-disabled' : ''; ?>">
 
       <div class="mb-3">
-        <label for="username" class="form-label fw-semibold">Username or Email</label>
+        <label for="username" class="form-label fw-semibold">Username</label>
         <input type="text" class="form-control" id="username" name="username" 
                value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" 
                <?php echo $is_locked_out ? 'disabled' : 'required'; ?> />

@@ -6,65 +6,9 @@ body {
   padding: 0;
 }
 
-/* Top Navbar */
-nav.navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1101; /* higher than sidebar */
-  background-color: #fba554 !important;
-}
+/* REMOVED conflicting navbar and sidebar styles to let sidebar_navbar.php handle them */
 
-/* Sidebar */
-.sidebar {
-  width: 250px;
-  height: calc(100vh - 64px); /* Adjust height under navbar */
-  position: fixed;
-  top: 64px; /* Same as navbar height */
-  left: 0;
-  background-color: #e6dfdf !important;
-  box-shadow: 4px 0 12px #0000000d;
-  z-index: 1000;
-  transition: transform 0.3s ease;
-  overflow-y: auto;
-}
-
-.sidebar-header {
-  border-bottom: 1px solid #d0c5c5;
-}
-
-#toggleSidebar {
-  background-color: #ded7d7;
-  color: #272525;
-  border: none;
-}
-
-#toggleSidebar:hover {
-  background-color: #c8c2c2;
-  color: #1c1b1b;
-}
-
-.sidebar .nav-link {
-  color: #333;
-  font-weight: 500;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
-  background-color: transparent;
-}
-
-.sidebar .nav-link:hover {
-  background-color: #d3d2d0;
-  color: #1b1b1a;
-}
-
-/* Main Content */
-.main-content {
-  margin-left: 250px;
-  padding-top: 80px; /* Push below navbar */
-  transition: margin-left 0.3s ease;
-}
+/* REMOVED conflicting .main-content styles - let sidebar_navbar.php handle it */
 
 .card {
   border: none;
@@ -73,14 +17,7 @@ nav.navbar {
   transition: transform 0.2s ease;
 }
 
-/* Collapsed mode */
-body.collapsed .sidebar {
-  transform: translateX(-100%);
-}
-
-body.collapsed .main-content {
-  margin-left: 0;
-}
+/* REMOVED conflicting collapsed mode styles - sidebar_navbar.php handles this */
 
 /* === New styles for General Ledger page === */
 

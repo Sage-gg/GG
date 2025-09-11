@@ -1,0 +1,4 @@
+1. extract zip
+2. paste the financialsys folder to the htdocs
+3. import the database (financial_system.sql) to the phpMyAdmin
+4. run the system

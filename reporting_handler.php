@@ -1,5 +1,5 @@
 <?php
-// reporting_handler.php - Financial Reporting Backend Handler
+// reporting_handler.php - Financial Reporting Backend Handler (UPDATED WITH EXPORT INTEGRATION)
 require_once 'db.php';
 
 // Financial Reporting Class
@@ -363,27 +363,46 @@ class FinancialReporting {
         return $data;
     }
     
-    // Export functions
+    // Enhanced export functions with better error handling
     public function exportToPDF($reportType, $data, $filename) {
-        // This would integrate with a PDF library like TCPDF or mPDF
-        // For now, return the data structure
-        return [
-            'success' => true,
-            'message' => 'PDF export functionality would be implemented here',
-            'filename' => $filename,
-            'data' => $data
-        ];
+        try {
+            // Log export attempt
+            error_log("PDF Export Request: {$reportType} - {$filename}");
+            
+            return [
+                'success' => true,
+                'message' => 'PDF export initiated successfully',
+                'filename' => $filename,
+                'data' => $data,
+                'redirect_url' => 'export.php?action=exportPDF&report_type=' . urlencode($reportType)
+            ];
+        } catch (Exception $e) {
+            error_log("PDF Export Error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'PDF export failed: ' . $e->getMessage()
+            ];
+        }
     }
     
     public function exportToExcel($reportType, $data, $filename) {
-        // This would integrate with PhpSpreadsheet
-        // For now, return the data structure
-        return [
-            'success' => true,
-            'message' => 'Excel export functionality would be implemented here',
-            'filename' => $filename,
-            'data' => $data
-        ];
+        try {
+            // Log export attempt
+            error_log("Excel Export Request: {$reportType} - {$filename}");
+            
+            return [
+                'success' => true,
+                'message' => 'Excel export functionality would be implemented here',
+                'filename' => $filename,
+                'data' => $data
+            ];
+        } catch (Exception $e) {
+            error_log("Excel Export Error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Excel export failed: ' . $e->getMessage()
+            ];
+        }
     }
 }
 
@@ -394,63 +413,91 @@ $financialReporting = new FinancialReporting();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
-    switch ($_POST['action']) {
-        case 'getIncomeStatement':
-            $startDate = $_POST['start_date'] ?? date('Y-m-01');
-            $endDate = $_POST['end_date'] ?? date('Y-m-t');
-            $data = $financialReporting->getIncomeStatement($startDate, $endDate);
-            echo json_encode($data);
-            break;
-            
-        case 'getBalanceSheet':
-            $asOfDate = $_POST['as_of_date'] ?? date('Y-m-d');
-            $data = $financialReporting->getBalanceSheet($asOfDate);
-            echo json_encode($data);
-            break;
-            
-        case 'getCashFlow':
-            $startDate = $_POST['start_date'] ?? date('Y-m-01');
-            $endDate = $_POST['end_date'] ?? date('Y-m-t');
-            $data = $financialReporting->getCashFlowStatement($startDate, $endDate);
-            echo json_encode($data);
-            break;
-            
-        case 'getTrialBalance':
-            $asOfDate = $_POST['as_of_date'] ?? date('Y-m-d');
-            $data = $financialReporting->getTrialBalance($asOfDate);
-            echo json_encode($data);
-            break;
-            
-        case 'getBudgetPerformance':
-            $period = $_POST['period'] ?? null;
-            $data = $financialReporting->getBudgetPerformance($period);
-            echo json_encode($data);
-            break;
-            
-        case 'exportPDF':
-            $reportType = $_POST['report_type'];
-            $reportData = json_decode($_POST['report_data'], true);
-            $filename = $reportType . '_' . date('Y-m-d_H-i-s') . '.pdf';
-            $result = $financialReporting->exportToPDF($reportType, $reportData, $filename);
-            echo json_encode($result);
-            break;
-            
-        case 'exportExcel':
-            $reportType = $_POST['report_type'];
-            $reportData = json_decode($_POST['report_data'], true);
-            $filename = $reportType . '_' . date('Y-m-d_H-i-s') . '.xlsx';
-            $result = $financialReporting->exportToExcel($reportType, $reportData, $filename);
-            echo json_encode($result);
-            break;
-            
-        default:
-            echo json_encode(['error' => 'Invalid action']);
+    try {
+        switch ($_POST['action']) {
+            case 'getIncomeStatement':
+                $startDate = $_POST['start_date'] ?? date('Y-m-01');
+                $endDate = $_POST['end_date'] ?? date('Y-m-t');
+                $data = $financialReporting->getIncomeStatement($startDate, $endDate);
+                echo json_encode($data);
+                break;
+                
+            case 'getBalanceSheet':
+                $asOfDate = $_POST['as_of_date'] ?? date('Y-m-d');
+                $data = $financialReporting->getBalanceSheet($asOfDate);
+                echo json_encode($data);
+                break;
+                
+            case 'getCashFlow':
+                $startDate = $_POST['start_date'] ?? date('Y-m-01');
+                $endDate = $_POST['end_date'] ?? date('Y-m-t');
+                $data = $financialReporting->getCashFlowStatement($startDate, $endDate);
+                echo json_encode($data);
+                break;
+                
+            case 'getTrialBalance':
+                $asOfDate = $_POST['as_of_date'] ?? date('Y-m-d');
+                $data = $financialReporting->getTrialBalance($asOfDate);
+                echo json_encode($data);
+                break;
+                
+            case 'getBudgetPerformance':
+                $period = $_POST['period'] ?? null;
+                $data = $financialReporting->getBudgetPerformance($period);
+                echo json_encode($data);
+                break;
+                
+            case 'exportPDF':
+                // Redirect to export.php for PDF handling
+                $reportType = $_POST['report_type'];
+                $redirectUrl = 'export.php';
+                echo json_encode([
+                    'success' => true,
+                    'redirect' => $redirectUrl,
+                    'message' => 'Redirecting to PDF export...'
+                ]);
+                break;
+                
+            case 'exportExcel':
+                $reportType = $_POST['report_type'];
+                $reportData = json_decode($_POST['report_data'], true);
+                $filename = $reportType . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+                $result = $financialReporting->exportToExcel($reportType, $reportData, $filename);
+                echo json_encode($result);
+                break;
+                
+            default:
+                throw new Exception('Invalid action: ' . $_POST['action']);
+        }
+    } catch (Exception $e) {
+        error_log("Reporting Handler Error: " . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
     }
     exit;
 }
 
 // Utility function for formatting currency (can be called from other files)
-function formatCurrency($amount) {
-    return '₱' . number_format($amount, 2);
+if (!function_exists('formatCurrency')) {
+    function formatCurrency($amount) {
+        return '₱' . number_format(floatval($amount), 2);
+    }
+}
+
+// Additional utility functions for export support
+function sanitizeFilename($filename) {
+    // Remove or replace invalid filename characters
+    $invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+    return str_replace($invalid_chars, '_', $filename);
+}
+
+function logExportActivity($reportType, $status, $message = '') {
+    $logEntry = date('Y-m-d H:i:s') . " - Export: {$reportType} - Status: {$status}";
+    if ($message) {
+        $logEntry .= " - {$message}";
+    }
+    error_log($logEntry);
 }
 ?>

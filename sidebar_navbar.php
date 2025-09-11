@@ -20,7 +20,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 ?>
 
 <!-- Top Navbar -->
-<nav class="navbar navbar-dark bg-dark shadow-sm px-4 py-3 position-relative">
+<nav class="navbar navbar-dark bg-dark shadow-sm position-relative">
   <div class="d-flex align-items-center">
     <button class="btn btn-outline-light sidebar-toggle" id="toggleSidebar">
       <span class="navbar-toggler-icon">☰</span>
@@ -72,6 +72,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
+
   <!-- System Brand Header -->
   <div class="sidebar-brand">
     <div class="brand-section d-flex align-items-center justify-content-center">
@@ -152,12 +153,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
           <span class="nav-text">Profile</span>
         </a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link sidebar-nav-link" href="settings.php">
-          <span class="nav-icon">⚙️</span>
-          <span class="nav-text">Settings</span>
-        </a>
-      </li>
     </ul>
   </div>
 
@@ -175,8 +170,13 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   </div>
 </div>
 
+<!-- Footer -->
+<footer class="footer">
+  <!-- Empty footer - no content -->
+</footer>
+
 <style>
-  /* Dark Theme Variables */
+/* Dark Theme Variables */
   :root {
     --dark-bg: #1a1a1a;
     --darker-bg: #111111;
@@ -187,7 +187,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     --accent-color: #007bff;
     --accent-hover: #0056b3;
     --border-color: #404040;
-    --navbar-height: 64px;
+    --navbar-height: 65px;
   }
 
   /* Reset body background for dark theme */
@@ -195,18 +195,45 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     background-color: var(--dark-bg) !important;
   }
 
-  /* Top Navbar Styling - FIXED POSITION */
+  /* Top Navbar Styling - FLAT COLOR */
   nav.navbar {
-    background: linear-gradient(135deg, var(--darker-bg) 0%, #2a2a2a 100%) !important;
+    background-color: var(--darker-bg) !important;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     position: fixed !important;
     top: 0;
-    left: 280px;
+    left: 250px;
     right: 0;
-    width: calc(100% - 280px);
+    width: calc(100% - 250px);
     z-index: 999;
     transition: left 0.3s ease, width 0.3s ease;
+    /*added function to make 65px navbar size work*/
+    height: 65px !important;
+    min-height: 65px !important;
+    padding: 0 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  /* Footer Styling - FLAT COLOR */
+  .footer {
+    background-color: var(--darker-bg) !important;
+    border-top: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    position: fixed !important;
+    bottom: 0;
+    left: 250px;
+    right: 0;
+    width: calc(100% - 250px);
+    z-index: 999;
+    transition: left 0.3s ease, width 0.3s ease;
+    height: 65px !important;
+    min-height: 65px !important;
+    padding: 0 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .navbar-center {
@@ -260,7 +287,20 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   .sidebar-toggle:hover {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+  }
+
+  /* Fix hamburger icon - remove Bootstrap's generated lines */
+  .sidebar-toggle .navbar-toggler-icon {
+    background-image: none !important;
+    border: none;
+    font-size: 18px;
+    width: auto;
+    height: auto;
+  }
+
+  .sidebar-toggle .navbar-toggler-icon::before,
+  .sidebar-toggle .navbar-toggler-icon::after {
+    display: none !important;
   }
 
   /* Navbar Items */
@@ -277,7 +317,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 
   .navbar .nav-link:hover {
     background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
   }
 
   /* Notification Icon */
@@ -288,8 +327,8 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 
   .notification-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -5px;
+    right: -5px;
     background: #dc3545;
     color: white;
     border-radius: 50%;
@@ -302,14 +341,14 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     font-weight: bold;
   }
 
-  /* Sidebar Styling */
+  /* Sidebar Styling - FLAT COLOR */
   .sidebar {
-    width: 280px;
+    width: 250px;
     height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    background: linear-gradient(180deg, var(--sidebar-bg) 0%, #252525 100%);
+    background-color: var(--sidebar-bg);
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
     z-index: 1040;
     transition: transform 0.3s ease;
@@ -320,16 +359,16 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     flex-direction: column;
   }
 
-  /* System Brand Header */
+  /* System Brand Header - FLAT COLOR */
   .sidebar-brand {
-    height: 80px;
-    background: linear-gradient(135deg, var(--darker-bg), #1f1f1f);
+    height: 65px;
+    background-color: var(--darker-bg);
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    padding: 0 1rem;
+    padding: 0 0.7rem;
   }
 
   .brand-section {
@@ -341,21 +380,21 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   }
 
   .brand-text {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--text-light);
-    letter-spacing: 2px;
+    letter-spacing: 1.3px;
     text-align: center;
     line-height: 1;
   }
 
-  /* Profile Section in Sidebar Header */
+/* Profile Section in Sidebar Header */
   .sidebar-header {
     border-bottom: 1px solid var(--border-color);
     background: rgba(0, 0, 0, 0.2);
-    padding: 1rem 1.5rem !important;
+    padding: 0.8rem 1.2rem !important;
     flex-shrink: 0;
-    height: 80px;
+    height: 65px;
     display: flex;
     align-items: center;
   }
@@ -367,15 +406,15 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   }
 
   .profile-avatar {
-    width: 48px;
-    height: 48px;
+    width: 38px;
+    height: 38px;
     background: linear-gradient(135deg, #007bff, #0056b3);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 20px;
+    font-size: 16px;
     color: white;
     flex-shrink: 0;
   }
@@ -389,17 +428,18 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   }
 
   .profile-name {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     margin: 0;
     line-height: 1.3;
   }
 
   .profile-role {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 12px !important;
+    color: #b0b0b0 !important;
     line-height: 1.3;
     margin: 0;
+    font-weight: 500 !important;
   }
 
   /* Main Sidebar Menu */
@@ -438,29 +478,25 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   .sidebar-nav-link {
     color: var(--text-muted) !important;
     font-weight: 500;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin: 4px 8px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin: 3px 6px;
     transition: all 0.3s ease;
-    background-color: transparent;
+    background-color: transparent !important;
     display: flex;
     align-items: center;
     text-decoration: none;
-    border-left: 3px solid transparent;
   }
 
   .sidebar-nav-link:hover {
-    background: linear-gradient(135deg, var(--sidebar-hover), #454545);
+    background-color: var(--sidebar-hover) !important;
     color: var(--text-light) !important;
-    transform: translateX(4px);
-    border-left-color: var(--accent-color);
     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
   }
 
   .sidebar-nav-link.active {
-    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    background-color: var(--accent-color) !important;
     color: var(--text-light) !important;
-    border-left-color: #ffffff;
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
   }
 
@@ -470,26 +506,25 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   }
 
   .sidebar-nav-link.logout-link:hover {
-    background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(220, 53, 69, 0.3));
+    background-color: rgba(220, 53, 69, 0.2) !important;
     color: #ffffff !important;
-    border-left-color: #dc3545;
     box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
   }
 
   .nav-icon {
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 12px;
-    font-size: 16px;
+    margin-right: 8px;
+    font-size: 13px;
     flex-shrink: 0;
   }
 
   .nav-text {
     flex: 1;
-    font-size: 14px;
+    font-size: 12px;
     line-height: 1.4;
   }
 
@@ -511,7 +546,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   }
 
   .popup-header {
-    background: linear-gradient(135deg, var(--darker-bg), #2a2a2a);
+    background-color: var(--darker-bg);
     border-bottom: 1px solid var(--border-color);
     padding: 12px 16px;
     font-weight: 600;
@@ -546,14 +581,11 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     padding: 12px 16px;
     color: var(--text-muted);
     transition: all 0.3s ease;
-    border-left: 3px solid transparent;
   }
 
   .notification-item:hover {
     background: var(--sidebar-hover);
     color: var(--text-light);
-    border-left-color: var(--accent-color);
-    transform: translateX(4px);
   }
 
   .notification-dot {
@@ -565,13 +597,15 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     flex-shrink: 0;
   }
 
-  /* Main Content */
+  /* Main Content - Updated for Footer */
   .main-content {
-    margin-left: 280px;
-    padding-top: 80px;
+    margin-left: 250px;
+    padding-top: 65px;
+    padding-bottom: 65px;
     transition: margin-left 0.3s ease;
     background-color: #f8fafc !important;
-    min-height: calc(100vh - 64px);
+    min-height: 100vh;
+    box-sizing: border-box;
   }
 
   /* Sidebar states */
@@ -584,6 +618,11 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     width: 100%;
   }
 
+  body.sidebar-collapsed .footer {
+    left: 0;
+    width: 100%;
+  }
+
   body.sidebar-collapsed .main-content {
     margin-left: 0;
   }
@@ -591,6 +630,11 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   /* Mobile responsive */
   @media (max-width: 768px) {
     nav.navbar {
+      left: 0 !important;
+      width: 100% !important;
+    }
+
+    .footer {
       left: 0 !important;
       width: 100% !important;
     }
@@ -617,6 +661,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     .main-content {
       margin-left: 0 !important;
       padding-top: 80px;
+      padding-bottom: 65px;
     }
     
     body.sidebar-mobile-open .sidebar {
