@@ -18,7 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Primary database configuration (using constants for consistency)
 define('DB_HOST', 'localhost');
-define('DB_USER', 'LhayYhan');
+define('DB_USER', 'fina_LhayYhan');
 define('DB_PASS', 'b#E3ISqHZU%YGqP*');
 define('DB_NAME', 'fina_financial_system');
 
@@ -469,4 +469,5 @@ ENHANCEMENTS FROM NEW VERSION:
 
 
 ?>
+
 
