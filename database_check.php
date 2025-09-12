@@ -17,7 +17,7 @@
         <?php
         try {
             // Connect to database
-            $conn = new mysqli("localhost", "root", "", "financial_system");
+            $conn = new mysqli("localhost", "root", "", "fina_financial_system");
             
             if ($conn->connect_error) {
                 throw new Exception("Connection failed: " . $conn->connect_error);
@@ -157,4 +157,5 @@
         </div>
     </div>
 </body>
+
 </html>
