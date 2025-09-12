@@ -20,7 +20,7 @@ if (session_status() === PHP_SESSION_NONE) {
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_NAME', 'financial_system');
+define('DB_NAME', 'fina_financial_system');
 
 // Legacy variables for backward compatibility
 $host = DB_HOST;
@@ -466,5 +466,6 @@ ENHANCEMENTS FROM NEW VERSION:
 - Timezone setting for proper date handling
 - More robust error handling and logging
 */
+
 
 ?>
