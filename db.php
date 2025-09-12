@@ -61,11 +61,16 @@ function getDBConnection() {
 // =============================================================================
 
 // Create primary connection (original style - for backward compatibility)
+// Add more detailed error information
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
-// Check primary connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    echo "Connection failed with these details:<br>";
+    echo "Host: " . DB_HOST . "<br>";
+    echo "User: " . DB_USER . "<br>";
+    echo "Database: " . DB_NAME . "<br>";
+    echo "Error: " . $conn->connect_error . "<br>";
+    die("Please check your database credentials.");
 }
 
 // Set charset to utf8 (original style)
@@ -469,6 +474,7 @@ ENHANCEMENTS FROM NEW VERSION:
 
 
 ?>
+
 
 
 
