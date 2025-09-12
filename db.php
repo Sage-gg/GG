@@ -61,7 +61,7 @@ function getDBConnection() {
 // =============================================================================
 
 // Create primary connection (original style - for backward compatibility)
-$conn = new mysqli($host, $username, $password, $database);
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
 // Check primary connection
 if ($conn->connect_error) {
@@ -469,5 +469,6 @@ ENHANCEMENTS FROM NEW VERSION:
 
 
 ?>
+
 
 
