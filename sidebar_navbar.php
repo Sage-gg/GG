@@ -1,3 +1,5 @@
+<!--sidebar_navbar.php-->
+
 <?php
 require_once 'db.php';
 
@@ -33,11 +35,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   </div>
 
   <div class="ms-auto d-flex align-items-center gap-3 position-relative">
-    <!-- Session Timer Display -->
-    <div class="text-light small me-3" id="sessionTimer" style="font-size: 0.85rem;">
-      Session: <span id="timeRemaining">10:00</span>
-    </div>
-    
     <!-- Notifications -->
     <div class="nav-item-wrapper position-relative">
       <a href="#" class="nav-link text-light d-flex align-items-center" id="bellIcon" aria-label="Notifications">
@@ -264,14 +261,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 
   .financial-btn:active {
     color: var(--text-light);
-  }
-
-  /* Session Timer Styling */
-  #sessionTimer {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   /* Sidebar Toggle Button */
@@ -671,10 +660,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     .financial-btn {
       font-size: 0.9rem;
     }
-
-    #sessionTimer {
-      font-size: 0.75rem !important;
-    }
   }
 
   @media (max-width: 576px) {
@@ -691,10 +676,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
       width: calc(100% - 20px);
       margin: 0 10px;
       border-radius: 0 0 12px 12px;
-    }
-
-    #sessionTimer {
-      display: none; /* Hide on very small screens */
     }
   }
 
@@ -718,34 +699,27 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 </style>
 
 <script>
-  // Session timer functionality
+  // Session timer functionality - BACKGROUND ONLY (NO DISPLAY)
   let sessionStartTime = <?php echo $_SESSION['last_activity'] * 1000; ?>;
   let sessionTimeout = <?php echo SESSION_TIMEOUT * 1000; ?>;
   let sessionTimerInterval;
 
-  function updateSessionTimer() {
+  function checkSessionTimeout() {
     let currentTime = Date.now();
     let elapsedTime = currentTime - sessionStartTime;
     let remainingTime = sessionTimeout - elapsedTime;
     
     if (remainingTime <= 0) {
       clearInterval(sessionTimerInterval);
-      document.getElementById('timeRemaining').textContent = '00:00';
       alert('Your session has expired. You will be redirected to the login page.');
       window.location.href = 'login.php?timeout=1';
       return;
     }
-    
-    let minutes = Math.floor(remainingTime / 60000);
-    let seconds = Math.floor((remainingTime % 60000) / 1000);
-    
-    document.getElementById('timeRemaining').textContent = 
-      String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
   }
 
-  // Update session timer every second
-  sessionTimerInterval = setInterval(updateSessionTimer, 1000);
-  updateSessionTimer(); // Initial call
+  // Check session timeout every second (but don't display timer)
+  sessionTimerInterval = setInterval(checkSessionTimeout, 1000);
+  checkSessionTimeout(); // Initial call
 
   // Reset session timer on activity
   ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
