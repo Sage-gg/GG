@@ -28,16 +28,27 @@ if (isIPLockedOut()) {
     $lockout_remaining = getLockoutTimeRemaining();
 }
 
-// Handle AJAX request for lockout status
+// FIXED: Enhanced AJAX endpoint for lockout status
 if (isset($_GET['ajax']) && $_GET['ajax'] == 'lockout_status') {
     header('Content-Type: application/json');
-    $remaining = getLockoutTimeRemaining();
+    
+    // Force a fresh check
     $locked = isIPLockedOut();
+    $remaining = $locked ? getLockoutTimeRemaining() : 0;
+    
+    // Add extra precision - round down to avoid client getting ahead of server
+    $remaining = floor($remaining);
+    
     echo json_encode([
         'locked' => $locked,
         'remaining' => $remaining,
         'minutes' => floor($remaining / 60),
-        'seconds' => $remaining % 60
+        'seconds' => $remaining % 60,
+        'server_time' => time(),
+        'debug' => [
+            'lockout_duration' => LOCKOUT_DURATION,
+            'max_attempts' => MAX_LOGIN_ATTEMPTS
+        ]
     ]);
     exit();
 }
@@ -264,11 +275,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <script>
-    // Lockout countdown functionality
+    // =============================================================================
+    // FIXED: Enhanced countdown with better server synchronization
+    // =============================================================================
+
     let countdownInterval;
     let lockoutRemaining = <?php echo $lockout_remaining; ?>;
+    let serverSyncInterval;
     const isInitiallyLocked = <?php echo $is_locked_out ? 'true' : 'false'; ?>;
-    
+
     // Elements
     const lockoutTimer = document.getElementById('lockoutTimer');
     const countdownDisplay = document.getElementById('countdownDisplay');
@@ -280,105 +295,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const progressCircle = document.getElementById('progressCircle');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
-    
-    // Progress ring settings
-    const circumference = 2 * Math.PI * 36; // radius = 36
-    const totalLockoutTime = 15 * 60; // 15 minutes in seconds
-    
+
+    const circumference = 2 * Math.PI * 36;
+    const totalLockoutTime = 15 * 60;
+
     function updateCountdown() {
-      if (lockoutRemaining <= 0) {
-        // Lockout expired
-        clearInterval(countdownInterval);
-        unlockForm();
-        return;
-      }
-      
-      const minutes = Math.floor(lockoutRemaining / 60);
-      const seconds = lockoutRemaining % 60;
-      
-      // Update display
-      minutesSpan.textContent = minutes.toString().padStart(2, '0');
-      secondsSpan.textContent = seconds.toString().padStart(2, '0');
-      
-      // Update progress ring
-      const progress = (totalLockoutTime - lockoutRemaining) / totalLockoutTime;
-      const dashOffset = circumference - (progress * circumference);
-      progressCircle.style.strokeDashoffset = dashOffset;
-      
-      lockoutRemaining--;
-    }
-    
-    function lockForm() {
-      lockoutTimer.style.display = 'block';
-      loginForm.classList.add('form-disabled');
-      loginButton.disabled = true;
-      usernameInput.disabled = true;
-      passwordInput.disabled = true;
-      loginButtonText.textContent = 'Locked';
-      lockoutTimer.classList.add('pulse');
-    }
-    
-    function unlockForm() {
-      lockoutTimer.style.display = 'none';
-      loginForm.classList.remove('form-disabled');
-      loginButton.disabled = false;
-      usernameInput.disabled = false;
-      passwordInput.disabled = false;
-      loginButtonText.textContent = 'Login';
-      lockoutTimer.classList.remove('pulse');
-      
-      // Show success message
-      const alertDiv = document.createElement('div');
-      alertDiv.className = 'alert alert-success';
-      alertDiv.innerHTML = '🔓 Lockout expired! You can now attempt to login again.';
-      loginForm.parentNode.insertBefore(alertDiv, loginForm);
-      
-      // Remove the success message after 5 seconds
-      setTimeout(() => {
-        if (alertDiv.parentNode) {
-          alertDiv.parentNode.removeChild(alertDiv);
-        }
-      }, 5000);
-    }
-    
-    function checkLockoutStatus() {
-      fetch(window.location.pathname + '?ajax=lockout_status')
-        .then(response => response.json())
-        .then(data => {
-          if (data.locked && !countdownInterval) {
-            // Server says locked and we don't have a countdown running
-            lockoutRemaining = data.remaining;
-            lockForm();
-            countdownInterval = setInterval(updateCountdown, 1000);
-            updateCountdown(); // Update immediately
-          } else if (data.locked && countdownInterval && Math.abs(lockoutRemaining - data.remaining) > 5) {
-            // Server has different time remaining (sync if difference > 5 seconds)
-            lockoutRemaining = data.remaining;
-            updateCountdown();
-          } else if (!data.locked && countdownInterval) {
-            // Server says unlocked, clear our countdown
-            lockoutRemaining = 0;
+        if (lockoutRemaining <= 0) {
             clearInterval(countdownInterval);
             countdownInterval = null;
-            unlockForm();
-          }
-        })
-        .catch(error => {
-          console.log('Failed to check lockout status:', error);
-        });
+            
+            // FIXED: Always check server before unlocking
+            checkLockoutStatus().then(() => {
+                if (lockoutRemaining <= 0) {
+                    unlockForm();
+                }
+            });
+            return;
+        }
+        
+        const minutes = Math.floor(lockoutRemaining / 60);
+        const seconds = lockoutRemaining % 60;
+        
+        minutesSpan.textContent = minutes.toString().padStart(2, '0');
+        secondsSpan.textContent = seconds.toString().padStart(2, '0');
+        
+        const progress = (totalLockoutTime - lockoutRemaining) / totalLockoutTime;
+        const dashOffset = circumference - (progress * circumference);
+        progressCircle.style.strokeDashoffset = dashOffset;
+        
+        lockoutRemaining--;
     }
-    
-    // Initialize countdown if locked out
-    if (isInitiallyLocked && lockoutRemaining > 0) {
-      lockForm();
-      countdownInterval = setInterval(updateCountdown, 1000);
-      updateCountdown(); // Update immediately
-    }
-    
-    // Check server status every 30 seconds to sync with server
-    setInterval(checkLockoutStatus, 30000);
 
-    // Session timeout warning (existing code)
+    function lockForm() {
+        lockoutTimer.style.display = 'block';
+        loginForm.classList.add('form-disabled');
+        loginButton.disabled = true;
+        usernameInput.disabled = true;
+        passwordInput.disabled = true;
+        loginButtonText.textContent = 'Locked';
+        lockoutTimer.classList.add('pulse');
+    }
+
+    function unlockForm() {
+        clearInterval(countdownInterval);
+        clearInterval(serverSyncInterval);
+        
+        lockoutTimer.style.display = 'none';
+        loginForm.classList.remove('form-disabled');
+        loginButton.disabled = false;
+        usernameInput.disabled = false;
+        passwordInput.disabled = false;
+        loginButtonText.textContent = 'Login';
+        lockoutTimer.classList.remove('pulse');
+        
+        // Clear any previous success messages
+        const existingAlert = document.querySelector('.alert-success');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // Show success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success';
+        alertDiv.innerHTML = '🔓 Lockout expired! You can now attempt to login again.';
+        loginForm.parentNode.insertBefore(alertDiv, loginForm);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+
+    // FIXED: Enhanced server checking with promise return
+    function checkLockoutStatus() {
+        return fetch(window.location.pathname + '?ajax=lockout_status&_=' + Date.now())
+            .then(response => response.json())
+            .then(data => {
+                console.log('Server lockout status:', data); // Debug log
+                
+                if (data.locked && data.remaining > 0) {
+                    // Server says locked
+                    if (!countdownInterval) {
+                        // Start countdown if not running
+                        lockoutRemaining = data.remaining;
+                        lockForm();
+                        countdownInterval = setInterval(updateCountdown, 1000);
+                        updateCountdown();
+                    } else {
+                        // Sync with server time if significant difference
+                        if (Math.abs(lockoutRemaining - data.remaining) > 2) {
+                            lockoutRemaining = data.remaining;
+                            updateCountdown();
+                        }
+                    }
+                } else {
+                    // Server says not locked
+                    if (countdownInterval || lockoutTimer.style.display !== 'none') {
+                        lockoutRemaining = 0;
+                        unlockForm();
+                    }
+                }
+            })
+            .catch(error => {
+                console.log('Failed to check lockout status:', error);
+            });
+    }
+
+    // FIXED: Initialize with better timing
+    if (isInitiallyLocked && lockoutRemaining > 0) {
+        lockForm();
+        countdownInterval = setInterval(updateCountdown, 1000);
+        updateCountdown();
+        
+        // FIXED: Check server every 5 seconds when locked (more frequent)
+        serverSyncInterval = setInterval(checkLockoutStatus, 5000);
+    } else {
+        // Check every 30 seconds when not locked
+        setInterval(checkLockoutStatus, 30000);
+    }
+
+    // FIXED: Before form submission, always verify lockout status
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        if (lockoutRemaining > 0 || loginButton.disabled) {
+            e.preventDefault();
+            checkLockoutStatus().then(() => {
+                if (lockoutRemaining <= 0 && !loginButton.disabled) {
+                    // Re-submit if unlocked
+                    this.submit();
+                }
+            });
+            return false;
+        }
+    });
+
+    // Session timeout management (keeping existing functionality)
     let sessionTimeout;
     let warningTimeout;
     let lastActivity = Date.now();
@@ -388,35 +439,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       clearTimeout(warningTimeout);
       lastActivity = Date.now();
       
-      // Show warning 5 minutes before logout
       warningTimeout = setTimeout(function() {
         if (confirm('Your session will expire in 5 minutes due to inactivity. Click OK to continue your session.')) {
-          // User clicked OK, send activity ping
           fetch(window.location.href, {
             method: 'HEAD',
             credentials: 'same-origin'
           });
           resetSessionTimer();
         }
-      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>); // 5 minutes before 10-minute timeout
+      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>);
       
-      // Auto logout after full timeout
       sessionTimeout = setTimeout(function() {
         alert('Your session has expired due to inactivity. You will be redirected to the login page.');
         window.location.href = 'login.php?timeout=1';
-      }, <?php echo SESSION_TIMEOUT * 1000; ?>); // 10 minutes
+      }, <?php echo SESSION_TIMEOUT * 1000; ?>);
     }
 
-    // Track user activity
     ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
       document.addEventListener(event, function() {
-        if (Date.now() - lastActivity > 60000) { // Only reset if more than 1 minute passed
+        if (Date.now() - lastActivity > 60000) {
           resetSessionTimer();
         }
       }, { capture: true, passive: true });
     });
 
-    // Only start timer if we're on a page that requires authentication
     <?php if (isLoggedIn()): ?>
     resetSessionTimer();
     <?php endif; ?>
