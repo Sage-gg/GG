@@ -1,7 +1,9 @@
 <?php
 // =============================================================================
+// db.php
 // MERGED DATABASE CONNECTION FILE
 // Enhanced Database connection with session management and dual compatibility
+// FIXED VERSION - Resolves lockout timer issues
 // =============================================================================
 
 // Set timezone to match your database
@@ -61,16 +63,11 @@ function getDBConnection() {
 // =============================================================================
 
 // Create primary connection (original style - for backward compatibility)
-// Add more detailed error information
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+$conn = new mysqli($host, $username, $password, $database);
 
+// Check primary connection
 if ($conn->connect_error) {
-    echo "Connection failed with these details:<br>";
-    echo "Host: " . DB_HOST . "<br>";
-    echo "User: " . DB_USER . "<br>";
-    echo "Database: " . DB_NAME . "<br>";
-    echo "Error: " . $conn->connect_error . "<br>";
-    die("Please check your database credentials.");
+    die("Connection failed: " . $conn->connect_error);
 }
 
 // Set charset to utf8 (original style)
@@ -181,10 +178,10 @@ function cleanupUserSession($user_id, $session_id = null) {
 }
 
 // =============================================================================
-// LOGIN ATTEMPT TRACKING FUNCTIONS (Enhanced from new version)
+// LOGIN ATTEMPT TRACKING FUNCTIONS - FIXED FOR TINYINT(1) COMPATIBILITY
 // =============================================================================
 
-// Log login attempt with FIXED logic - clear failed attempts BEFORE logging success
+// FIXED: Log login attempt - Updated for tinyint(1) compatibility
 function logLoginAttempt($username, $success = false, $force_log = false) {
     $conn = getDBConnection();
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -194,62 +191,74 @@ function logLoginAttempt($username, $success = false, $force_log = false) {
         return false; // Don't log the attempt
     }
     
-    // If login was successful, clear ALL failed attempts for this IP FIRST (enhanced logic)
+    // If login was successful, clear ALL failed attempts for this IP FIRST - explicitly check for 0
     if ($success) {
-        $clear_stmt = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND success = FALSE");
+        $clear_stmt = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND success = 0");
         $clear_stmt->bind_param("s", $ip_address);
         $clear_stmt->execute();
         $clear_stmt->close();
     }
     
-    // Then log the current attempt
+    // Then log the current attempt - convert boolean to int
+    $success_int = $success ? 1 : 0;
     $stmt = $conn->prepare("INSERT INTO login_attempts (ip_address, username, success) VALUES (?, ?, ?)");
-    $stmt->bind_param("ssi", $ip_address, $username, $success);
+    $stmt->bind_param("ssi", $ip_address, $username, $success_int);
     $stmt->execute();
     $stmt->close();
     
     return true; // Attempt was logged
 }
 
-// Check if IP is locked out due to too many failed attempts (Enhanced logic from new version)
+// FIXED: Check if IP is locked out - Updated for tinyint(1) compatibility
 function isIPLockedOut() {
     $conn = getDBConnection();
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $lockout_threshold = date('Y-m-d H:i:s', time() - LOCKOUT_DURATION);
     
-    // Find the most recent successful login (enhanced approach)
-    $success_stmt = $conn->prepare("SELECT attempted_at FROM login_attempts WHERE ip_address = ? AND success = TRUE ORDER BY attempted_at DESC LIMIT 1");
-    $success_stmt->bind_param("s", $ip_address);
-    $success_stmt->execute();
-    $success_result = $success_stmt->get_result();
+    // Count recent failed attempts (within lockout duration) - explicitly check for 0
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as fail_count 
+        FROM login_attempts 
+        WHERE ip_address = ? AND success = 0 AND attempted_at > ?
+    ");
+    $stmt->bind_param("ss", $ip_address, $lockout_threshold);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $fail_count = $result['fail_count'];
+    $stmt->close();
     
-    if ($success_result->num_rows > 0) {
-        // Count failures since last success
-        $last_success = $success_result->fetch_assoc()['attempted_at'];
-        $success_stmt->close();
+    // If we have MAX_LOGIN_ATTEMPTS or more failures, check if lockout should still be active
+    if ($fail_count >= MAX_LOGIN_ATTEMPTS) {
+        // Get the timestamp of the attempt that triggered lockout (5th failure)
+        $trigger_stmt = $conn->prepare("
+            SELECT attempted_at 
+            FROM login_attempts 
+            WHERE ip_address = ? AND success = 0 AND attempted_at > ?
+            ORDER BY attempted_at ASC 
+            LIMIT 1 OFFSET ?
+        ");
+        $offset = MAX_LOGIN_ATTEMPTS - 1; // 0-indexed, so 5th attempt is offset 4
+        $trigger_stmt->bind_param("ssi", $ip_address, $lockout_threshold, $offset);
+        $trigger_stmt->execute();
+        $trigger_result = $trigger_stmt->get_result();
         
-        $fail_stmt = $conn->prepare("SELECT COUNT(*) as fail_count FROM login_attempts WHERE ip_address = ? AND success = FALSE AND attempted_at > ?");
-        $fail_stmt->bind_param("ss", $ip_address, $last_success);
-        $fail_stmt->execute();
-        $fail_result = $fail_stmt->get_result()->fetch_assoc();
-        $fail_stmt->close();
-        
-        return $fail_result['fail_count'] >= MAX_LOGIN_ATTEMPTS;
-    } else {
-        // No successful login - count failures in last 15 minutes
-        $success_stmt->close();
-        $lockout_threshold = date('Y-m-d H:i:s', time() - LOCKOUT_DURATION);
-        
-        $fail_stmt = $conn->prepare("SELECT COUNT(*) as fail_count FROM login_attempts WHERE ip_address = ? AND success = FALSE AND attempted_at > ?");
-        $fail_stmt->bind_param("ss", $ip_address, $lockout_threshold);
-        $fail_stmt->execute();
-        $fail_result = $fail_stmt->get_result()->fetch_assoc();
-        $fail_stmt->close();
-        
-        return $fail_result['fail_count'] >= MAX_LOGIN_ATTEMPTS;
+        if ($trigger_result->num_rows > 0) {
+            $trigger_time = $trigger_result->fetch_assoc()['attempted_at'];
+            $trigger_timestamp = strtotime($trigger_time);
+            $lockout_expires = $trigger_timestamp + LOCKOUT_DURATION;
+            
+            $trigger_stmt->close();
+            
+            // Return true if lockout is still active
+            return time() < $lockout_expires;
+        }
+        $trigger_stmt->close();
     }
+    
+    return false;
 }
 
-// Get lockout time remaining (Enhanced from new version)
+// FIXED: Get lockout time remaining - Updated for tinyint(1) compatibility
 function getLockoutTimeRemaining() {
     if (!isIPLockedOut()) {
         return 0;
@@ -257,16 +266,43 @@ function getLockoutTimeRemaining() {
     
     $conn = getDBConnection();
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $lockout_time = date('Y-m-d H:i:s', time() - LOCKOUT_DURATION);
     
-    // Get the most recent failed attempt within lockout period
-    $stmt = $conn->prepare("SELECT attempted_at FROM login_attempts WHERE ip_address = ? AND success = FALSE AND attempted_at > ? ORDER BY attempted_at DESC LIMIT 1");
-    $stmt->bind_param("ss", $ip_address, $lockout_time);
+    // Get the 5th most recent failed attempt (the one that triggered lockout) - explicitly check for 0
+    $stmt = $conn->prepare("
+        SELECT attempted_at 
+        FROM login_attempts 
+        WHERE ip_address = ? AND success = 0 
+        ORDER BY attempted_at DESC 
+        LIMIT 1 OFFSET 4
+    ");
+    $stmt->bind_param("s", $ip_address);
     $stmt->execute();
     $result = $stmt->get_result();
     
     if ($result->num_rows > 0) {
-        $last_attempt = $result->fetch_assoc()['attempted_at'];
+        $lockout_trigger = $result->fetch_assoc()['attempted_at'];
+        $lockout_trigger_timestamp = strtotime($lockout_trigger);
+        $lockout_expires = $lockout_trigger_timestamp + LOCKOUT_DURATION;
+        $remaining = $lockout_expires - time();
+        
+        $stmt->close();
+        return max(0, $remaining);
+    }
+    
+    // Fallback: check most recent failed attempt - explicitly check for 0
+    $stmt = $conn->prepare("
+        SELECT attempted_at 
+        FROM login_attempts 
+        WHERE ip_address = ? AND success = 0 
+        ORDER BY attempted_at DESC 
+        LIMIT 1
+    ");
+    $stmt->bind_param("s", $ip_address);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $last_attempt = $result['fetch_assoc()']['attempted_at'];
         $last_attempt_timestamp = strtotime($last_attempt);
         $lockout_expires = $last_attempt_timestamp + LOCKOUT_DURATION;
         $remaining = $lockout_expires - time();
@@ -428,57 +464,4 @@ if (rand(1, 20) === 1) {
 // Show debug info if requested (remove in production)
 debugLockoutStatus();
 
-// =============================================================================
-// USAGE EXAMPLES AND COMPATIBILITY NOTES
-// =============================================================================
-
-/*
-USAGE EXAMPLES:
-
-1. Original Style (using global $conn):
-   $result = $conn->query("SELECT * FROM users");
-   $stmt = prepare_statement("SELECT * FROM users WHERE id = ?");
-   $safe_string = escape_string($user_input);
-
-2. Enhanced Style (using function):
-   $db = getDBConnection();
-   $result = $db->query("SELECT * FROM users");
-
-3. Session Management:
-   requireLogin(); // Redirect if not logged in
-   requireAdmin(); // Redirect if not admin
-   if (isLoggedIn()) { ... }
-
-4. Tax Functions:
-   $tax = calculateTaxAmount('VAT', 1000); // Returns 120
-   echo formatCurrency(1234.56); // Returns ₱1,234.56
-
-5. Login Attempt Tracking:
-   logLoginAttempt($username, true); // Log successful login
-   if (isIPLockedOut()) { ... } // Check if IP is locked
-
-COMPATIBILITY:
-- Both $conn and $conn2 are available as global variables
-- All original functions are preserved
-- New enhanced functions are added
-- Function name conflicts are prevented with function_exists() checks
-
-ENHANCEMENTS FROM NEW VERSION:
-- Enhanced session management with database cleanup
-- Improved lockout logic with better failure tracking
-- Enhanced debug information with session data
-- Better cleanup scheduling (5% vs 1% chance)
-- Timezone setting for proper date handling
-- More robust error handling and logging
-*/
-
-
 ?>
-
-
-
-
-
-
-
-
