@@ -149,48 +149,228 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Login - Financial System</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="css/login.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
   <style>
+    :root {
+      --accent1: #000000;
+      --accent2: #000000;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: url("pexels-rezwan-1078884.jpg") no-repeat center center/cover;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card {
+      display: flex;
+      width: 1100px;
+      height: 450px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      border: 5px solid rgba(255, 255, 255, 0.15);
+      background: rgba(236, 190, 190, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    /* Left side with image */
+    .card-left {
+      flex: 1;
+      background: url("logo.png") no-repeat center center/cover;
+      position: relative;
+    }
+    .card-left::after {
+      content:"";
+      position:absolute;
+      top:0; left:0; right:0; bottom:0;
+    }
+
+    /* Right side with form */
+    .card-right {
+      flex: 1;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Header section with improved spacing */
+    .header-section {
+      text-align: center;
+      margin-bottom: 25px; /* Added space after header */
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 8px 0;
+    }
+    
+    p.lead {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.7);
+    }
+
+    /* Notification section with proper spacing */
+    .notifications {
+      width: 100%;
+      margin-bottom: 20px; /* Space before form */
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .input {
+      background: rgba(226, 225, 225, 0.11);
+      border: 1px solid rgb(0, 0, 0);
+      padding: 12px;
+      border-radius: 8px;
+      color: #000000;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .input::placeholder {
+      color: rgba(0, 0, 0, 0.7);
+    }
+
+    .input:focus {
+      border-color: var(--accent2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.904);
+    }
+
+    .btn {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(90deg,var(--accent1),var(--accent2));
+      color: #fff;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      background: linear-gradient(90deg,#000000,#666);
+    }
+    
+    .btn:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    .register {
+      margin-top: 20px; /* Increased space before register text */
+      font-size: 13px;
+      color: #020202;
+    }
+    .register a {
+      color: #eef1f3ec;
+      text-decoration: none;
+    }
+
+    /* Alert styles with improved spacing */
+    .alert {
+      padding: 15px; /* Increased padding for better appearance */
+      border-radius: 8px;
+      margin-bottom: 15px; /* Space between multiple alerts */
+      font-size: 14px;
+      width: 100%;
+      position: relative;
+    }
+    
+    .alert-danger {
+      background: rgba(220, 53, 69, 0.1);
+      border: 1px solid rgba(220, 53, 69, 0.3);
+      color: #721c24;
+    }
+    
+    .alert-success {
+      background: rgba(40, 167, 69, 0.1);
+      border: 1px solid rgba(40, 167, 69, 0.3);
+      color: #155724;
+    }
+
+    /* Compact lockout timer design */
     .lockout-timer {
       background: linear-gradient(135deg, #ff6b6b, #ee5a24);
       color: white;
       padding: 15px;
       border-radius: 8px;
-      margin-bottom: 20px;
-      text-align: center;
+      margin-bottom: 15px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .lockout-content {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      width: 100%;
+    }
+    
+    .lockout-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    
+    .lockout-info {
+      flex-grow: 1;
+      text-align: left;
+    }
+    
+    .lockout-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      opacity: 0.95;
+    }
+    
+    .lockout-message {
+      font-size: 0.8rem;
+      margin: 0;
+      opacity: 0.85;
     }
     
     .countdown-display {
-      font-size: 2rem;
+      font-size: 1.4rem;
       font-weight: bold;
       font-family: 'Courier New', monospace;
-      margin: 10px 0;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    .countdown-label {
-      font-size: 0.9rem;
-      opacity: 0.9;
-      margin-bottom: 5px;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+      flex-shrink: 0;
     }
     
     .progress-ring {
       transform: rotate(-90deg);
-      margin: 0 auto;
+      flex-shrink: 0;
     }
     
     .progress-ring-circle {
       transition: stroke-dashoffset 1s linear;
       stroke: #fff;
-      stroke-width: 4;
+      stroke-width: 3; /* Adjusted for smaller circle */
       fill: transparent;
       stroke-linecap: round;
     }
@@ -209,68 +389,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       50% { opacity: 0.7; }
       100% { opacity: 1; }
     }
+
+    /* Responsive adjustments */
+    @media (max-width: 850px) {
+      .login-card { 
+        flex-direction: column; 
+        height: auto; 
+        width: 95%; 
+      }
+      .card-left { 
+        height: 200px; 
+      }
+      .card-right {
+        padding: 30px 20px; /* Adjust padding for mobile */
+      }
+      .header-section {
+        margin-bottom: 20px; /* Slightly less space on mobile */
+      }
+      
+      /* Mobile lockout timer adjustments */
+      .lockout-timer {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      
+      .lockout-content {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .lockout-info {
+        text-align: center;
+      }
+      
+      .countdown-display {
+        font-size: 1.6rem; /* Slightly larger on mobile for readability */
+      }
+    }
   </style>
 </head>
-<body class="d-flex align-items-center justify-content-center">
+<body>
+  <div class="login-card">
+    <!-- Left picture -->
+    <div class="card-left"></div>
 
-  <div class="login-container shadow rounded p-4">
-    <h2 class="text-center mb-4 fw-bold">Login</h2>
-    
-    <!-- Lockout Timer Display -->
-    <div id="lockoutTimer" class="lockout-timer" style="display: <?php echo $is_locked_out ? 'block' : 'none'; ?>;">
-      <div class="countdown-label">🔒 Account Temporarily Locked</div>
-      
-      <!-- Progress Ring -->
-      <svg class="progress-ring" width="80" height="80">
-        <circle class="progress-ring-circle" 
-                cx="40" cy="40" r="36"
-                stroke-dasharray="226.2" 
-                stroke-dashoffset="226.2"
-                id="progressCircle">
-        </circle>
-      </svg>
-      
-      <div class="countdown-display" id="countdownDisplay">
-        <span id="minutes">00</span>:<span id="seconds">00</span>
-      </div>
-      <div class="countdown-label">Too many failed attempts. Please wait...</div>
-    </div>
-    
-    <?php if (!empty($error_message) && !$is_locked_out): ?>
-      <div class="alert alert-danger" role="alert">
-        <?php echo htmlspecialchars($error_message); ?>
-      </div>
-    <?php endif; ?>
-    
-    <?php if (!empty($success_message)): ?>
-      <div class="alert alert-success" role="alert">
-        <?php echo htmlspecialchars($success_message); ?>
-      </div>
-    <?php endif; ?>
-    
-    <form method="POST" action="login.php" id="loginForm" class="<?php echo $is_locked_out ? 'form-disabled' : ''; ?>">
-
-      <div class="mb-3">
-        <label for="username" class="form-label fw-semibold">Username</label>
-        <input type="text" class="form-control" id="username" name="username" 
-               value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" 
-               <?php echo $is_locked_out ? 'disabled' : 'required'; ?> />
+    <!-- Right login form -->
+    <div class="card-right">
+      <!-- Header Section -->
+      <div class="header-section">
+        <h1>Crane and Trucking Management System</h1>
+        <p class="lead">Welcome, Login your account</p>
       </div>
 
-      <div class="mb-3">
-        <label for="password" class="form-label fw-semibold">Password</label>
-        <input type="password" class="form-control" id="password" name="password" 
-               <?php echo $is_locked_out ? 'disabled' : 'required'; ?> />
+      <!-- Notifications Section -->
+      <div class="notifications">
+        <!-- Lockout Timer Display - Compact Design -->
+        <div id="lockoutTimer" class="lockout-timer" style="display: <?php echo $is_locked_out ? 'block' : 'none'; ?>;">
+          <div class="lockout-content">
+            <div class="lockout-icon">🔒</div>
+            
+            <div class="lockout-info">
+              <div class="lockout-title">Account Temporarily Locked</div>
+              <div class="lockout-message">Too many failed attempts. Please wait...</div>
+            </div>
+            
+            <!-- Smaller Progress Ring -->
+            <svg class="progress-ring" width="50" height="50">
+              <circle class="progress-ring-circle" 
+                      cx="25" cy="25" r="20"
+                      stroke-dasharray="125.7" 
+                      stroke-dashoffset="125.7"
+                      id="progressCircle">
+              </circle>
+            </svg>
+            
+            <div class="countdown-display" id="countdownDisplay">
+              <span id="minutes">00</span>:<span id="seconds">00</span>
+            </div>
+          </div>
+        </div>
+        
+        <?php if (!empty($error_message) && !$is_locked_out): ?>
+          <div class="alert alert-danger" role="alert">
+            <?php echo htmlspecialchars($error_message); ?>
+          </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($success_message)): ?>
+          <div class="alert alert-success" role="alert">
+            <?php echo htmlspecialchars($success_message); ?>
+          </div>
+        <?php endif; ?>
       </div>
 
-      <button type="submit" class="btn btn-primary w-100 fw-semibold" 
-              id="loginButton" <?php echo $is_locked_out ? 'disabled' : ''; ?>>
-        <span id="loginButtonText">Login</span>
-      </button>
-    </form>
+      <!-- Login Form -->
+      <form method="POST" action="login.php" id="loginForm" class="<?php echo $is_locked_out ? 'form-disabled' : ''; ?>">
+        <input class="input" 
+               type="text" 
+               id="username"
+               name="username"
+               placeholder="Username" 
+               value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
+               <?php echo $is_locked_out ? 'disabled' : 'required'; ?>>
+        
+        <input class="input" 
+               type="password" 
+               id="password"
+               name="password"
+               placeholder="Password" 
+               <?php echo $is_locked_out ? 'disabled' : 'required'; ?>>
+        
+        <button class="btn" 
+                type="submit"
+                id="loginButton"
+                <?php echo $is_locked_out ? 'disabled' : ''; ?>>
+          <span id="loginButtonText"><?php echo $is_locked_out ? 'Locked' : 'Sign in'; ?></span>
+        </button>
+      </form>
 
-    <div class="mt-4 text-center">
-      <small class="text-muted">Don't have an account? Contact your administrator.</small>
+      <div class="register">
+        Don't have an account? Contact your Administrator
+      </div>
     </div>
   </div>
 
@@ -296,7 +536,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
 
-    const circumference = 2 * Math.PI * 36;
+    const circumference = 2 * Math.PI * 20; // Updated for smaller circle (radius 20)
     const totalLockoutTime = 15 * 60;
 
     function updateCountdown() {
@@ -345,7 +585,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         loginButton.disabled = false;
         usernameInput.disabled = false;
         passwordInput.disabled = false;
-        loginButtonText.textContent = 'Login';
+        loginButtonText.textContent = 'Sign in';
         lockoutTimer.classList.remove('pulse');
         
         // Clear any previous success messages
@@ -354,11 +594,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             existingAlert.remove();
         }
         
-        // Show success message
+        // Show success message in notifications section
+        const notificationsDiv = document.querySelector('.notifications');
         const alertDiv = document.createElement('div');
         alertDiv.className = 'alert alert-success';
         alertDiv.innerHTML = '🔓 Lockout expired! You can now attempt to login again.';
-        loginForm.parentNode.insertBefore(alertDiv, loginForm);
+        notificationsDiv.appendChild(alertDiv);
         
         setTimeout(() => {
             if (alertDiv.parentNode) {
