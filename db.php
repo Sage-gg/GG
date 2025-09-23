@@ -15,16 +15,35 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include email configuration
 require_once 'email_config.php';
 
-// Include PHPMailer - adjust path based on your installation
-// Option 1: If using Composer
+// Include PHPMailer - FIXED VERSION
+// Option 1: If using Composer (recommended)
 if (file_exists('vendor/autoload.php')) {
     require_once 'vendor/autoload.php';
 } 
-elseif (file_exists('lib/phpmailer/PHPMailer.php')) {
-    require_once 'lib/phpmailer/PHPMailer.php';
-    require_once 'lib/phpmailer/SMTP.php';
-    require_once 'lib/phpmailer/Exception.php';
-
+// Option 2: If using manual installation with new structure
+elseif (file_exists('PHPMailer/src/PHPMailer.php')) {
+    require_once 'PHPMailer/src/PHPMailer.php';
+    require_once 'PHPMailer/src/SMTP.php';
+    require_once 'PHPMailer/src/Exception.php';
+}
+// Option 3: If using old lib folder structure  
+elseif (file_exists('lib/phpmailer/src/PHPMailer.php')) {
+    require_once 'lib/phpmailer/src/PHPMailer.php';
+    require_once 'lib/phpmailer/src/SMTP.php';
+    require_once 'lib/phpmailer/src/Exception.php';
+}
+// Option 4: Alternative paths
+elseif (file_exists('includes/PHPMailer/src/PHPMailer.php')) {
+    require_once 'includes/PHPMailer/src/PHPMailer.php';
+    require_once 'includes/PHPMailer/src/SMTP.php';
+    require_once 'includes/PHPMailer/src/Exception.php';
+}
+else {
+    // If PHPMailer is not found, provide helpful error
+    die('PHPMailer library not found. Please install PHPMailer using one of these methods:<br>
+    1. Via Composer: <code>composer require phpmailer/phpmailer</code><br>
+    2. Download from GitHub and extract to PHPMailer/ folder<br>
+    3. Check your file paths in db.php');
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -701,4 +720,5 @@ if (rand(1, 20) === 1) {
 debugLockoutStatus();
 
 ?>
+
 
