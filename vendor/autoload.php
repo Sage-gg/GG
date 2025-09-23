@@ -1,21 +1,26 @@
 {
-    "name": "financial-reporting/excel-export",
-    "description": "Financial Reporting System with Excel Export",
+    "name": "sage-gg/financial-system",
+    "description": "Branch of CraneSYSTEM focusing on financials",
     "type": "project",
+    "license": "MIT",
     "require": {
-        "php": ">=7.4",
-        "phpoffice/phpspreadsheet": "^1.29"
+        "php": "^8.0",
+        "phpmailer/phpmailer": "^6.10"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
     },
     "autoload": {
         "psr-4": {
-            "App\\": "src/"
+            "YourNamespace\\": "src/"
         }
     },
-    "config": {
-        "platform": {
-            "php": "7.4"
-        },
-        "optimize-autoloader": true,
-        "sort-packages": true
+    "autoload-dev": {
+        "psr-4": {
+            "YourNamespace\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
