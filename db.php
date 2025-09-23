@@ -1,24 +1,40 @@
 <?php
 // =============================================================================
-// db.php
-// MERGED DATABASE CONNECTION FILE
-// Enhanced Database connection with session management and dual compatibility
-// FIXED VERSION - Resolves lockout timer issues
+// db.php - ENHANCED WITH EMAIL 2FA SYSTEM - FIXED VERSION
+// Enhanced Database connection with session management, dual compatibility, and email verification
 // =============================================================================
 
 // Set timezone to match your database
-date_default_timezone_set('Asia/Manila'); // or whatever timezone your database uses
+date_default_timezone_set('Asia/Manila');
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Include email configuration
+require_once 'email_config.php';
+
+// Include PHPMailer - adjust path based on your installation
+// Option 1: If using Composer
+if (file_exists('vendor/autoload.php')) {
+    require_once 'vendor/autoload.php';
+} 
+// Option 2: If manually installed
+elseif (file_exists('PHPMailer/src/PHPMailer.php')) {
+    require_once 'PHPMailer/src/PHPMailer.php';
+    require_once 'PHPMailer/src/SMTP.php';
+    require_once 'PHPMailer/src/Exception.php';
+}
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
 // =============================================================================
 // DATABASE CONFIGURATION (Unified)
 // =============================================================================
 
-// Primary database configuration (using constants for consistency)
 define('DB_HOST', 'localhost');
 define('DB_USER', 'fina_LhayYhan');
 define('DB_PASS', 'H8@r%ml2#0myfd-n');
@@ -42,19 +58,15 @@ define('LOCKOUT_DURATION', 15 * 60); // 15 minutes lockout
 // DATABASE CONNECTION FUNCTIONS
 // =============================================================================
 
-// Main connection function (Enhanced style)
 function getDBConnection() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     
-    // Check connection
     if ($conn->connect_error) {
         error_log("Database connection failed: " . $conn->connect_error);
         die("Database connection failed. Please check your database configuration in db.php");
     }
     
-    // Set charset to utf8mb4 for proper encoding
     $conn->set_charset("utf8mb4");
-    
     return $conn;
 }
 
@@ -62,66 +74,325 @@ function getDBConnection() {
 // GLOBAL CONNECTION VARIABLES (Dual Compatibility)
 // =============================================================================
 
-// Create primary connection (original style - for backward compatibility)
 $conn = new mysqli($host, $username, $password, $database);
 
-// Check primary connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Set charset to utf8 (original style)
 $conn->set_charset("utf8");
-
-// Create secondary connection using function (enhanced style)
 $conn2 = getDBConnection();
 
 // =============================================================================
-// LEGACY DATABASE HELPER FUNCTIONS
+// EMAIL VERIFICATION FUNCTIONS (NEW)
 // =============================================================================
 
-// Function to close connection
-function closeConnection() {
-    global $conn;
-    if ($conn) {
-        $conn->close();
+/**
+ * Generate and send verification code to user's email
+ */
+function sendVerificationCode($user_id, $email, $username) {
+    $conn = getDBConnection();
+    
+    // Generate 6-digit random code
+    $code = sprintf("%06d", mt_rand(0, 999999));
+    
+    // Set expiry time
+    $expires_at = date('Y-m-d H:i:s', time() + VERIFICATION_CODE_EXPIRY);
+    
+    // Invalidate any existing codes for this user
+    $cleanup_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND is_used = 0");
+    $cleanup_stmt->bind_param("i", $user_id);
+    $cleanup_stmt->execute();
+    $cleanup_stmt->close();
+    
+    // Insert new verification code
+    $stmt = $conn->prepare("INSERT INTO verification_codes (user_id, email, code, expires_at) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("isss", $user_id, $email, $code, $expires_at);
+    
+    if ($stmt->execute()) {
+        $stmt->close();
+        
+        // Send email
+        if (sendVerificationEmail($email, $username, $code)) {
+            return true;
+        } else {
+            // If email sending fails, mark code as used to prevent security issues
+            $fail_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND code = ?");
+            $fail_stmt->bind_param("is", $user_id, $code);
+            $fail_stmt->execute();
+            $fail_stmt->close();
+            return false;
+        }
+    }
+    
+    $stmt->close();
+    return false;
+}
+
+/**
+ * Send verification email using PHPMailer
+ */
+function sendVerificationEmail($email, $username, $code) {
+    $mail = new PHPMailer(true);
+    
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mail->Host = SMTP_HOST;
+        $mail->SMTPAuth = true;
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
+        $mail->SMTPSecure = SMTP_ENCRYPTION;
+        $mail->Port = SMTP_PORT;
+        
+        // Recipients
+        $mail->setFrom(FROM_EMAIL, FROM_NAME);
+        $mail->addAddress($email, $username);
+        
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'Verification Code - Crane & Trucking Management System';
+        
+        // Email template
+        $emailBody = getVerificationEmailTemplate($username, $code);
+        $mail->Body = $emailBody;
+        $mail->AltBody = "Hello $username,\n\nYour verification code is: $code\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please contact your administrator.\n\nCrane & Trucking Management System";
+        
+        $mail->send();
+        return true;
+        
+    } catch (Exception $e) {
+        error_log("Email sending failed: " . $mail->ErrorInfo);
+        return false;
     }
 }
 
-// Function to escape strings
-function escape_string($string) {
-    global $conn;
-    return $conn->real_escape_string($string);
+/**
+ * Get HTML email template for verification code
+ */
+function getVerificationEmailTemplate($username, $code) {
+    return "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='utf-8'>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #000; color: white; padding: 20px; text-align: center; }
+            .content { padding: 30px; background: #f9f9f9; }
+            .code-box { background: #fff; border: 2px solid #000; padding: 20px; text-align: center; margin: 20px 0; border-radius: 5px; }
+            .code { font-size: 32px; font-weight: bold; color: #000; letter-spacing: 5px; }
+            .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+            .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h1>Crane & Trucking Management System</h1>
+                <p>Email Verification Required</p>
+            </div>
+            
+            <div class='content'>
+                <h2>Hello, " . htmlspecialchars($username) . "!</h2>
+                <p>You are attempting to log in to the Crane & Trucking Management System. To complete your login, please enter the verification code below:</p>
+                
+                <div class='code-box'>
+                    <div class='code'>" . $code . "</div>
+                </div>
+                
+                <p><strong>This code will expire in 10 minutes.</strong></p>
+                
+                <div class='warning'>
+                    <strong>Security Notice:</strong> If you didn't attempt to log in, please contact your system administrator immediately. Someone may be trying to access your account.
+                </div>
+                
+                <p>For your security:</p>
+                <ul>
+                    <li>Never share this code with anyone</li>
+                    <li>Our support team will never ask for this code</li>
+                    <li>This code is only valid for 10 minutes</li>
+                </ul>
+            </div>
+            
+            <div class='footer'>
+                <p>This is an automated message from the Crane & Trucking Management System.</p>
+                <p>If you need assistance, please contact your system administrator.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
 }
 
-// Function to prepare statement
-function prepare_statement($query) {
-    global $conn;
-    return $conn->prepare($query);
+/**
+ * Verify the entered code
+ */
+function verifyCode($user_id, $entered_code) {
+    $conn = getDBConnection();
+    
+    // Find active verification code
+    $stmt = $conn->prepare("
+        SELECT id, code, expires_at, attempts 
+        FROM verification_codes 
+        WHERE user_id = ? AND is_used = 0 AND expires_at > NOW() 
+        ORDER BY created_at DESC 
+        LIMIT 1
+    ");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows === 0) {
+        $stmt->close();
+        return ['success' => false, 'message' => 'No valid verification code found or code has expired.'];
+    }
+    
+    $verification = $result->fetch_assoc();
+    $stmt->close();
+    
+    // Check if too many attempts
+    if ($verification['attempts'] >= MAX_VERIFICATION_ATTEMPTS) {
+        // Mark as used
+        $mark_used = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE id = ?");
+        $mark_used->bind_param("i", $verification['id']);
+        $mark_used->execute();
+        $mark_used->close();
+        
+        return ['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.'];
+    }
+    
+    // Increment attempts
+    $update_attempts = $conn->prepare("UPDATE verification_codes SET attempts = attempts + 1 WHERE id = ?");
+    $update_attempts->bind_param("i", $verification['id']);
+    $update_attempts->execute();
+    $update_attempts->close();
+    
+    // Verify code
+    if ($verification['code'] === $entered_code) {
+        // Mark as used
+        $mark_used = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE id = ?");
+        $mark_used->bind_param("i", $verification['id']);
+        $mark_used->execute();
+        $mark_used->close();
+        
+        // Create 10-day access token
+        createAccessToken($user_id);
+        
+        return ['success' => true, 'message' => 'Code verified successfully!'];
+    } else {
+        $remaining_attempts = MAX_VERIFICATION_ATTEMPTS - ($verification['attempts'] + 1);
+        return ['success' => false, 'message' => "Incorrect code. $remaining_attempts attempts remaining."];
+    }
+}
+
+/**
+ * Create 10-day access token - FIXED VERSION
+ */
+function createAccessToken($user_id) {
+    $conn = getDBConnection();
+    
+    // Remove any existing token for this user
+    $cleanup = $conn->prepare("DELETE FROM user_access_tokens WHERE user_id = ?");
+    $cleanup->bind_param("i", $user_id);
+    $cleanup->execute();
+    $cleanup->close();
+    
+    // Generate secure token
+    $token = bin2hex(random_bytes(32));
+    $expires_at = date('Y-m-d H:i:s', time() + ACCESS_TOKEN_VALIDITY);
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+    
+    // Insert new token
+    $stmt = $conn->prepare("INSERT INTO user_access_tokens (user_id, token, expires_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("issss", $user_id, $token, $expires_at, $ip_address, $user_agent);
+    
+    if ($stmt->execute()) {
+        $stmt->close();
+        // Store token in session - THIS IS THE KEY FIX
+        $_SESSION['access_token'] = $token;
+        $_SESSION['access_token_expires'] = time() + ACCESS_TOKEN_VALIDITY;
+        return true;
+    } else {
+        $stmt->close();
+        return false;
+    }
+}
+
+/**
+ * Check if user has valid access token (within 10 days) - FIXED VERSION
+ */
+function hasValidAccessToken($user_id) {
+    $conn = getDBConnection();
+    
+    // First, check database directly for any valid token for this user
+    // Don't rely on session initially - session might be cleared
+    $stmt = $conn->prepare("
+        SELECT token, expires_at FROM user_access_tokens 
+        WHERE user_id = ? AND expires_at > NOW()
+        ORDER BY granted_at DESC
+        LIMIT 1
+    ");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        $token_data = $result->fetch_assoc();
+        $stmt->close();
+        
+        // Valid token found - store it in session for future use
+        $_SESSION['access_token'] = $token_data['token'];
+        $_SESSION['access_token_expires'] = strtotime($token_data['expires_at']);
+        
+        return true;
+    }
+    
+    $stmt->close();
+    
+    // No valid token found - clean up session
+    unset($_SESSION['access_token']);
+    unset($_SESSION['access_token_expires']);
+    
+    return false;
+}
+
+/**
+ * Clean up expired verification codes and access tokens
+ */
+function cleanupVerificationData() {
+    $conn = getDBConnection();
+    
+    // Clean expired verification codes
+    $stmt1 = $conn->prepare("DELETE FROM verification_codes WHERE expires_at < NOW()");
+    $stmt1->execute();
+    $stmt1->close();
+    
+    // Clean expired access tokens
+    $stmt2 = $conn->prepare("DELETE FROM user_access_tokens WHERE expires_at < NOW()");
+    $stmt2->execute();
+    $stmt2->close();
 }
 
 // =============================================================================
-// SESSION MANAGEMENT FUNCTIONS (Enhanced from new version)
+// EXISTING SESSION MANAGEMENT FUNCTIONS (ENHANCED)
 // =============================================================================
 
-// Check if user is logged in and session is valid
 function isLoggedIn() {
     return isset($_SESSION['user_id']) && isset($_SESSION['username']) && isset($_SESSION['role']);
 }
 
-// Check if user has admin privileges
 function isAdmin() {
     return isLoggedIn() && $_SESSION['role'] === 'admin';
 }
 
-// Check session timeout and activity (Enhanced version with database cleanup)
 function checkSessionTimeout() {
     if (isLoggedIn()) {
         $current_time = time();
         
-        // Check if session has timed out due to inactivity
         if (isset($_SESSION['last_activity']) && ($current_time - $_SESSION['last_activity'] > SESSION_TIMEOUT)) {
-            // Session expired - clean up database session (from new version)
             cleanupUserSession($_SESSION['user_id'], session_id());
             session_unset();
             session_destroy();
@@ -129,20 +400,17 @@ function checkSessionTimeout() {
             exit();
         }
         
-        // Update last activity time
         $_SESSION['last_activity'] = $current_time;
         
-        // Regenerate session ID periodically for security
         if (!isset($_SESSION['last_regeneration'])) {
             $_SESSION['last_regeneration'] = $current_time;
-        } else if ($current_time - $_SESSION['last_regeneration'] > 600) { // 10 minutes
+        } else if ($current_time - $_SESSION['last_regeneration'] > 600) {
             session_regenerate_id(true);
             $_SESSION['last_regeneration'] = $current_time;
         }
     }
 }
 
-// Redirect to login if not authenticated
 function requireLogin() {
     if (!isLoggedIn()) {
         header("Location: login.php");
@@ -150,7 +418,6 @@ function requireLogin() {
     }
 }
 
-// Redirect to login if not admin
 function requireAdmin() {
     requireLogin();
     if (!isAdmin()) {
@@ -159,16 +426,13 @@ function requireAdmin() {
     }
 }
 
-// Clean up user session from database (Enhanced function from new version)
 function cleanupUserSession($user_id, $session_id = null) {
     $conn = getDBConnection();
     
     if ($session_id) {
-        // Clean up specific session
         $stmt = $conn->prepare("DELETE FROM user_sessions WHERE user_id = ? AND session_id = ?");
         $stmt->bind_param("is", $user_id, $session_id);
     } else {
-        // Clean up all sessions for user
         $stmt = $conn->prepare("DELETE FROM user_sessions WHERE user_id = ?");
         $stmt->bind_param("i", $user_id);
     }
@@ -178,20 +442,17 @@ function cleanupUserSession($user_id, $session_id = null) {
 }
 
 // =============================================================================
-// LOGIN ATTEMPT TRACKING FUNCTIONS - FIXED FOR TINYINT(1) COMPATIBILITY
+// EXISTING LOGIN ATTEMPT FUNCTIONS (UNCHANGED)
 // =============================================================================
 
-// FIXED: Log login attempt - Updated for tinyint(1) compatibility
 function logLoginAttempt($username, $success = false, $force_log = false) {
     $conn = getDBConnection();
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     
-    // Don't log failed attempts during active lockout (unless forced)
     if (!$success && !$force_log && isIPLockedOut()) {
-        return false; // Don't log the attempt
+        return false;
     }
     
-    // If login was successful, clear ALL failed attempts for this IP FIRST - explicitly check for 0
     if ($success) {
         $clear_stmt = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND success = 0");
         $clear_stmt->bind_param("s", $ip_address);
@@ -199,23 +460,20 @@ function logLoginAttempt($username, $success = false, $force_log = false) {
         $clear_stmt->close();
     }
     
-    // Then log the current attempt - convert boolean to int
     $success_int = $success ? 1 : 0;
     $stmt = $conn->prepare("INSERT INTO login_attempts (ip_address, username, success) VALUES (?, ?, ?)");
     $stmt->bind_param("ssi", $ip_address, $username, $success_int);
     $stmt->execute();
     $stmt->close();
     
-    return true; // Attempt was logged
+    return true;
 }
 
-// FIXED: Check if IP is locked out - Updated for tinyint(1) compatibility
 function isIPLockedOut() {
     $conn = getDBConnection();
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $lockout_threshold = date('Y-m-d H:i:s', time() - LOCKOUT_DURATION);
     
-    // Count recent failed attempts (within lockout duration) - explicitly check for 0
     $stmt = $conn->prepare("
         SELECT COUNT(*) as fail_count 
         FROM login_attempts 
@@ -227,9 +485,7 @@ function isIPLockedOut() {
     $fail_count = $result['fail_count'];
     $stmt->close();
     
-    // If we have MAX_LOGIN_ATTEMPTS or more failures, check if lockout should still be active
     if ($fail_count >= MAX_LOGIN_ATTEMPTS) {
-        // Get the timestamp of the attempt that triggered lockout (5th failure)
         $trigger_stmt = $conn->prepare("
             SELECT attempted_at 
             FROM login_attempts 
@@ -237,7 +493,7 @@ function isIPLockedOut() {
             ORDER BY attempted_at ASC 
             LIMIT 1 OFFSET ?
         ");
-        $offset = MAX_LOGIN_ATTEMPTS - 1; // 0-indexed, so 5th attempt is offset 4
+        $offset = MAX_LOGIN_ATTEMPTS - 1;
         $trigger_stmt->bind_param("ssi", $ip_address, $lockout_threshold, $offset);
         $trigger_stmt->execute();
         $trigger_result = $trigger_stmt->get_result();
@@ -248,8 +504,6 @@ function isIPLockedOut() {
             $lockout_expires = $trigger_timestamp + LOCKOUT_DURATION;
             
             $trigger_stmt->close();
-            
-            // Return true if lockout is still active
             return time() < $lockout_expires;
         }
         $trigger_stmt->close();
@@ -258,7 +512,6 @@ function isIPLockedOut() {
     return false;
 }
 
-// FIXED: Get lockout time remaining - Updated for tinyint(1) compatibility
 function getLockoutTimeRemaining() {
     if (!isIPLockedOut()) {
         return 0;
@@ -267,7 +520,6 @@ function getLockoutTimeRemaining() {
     $conn = getDBConnection();
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     
-    // Get the 5th most recent failed attempt (the one that triggered lockout) - explicitly check for 0
     $stmt = $conn->prepare("
         SELECT attempted_at 
         FROM login_attempts 
@@ -289,7 +541,6 @@ function getLockoutTimeRemaining() {
         return max(0, $remaining);
     }
     
-    // Fallback: check most recent failed attempt - explicitly check for 0
     $stmt = $conn->prepare("
         SELECT attempted_at 
         FROM login_attempts 
@@ -302,7 +553,7 @@ function getLockoutTimeRemaining() {
     $result = $stmt->get_result();
     
     if ($result->num_rows > 0) {
-        $last_attempt = $result['fetch_assoc()']['attempted_at'];
+        $last_attempt = $result->fetch_assoc()['attempted_at'];
         $last_attempt_timestamp = strtotime($last_attempt);
         $lockout_expires = $last_attempt_timestamp + LOCKOUT_DURATION;
         $remaining = $lockout_expires - time();
@@ -315,16 +566,13 @@ function getLockoutTimeRemaining() {
     return 0;
 }
 
-// Clean up expired sessions and old login attempts (Enhanced from new version)
 function cleanupSessions() {
     $conn = getDBConnection();
     
-    // Remove expired sessions
     $stmt = $conn->prepare("DELETE FROM user_sessions WHERE expires_at < NOW()");
     $stmt->execute();
     $stmt->close();
     
-    // Clean old login attempts (older than 24 hours)
     $cleanup_time = date('Y-m-d H:i:s', time() - (24 * 60 * 60));
     $stmt = $conn->prepare("DELETE FROM login_attempts WHERE attempted_at < ?");
     $stmt->bind_param("s", $cleanup_time);
@@ -332,10 +580,9 @@ function cleanupSessions() {
     $stmt->close();
 }
 
-// Clean old login attempts (call this occasionally)
 function cleanOldLoginAttempts() {
     $conn = getDBConnection();
-    $cleanup_time = date('Y-m-d H:i:s', time() - (24 * 60 * 60)); // 24 hours ago
+    $cleanup_time = date('Y-m-d H:i:s', time() - (24 * 60 * 60));
     
     $stmt = $conn->prepare("DELETE FROM login_attempts WHERE attempted_at < ?");
     $stmt->bind_param("s", $cleanup_time);
@@ -344,17 +591,16 @@ function cleanOldLoginAttempts() {
 }
 
 // =============================================================================
-// UTILITY FUNCTIONS (With function_exists check to prevent conflicts)
+// EXISTING UTILITY FUNCTIONS (UNCHANGED)
 // =============================================================================
 
-// Function to calculate tax amount based on tax type and amount
 if (!function_exists('calculateTaxAmount')) {
     function calculateTaxAmount($taxType, $amount) {
         switch($taxType) {
             case 'VAT':
-                return $amount * 0.12; // 12% VAT
+                return $amount * 0.12;
             case 'Withholding':
-                return $amount * 0.02; // 2% Withholding
+                return $amount * 0.02;
             case 'Exempted':
             case 'None':
             default:
@@ -363,18 +609,12 @@ if (!function_exists('calculateTaxAmount')) {
     }
 }
 
-// Function to format currency
 if (!function_exists('formatCurrency')) {
     function formatCurrency($amount) {
         return '₱' . number_format($amount, 2);
     }
 }
 
-// =============================================================================
-// DEBUG FUNCTIONS (Enhanced from new version)
-// =============================================================================
-
-// Debug function to check current lockout status (Enhanced with session info)
 function debugLockoutStatus() {
     if (isset($_GET['debug_lockout']) && $_GET['debug_lockout'] == 1) {
         $conn = getDBConnection();
@@ -389,7 +629,6 @@ function debugLockoutStatus() {
         echo "<p><strong>Max Login Attempts:</strong> " . MAX_LOGIN_ATTEMPTS . "</p>";
         echo "<p><strong>Lockout Duration:</strong> " . (LOCKOUT_DURATION / 60) . " minutes</p>";
         
-        // Show recent attempts
         $stmt = $conn->prepare("SELECT * FROM login_attempts WHERE ip_address = ? ORDER BY attempted_at DESC LIMIT 10");
         $stmt->bind_param("s", $ip_address);
         $stmt->execute();
@@ -423,7 +662,6 @@ function debugLockoutStatus() {
         echo "<p><strong>Is Locked Out:</strong> " . (isIPLockedOut() ? 'YES' : 'NO') . "</p>";
         echo "<p><strong>Time Remaining:</strong> " . getLockoutTimeRemaining() . " seconds</p>";
         
-        // Show active sessions (enhanced feature)
         $session_stmt = $conn->prepare("SELECT * FROM user_sessions WHERE expires_at > NOW() ORDER BY created_at DESC LIMIT 5");
         $session_stmt->execute();
         $session_result = $session_stmt->get_result();
@@ -449,19 +687,17 @@ function debugLockoutStatus() {
 }
 
 // =============================================================================
-// AUTO-EXECUTION (Runs on every page load) - Enhanced cleanup
+// AUTO-EXECUTION (Enhanced cleanup)
 // =============================================================================
 
-// Auto-check session timeout on every page load
 checkSessionTimeout();
 
-// Clean old login attempts and sessions occasionally (5% chance per request - enhanced)
 if (rand(1, 20) === 1) {
     cleanOldLoginAttempts();
     cleanupSessions();
+    cleanupVerificationData(); // Clean up verification data too
 }
 
-// Show debug info if requested (remove in production)
 debugLockoutStatus();
 
 ?>
