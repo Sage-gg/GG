@@ -28,15 +28,12 @@ if (isIPLockedOut()) {
     $lockout_remaining = getLockoutTimeRemaining();
 }
 
-// FIXED: Enhanced AJAX endpoint for lockout status
+// AJAX endpoint for lockout status
 if (isset($_GET['ajax']) && $_GET['ajax'] == 'lockout_status') {
     header('Content-Type: application/json');
     
-    // Force a fresh check
     $locked = isIPLockedOut();
     $remaining = $locked ? getLockoutTimeRemaining() : 0;
-    
-    // Add extra precision - round down to avoid client getting ahead of server
     $remaining = floor($remaining);
     
     echo json_encode([
@@ -62,14 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($username) || empty($password)) {
         $error_message = "Please enter both username and password.";
     } else {
-        // Check if IP is locked out FIRST - before any processing
+        // Check if IP is locked out FIRST
         if (isIPLockedOut()) {
             $lockout_remaining = getLockoutTimeRemaining();
             $minutes = floor($lockout_remaining / 60);
             $seconds = $lockout_remaining % 60;
             $error_message = "Account is locked. Please wait {$minutes} minutes and {$seconds} seconds before trying again.";
             $is_locked_out = true;
-            // DO NOT process login attempt or log anything during lockout
         } else {
             // Attempt login
             $stmt = $conn->prepare("SELECT id, username, password, role, email, is_active FROM users WHERE username = ? OR email = ?");
@@ -83,46 +79,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Check if account is active
                 if (!$user['is_active']) {
                     $error_message = "Your account has been deactivated. Please contact an administrator.";
-                    logLoginAttempt($username, false); // Log this as it's not a password issue
+                    logLoginAttempt($username, false);
                 } else {
                     // Verify password
                     if (password_verify($password, $user['password'])) {
-                        // Login successful - log success FIRST to clear failed attempts
+                        // Password is correct - Log successful password verification FIRST
                         logLoginAttempt($username, true);
                         
-                        // Clean up old sessions for this user and IP before creating new one
-                        cleanupUserSession($user['id']);
+                        // Check if user has valid 10-day access token
+                        if (hasValidAccessToken($user['id'])) {
+                            // User has valid access token - complete login immediately without email verification
+                            
+                            // Clean up old sessions for this user and IP
+                            cleanupUserSession($user['id']);
+                            
+                            $cleanup_stmt = $conn->prepare("DELETE FROM user_sessions WHERE ip_address = ? AND expires_at < NOW()");
+                            $cleanup_stmt->bind_param("s", $_SERVER['REMOTE_ADDR']);
+                            $cleanup_stmt->execute();
+                            $cleanup_stmt->close();
+                            
+                            // Set session variables
+                            $_SESSION['user_id'] = $user['id'];
+                            $_SESSION['username'] = $user['username'];
+                            $_SESSION['email'] = $user['email'];
+                            $_SESSION['role'] = $user['role'];
+                            $_SESSION['last_activity'] = time();
+                            $_SESSION['last_regeneration'] = time();
+                            
+                            // Generate session ID for database tracking
+                            session_regenerate_id(true);
+                            $session_id = session_id();
+                            
+                            // Store session in database
+                            $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+                            $expires_at = date('Y-m-d H:i:s', time() + SESSION_TIMEOUT);
+                            
+                            $session_stmt = $conn->prepare("INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?)");
+                            $session_stmt->bind_param("issss", $user['id'], $session_id, $ip_address, $user_agent, $expires_at);
+                            $session_stmt->execute();
+                            $session_stmt->close();
+                            
+                            // Redirect to dashboard
+                            header("Location: index.php");
+                            exit();
+                            
+                        } else {
+                            // User needs email verification - send code
+                            if (sendVerificationCode($user['id'], $user['email'], $user['username'])) {
+                                // Store temporary user data in session
+                                $_SESSION['pending_verification'] = true;
+                                $_SESSION['temp_user_id'] = $user['id'];
+                                $_SESSION['temp_username'] = $user['username'];
+                                $_SESSION['temp_email'] = $user['email'];
+                                
+                                // Redirect to verification page
+                                header("Location: verify_email.php");
+                                exit();
+                            } else {
+                                $error_message = "Failed to send verification code. Please try again or contact an administrator.";
+                            }
+                        }
                         
-                        // Also clean up any expired sessions from this IP
-                        $cleanup_stmt = $conn->prepare("DELETE FROM user_sessions WHERE ip_address = ? AND expires_at < NOW()");
-                        $cleanup_stmt->bind_param("s", $_SERVER['REMOTE_ADDR']);
-                        $cleanup_stmt->execute();
-                        $cleanup_stmt->close();
-                        
-                        // Set session variables
-                        $_SESSION['user_id'] = $user['id'];
-                        $_SESSION['username'] = $user['username'];
-                        $_SESSION['email'] = $user['email'];
-                        $_SESSION['role'] = $user['role'];
-                        $_SESSION['last_activity'] = time();
-                        $_SESSION['last_regeneration'] = time();
-                        
-                        // Generate session ID for database tracking
-                        session_regenerate_id(true);
-                        $session_id = session_id();
-                        
-                        // Store NEW session in database (only one per user now)
-                        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-                        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-                        $expires_at = date('Y-m-d H:i:s', time() + SESSION_TIMEOUT);
-                        
-                        $stmt = $conn->prepare("INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?)");
-                        $stmt->bind_param("issss", $user['id'], $session_id, $ip_address, $user_agent, $expires_at);
-                        $stmt->execute();
-                        
-                        // Redirect to dashboard
-                        header("Location: index.php");
-                        exit();
                     } else {
                         $error_message = "Invalid username or password.";
                         logLoginAttempt($username, false);
@@ -188,7 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       backdrop-filter: blur(8px);
     }
 
-    /* Left side with image */
     .card-left {
       flex: 1;
       background: url("logo.png") no-repeat center center/cover;
@@ -200,7 +217,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       top:0; left:0; right:0; bottom:0;
     }
 
-    /* Right side with form */
     .card-right {
       flex: 1;
       padding: 40px;
@@ -210,10 +226,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       align-items: center;
     }
 
-    /* Header section with improved spacing */
     .header-section {
       text-align: center;
-      margin-bottom: 25px; /* Added space after header */
+      margin-bottom: 25px;
     }
 
     h1 {
@@ -227,10 +242,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: rgba(0, 0, 0, 0.7);
     }
 
-    /* Notification section with proper spacing */
     .notifications {
       width: 100%;
-      margin-bottom: 20px; /* Space before form */
+      margin-bottom: 20px;
     }
 
     form {
@@ -279,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     .register {
-      margin-top: 20px; /* Increased space before register text */
+      margin-top: 20px;
       font-size: 13px;
       color: #020202;
     }
@@ -288,11 +302,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       text-decoration: none;
     }
 
-    /* Alert styles with improved spacing */
     .alert {
-      padding: 15px; /* Increased padding for better appearance */
+      padding: 15px;
       border-radius: 8px;
-      margin-bottom: 15px; /* Space between multiple alerts */
+      margin-bottom: 15px;
       font-size: 14px;
       width: 100%;
       position: relative;
@@ -310,7 +323,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       color: #155724;
     }
 
-    /* Compact lockout timer design */
     .lockout-timer {
       background: linear-gradient(135deg, #ff6b6b, #ee5a24);
       color: white;
@@ -370,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .progress-ring-circle {
       transition: stroke-dashoffset 1s linear;
       stroke: #fff;
-      stroke-width: 3; /* Adjusted for smaller circle */
+      stroke-width: 3;
       fill: transparent;
       stroke-linecap: round;
     }
@@ -390,7 +402,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       100% { opacity: 1; }
     }
 
-    /* Responsive adjustments */
+    .security-info {
+      background: rgba(23, 162, 184, 0.1);
+      border: 1px solid rgba(23, 162, 184, 0.3);
+      color: #0c5460;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      text-align: center;
+    }
+
     @media (max-width: 850px) {
       .login-card { 
         flex-direction: column; 
@@ -401,13 +423,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         height: 200px; 
       }
       .card-right {
-        padding: 30px 20px; /* Adjust padding for mobile */
+        padding: 30px 20px;
       }
       .header-section {
-        margin-bottom: 20px; /* Slightly less space on mobile */
+        margin-bottom: 20px;
       }
       
-      /* Mobile lockout timer adjustments */
       .lockout-timer {
         flex-direction: column;
         gap: 10px;
@@ -424,27 +445,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
       
       .countdown-display {
-        font-size: 1.6rem; /* Slightly larger on mobile for readability */
+        font-size: 1.6rem;
       }
     }
   </style>
 </head>
 <body>
   <div class="login-card">
-    <!-- Left picture -->
     <div class="card-left"></div>
 
-    <!-- Right login form -->
     <div class="card-right">
-      <!-- Header Section -->
       <div class="header-section">
         <h1>Crane and Trucking Management System</h1>
         <p class="lead">Welcome, Login your account</p>
       </div>
 
-      <!-- Notifications Section -->
       <div class="notifications">
-        <!-- Lockout Timer Display - Compact Design -->
+        
         <div id="lockoutTimer" class="lockout-timer" style="display: <?php echo $is_locked_out ? 'block' : 'none'; ?>;">
           <div class="lockout-content">
             <div class="lockout-icon">🔒</div>
@@ -454,7 +471,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <div class="lockout-message">Too many failed attempts. Please wait...</div>
             </div>
             
-            <!-- Smaller Progress Ring -->
             <svg class="progress-ring" width="50" height="50">
               <circle class="progress-ring-circle" 
                       cx="25" cy="25" r="20"
@@ -483,7 +499,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
       </div>
 
-      <!-- Login Form -->
       <form method="POST" action="login.php" id="loginForm" class="<?php echo $is_locked_out ? 'form-disabled' : ''; ?>">
         <input class="input" 
                type="text" 
@@ -515,16 +530,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <script>
-    // =============================================================================
-    // FIXED: Enhanced countdown with better server synchronization
-    // =============================================================================
-
     let countdownInterval;
     let lockoutRemaining = <?php echo $lockout_remaining; ?>;
     let serverSyncInterval;
     const isInitiallyLocked = <?php echo $is_locked_out ? 'true' : 'false'; ?>;
 
-    // Elements
     const lockoutTimer = document.getElementById('lockoutTimer');
     const countdownDisplay = document.getElementById('countdownDisplay');
     const minutesSpan = document.getElementById('minutes');
@@ -536,7 +546,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
 
-    const circumference = 2 * Math.PI * 20; // Updated for smaller circle (radius 20)
+    const circumference = 2 * Math.PI * 20;
     const totalLockoutTime = 15 * 60;
 
     function updateCountdown() {
@@ -544,7 +554,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             clearInterval(countdownInterval);
             countdownInterval = null;
             
-            // FIXED: Always check server before unlocking
             checkLockoutStatus().then(() => {
                 if (lockoutRemaining <= 0) {
                     unlockForm();
@@ -588,13 +597,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         loginButtonText.textContent = 'Sign in';
         lockoutTimer.classList.remove('pulse');
         
-        // Clear any previous success messages
         const existingAlert = document.querySelector('.alert-success');
         if (existingAlert) {
             existingAlert.remove();
         }
         
-        // Show success message in notifications section
         const notificationsDiv = document.querySelector('.notifications');
         const alertDiv = document.createElement('div');
         alertDiv.className = 'alert alert-success';
@@ -608,30 +615,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }, 5000);
     }
 
-    // FIXED: Enhanced server checking with promise return
     function checkLockoutStatus() {
         return fetch(window.location.pathname + '?ajax=lockout_status&_=' + Date.now())
             .then(response => response.json())
             .then(data => {
-                console.log('Server lockout status:', data); // Debug log
-                
                 if (data.locked && data.remaining > 0) {
-                    // Server says locked
                     if (!countdownInterval) {
-                        // Start countdown if not running
                         lockoutRemaining = data.remaining;
                         lockForm();
                         countdownInterval = setInterval(updateCountdown, 1000);
                         updateCountdown();
                     } else {
-                        // Sync with server time if significant difference
                         if (Math.abs(lockoutRemaining - data.remaining) > 2) {
                             lockoutRemaining = data.remaining;
                             updateCountdown();
                         }
                     }
                 } else {
-                    // Server says not locked
                     if (countdownInterval || lockoutTimer.style.display !== 'none') {
                         lockoutRemaining = 0;
                         unlockForm();
@@ -643,26 +643,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
     }
 
-    // FIXED: Initialize with better timing
     if (isInitiallyLocked && lockoutRemaining > 0) {
         lockForm();
         countdownInterval = setInterval(updateCountdown, 1000);
         updateCountdown();
-        
-        // FIXED: Check server every 5 seconds when locked (more frequent)
         serverSyncInterval = setInterval(checkLockoutStatus, 5000);
     } else {
-        // Check every 30 seconds when not locked
         setInterval(checkLockoutStatus, 30000);
     }
 
-    // FIXED: Before form submission, always verify lockout status
     document.getElementById('loginForm').addEventListener('submit', function(e) {
         if (lockoutRemaining > 0 || loginButton.disabled) {
             e.preventDefault();
             checkLockoutStatus().then(() => {
                 if (lockoutRemaining <= 0 && !loginButton.disabled) {
-                    // Re-submit if unlocked
                     this.submit();
                 }
             });
@@ -670,7 +664,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     });
 
-    // Session timeout management (keeping existing functionality)
     let sessionTimeout;
     let warningTimeout;
     let lastActivity = Date.now();
