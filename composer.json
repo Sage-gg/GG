@@ -22,4 +22,11 @@
     "scripts": {
         "test": "phpunit"
     }
+
+    {
+    "require": {
+        "phpmailer/phpmailer": "^6.10"
+    }
+}
+
 }
