@@ -57,15 +57,15 @@ elseif (file_exists('includes/PHPMailer/src/PHPMailer.php')) {
     $phpmailer_available = true;
 }
 
-// Only use PHPMailer classes if available
-if ($phpmailer_available) {
-    use PHPMailer\PHPMailer\PHPMailer;
-    use PHPMailer\PHPMailer\SMTP;
-    use PHPMailer\PHPMailer\Exception;
-} else {
-    // Log warning instead of killing the app
+// Log warning if PHPMailer not found
+if (!$phpmailer_available) {
     error_log("WARNING: PHPMailer not found. Email verification will be disabled.");
 }
+
+// Use statements must be at top level - always include them
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
 
 // =============================================================================
 // DATABASE CONFIGURATION (Unified)
@@ -189,7 +189,7 @@ function sendVerificationEmail($email, $username, $code) {
         return false;
     }
     
-    // Check if PHPMailer class exists
+    // Check if PHPMailer class exists (double check)
     if (!class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
         error_log("PHPMailer class not found. Cannot send verification email to: $email");
         return false;
@@ -200,15 +200,15 @@ function sendVerificationEmail($email, $username, $code) {
         
         // Server settings
         $mail->isSMTP();
-        $mail->Host = SMTP_HOST;
+        $mail->Host = defined('SMTP_HOST') ? SMTP_HOST : 'localhost';
         $mail->SMTPAuth = true;
-        $mail->Username = SMTP_USERNAME;
-        $mail->Password = SMTP_PASSWORD;
-        $mail->SMTPSecure = SMTP_ENCRYPTION;
-        $mail->Port = SMTP_PORT;
+        $mail->Username = defined('SMTP_USERNAME') ? SMTP_USERNAME : '';
+        $mail->Password = defined('SMTP_PASSWORD') ? SMTP_PASSWORD : '';
+        $mail->SMTPSecure = defined('SMTP_ENCRYPTION') ? SMTP_ENCRYPTION : 'tls';
+        $mail->Port = defined('SMTP_PORT') ? SMTP_PORT : 587;
         
         // Recipients
-        $mail->setFrom(FROM_EMAIL, FROM_NAME);
+        $mail->setFrom(defined('FROM_EMAIL') ? FROM_EMAIL : 'noreply@localhost', defined('FROM_NAME') ? FROM_NAME : 'System');
         $mail->addAddress($email, $username);
         
         // Content
