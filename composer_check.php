@@ -2,6 +2,9 @@
 // composer_check.php
 echo "Checking Composer and PHPMailer installation<br><br>";
 
+// Include use statements at the top level
+use PHPMailer\PHPMailer\PHPMailer;
+
 // Check if composer.json exists and what's in it
 if (file_exists('composer.json')) {
     echo "composer.json: FOUND<br>";
@@ -40,7 +43,6 @@ if (file_exists('vendor/autoload.php')) {
             
             // Test PHPMailer instantiation
             try {
-                use PHPMailer\PHPMailer\PHPMailer;
                 $mail = new PHPMailer(true);
                 echo "<strong style='color: green;'>PHPMailer can be instantiated successfully!</strong><br>";
                 echo "Your email verification should work now.<br>";
