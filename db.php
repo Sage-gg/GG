@@ -15,40 +15,57 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include email configuration
 require_once 'email_config.php';
 
-// Include PHPMailer - FIXED VERSION
-// Option 1: If using Composer (recommended)
+// =============================================================================
+// EMAIL VERIFICATION CONSTANTS (Add missing constants)
+// =============================================================================
+if (!defined('VERIFICATION_CODE_EXPIRY')) {
+    define('VERIFICATION_CODE_EXPIRY', 10 * 60); // 10 minutes
+}
+if (!defined('MAX_VERIFICATION_ATTEMPTS')) {
+    define('MAX_VERIFICATION_ATTEMPTS', 3);
+}
+if (!defined('ACCESS_TOKEN_VALIDITY')) {
+    define('ACCESS_TOKEN_VALIDITY', 10 * 24 * 60 * 60); // 10 days
+}
+
+// =============================================================================
+// PHPMAILER SETUP - FIXED VERSION
+// =============================================================================
+$phpmailer_available = false;
+
+// Include PHPMailer - with proper error handling
 if (file_exists('vendor/autoload.php')) {
     require_once 'vendor/autoload.php';
+    $phpmailer_available = true;
 } 
-// Option 2: If using manual installation with new structure
 elseif (file_exists('PHPMailer/src/PHPMailer.php')) {
     require_once 'PHPMailer/src/PHPMailer.php';
     require_once 'PHPMailer/src/SMTP.php';
     require_once 'PHPMailer/src/Exception.php';
+    $phpmailer_available = true;
 }
-// Option 3: If using old lib folder structure  
 elseif (file_exists('lib/phpmailer/src/PHPMailer.php')) {
     require_once 'lib/phpmailer/src/PHPMailer.php';
     require_once 'lib/phpmailer/src/SMTP.php';
     require_once 'lib/phpmailer/src/Exception.php';
+    $phpmailer_available = true;
 }
-// Option 4: Alternative paths
 elseif (file_exists('includes/PHPMailer/src/PHPMailer.php')) {
     require_once 'includes/PHPMailer/src/PHPMailer.php';
     require_once 'includes/PHPMailer/src/SMTP.php';
     require_once 'includes/PHPMailer/src/Exception.php';
-}
-else {
-    // If PHPMailer is not found, provide helpful error
-    die('PHPMailer library not found. Please install PHPMailer using one of these methods:<br>
-    1. Via Composer: <code>composer require phpmailer/phpmailer</code><br>
-    2. Download from GitHub and extract to PHPMailer/ folder<br>
-    3. Check your file paths in db.php');
+    $phpmailer_available = true;
 }
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
+// Only use PHPMailer classes if available
+if ($phpmailer_available) {
+    use PHPMailer\PHPMailer\PHPMailer;
+    use PHPMailer\PHPMailer\SMTP;
+    use PHPMailer\PHPMailer\Exception;
+} else {
+    // Log warning instead of killing the app
+    error_log("WARNING: PHPMailer not found. Email verification will be disabled.");
+}
 
 // =============================================================================
 // DATABASE CONFIGURATION (Unified)
@@ -103,13 +120,25 @@ $conn->set_charset("utf8");
 $conn2 = getDBConnection();
 
 // =============================================================================
-// EMAIL VERIFICATION FUNCTIONS (NEW)
+// EMAIL VERIFICATION FUNCTIONS (FIXED)
 // =============================================================================
 
 /**
  * Generate and send verification code to user's email
  */
 function sendVerificationCode($user_id, $email, $username) {
+    global $phpmailer_available;
+    
+    // If PHPMailer is not available, disable email verification
+    if (!$phpmailer_available) {
+        error_log("Email verification attempted but PHPMailer not available for user: $username");
+        // You can choose to:
+        // 1. Return false (email verification fails)
+        // 2. Return true (skip email verification entirely)
+        // For now, we'll return false but log the issue
+        return false;
+    }
+    
     $conn = getDBConnection();
     
     // Generate 6-digit random code
@@ -149,12 +178,26 @@ function sendVerificationCode($user_id, $email, $username) {
 }
 
 /**
- * Send verification email using PHPMailer
+ * Send verification email using PHPMailer - FIXED VERSION
  */
 function sendVerificationEmail($email, $username, $code) {
-    $mail = new PHPMailer(true);
+    global $phpmailer_available;
+    
+    // Check if PHPMailer is available
+    if (!$phpmailer_available) {
+        error_log("PHPMailer not available. Cannot send verification email to: $email");
+        return false;
+    }
+    
+    // Check if PHPMailer class exists
+    if (!class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
+        error_log("PHPMailer class not found. Cannot send verification email to: $email");
+        return false;
+    }
     
     try {
+        $mail = new PHPMailer(true);
+        
         // Server settings
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
@@ -181,7 +224,10 @@ function sendVerificationEmail($email, $username, $code) {
         return true;
         
     } catch (Exception $e) {
-        error_log("Email sending failed: " . $mail->ErrorInfo);
+        error_log("Email sending failed: " . $e->getMessage());
+        return false;
+    } catch (Error $e) {
+        error_log("PHPMailer Error: " . $e->getMessage());
         return false;
     }
 }
@@ -706,19 +752,58 @@ function debugLockoutStatus() {
 }
 
 // =============================================================================
-// AUTO-EXECUTION (Enhanced cleanup)
+// PHPMAILER STATUS CHECK FUNCTION (NEW)
 // =============================================================================
-
-checkSessionTimeout();
-
-if (rand(1, 20) === 1) {
-    cleanOldLoginAttempts();
-    cleanupSessions();
-    cleanupVerificationData(); // Clean up verification data too
+function checkPHPMailerStatus() {
+    global $phpmailer_available;
+    
+    if (isset($_GET['check_phpmailer']) && $_GET['check_phpmailer'] == 1) {
+        echo "<div style='background: #f9f9f9; padding: 15px; margin: 10px; border: 1px solid #ddd; border-radius: 5px;'>";
+        echo "<h3>PHPMailer Status Check</h3>";
+        
+        if ($phpmailer_available) {
+            echo "<p style='color: green;'>✅ PHPMailer is available</p>";
+            
+            if (class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
+                echo "<p style='color: green;'>✅ PHPMailer class loaded successfully</p>";
+                
+                // Test email configuration constants
+                $config_issues = [];
+                if (!defined('SMTP_HOST')) $config_issues[] = 'SMTP_HOST';
+                if (!defined('SMTP_USERNAME')) $config_issues[] = 'SMTP_USERNAME';
+                if (!defined('SMTP_PASSWORD')) $config_issues[] = 'SMTP_PASSWORD';
+                if (!defined('SMTP_ENCRYPTION')) $config_issues[] = 'SMTP_ENCRYPTION';
+                if (!defined('SMTP_PORT')) $config_issues[] = 'SMTP_PORT';
+                if (!defined('FROM_EMAIL')) $config_issues[] = 'FROM_EMAIL';
+                if (!defined('FROM_NAME')) $config_issues[] = 'FROM_NAME';
+                
+                if (empty($config_issues)) {
+                    echo "<p style='color: green;'>✅ All email configuration constants are defined</p>";
+                } else {
+                    echo "<p style='color: orange;'>⚠️ Missing email configuration constants: " . implode(', ', $config_issues) . "</p>";
+                    echo "<p>Check your email_config.php file</p>";
+                }
+                
+            } else {
+                echo "<p style='color: red;'>❌ PHPMailer class not accessible</p>";
+            }
+        } else {
+            echo "<p style='color: red;'>❌ PHPMailer is NOT available</p>";
+            echo "<p>Email verification is disabled. Install PHPMailer to enable email features.</p>";
+            
+            // Show installation instructions
+            echo "<h4>Installation Options:</h4>";
+            echo "<p><strong>Option 1 - Composer:</strong></p>";
+            echo "<pre>cd " . getcwd() . "\ncomposer require phpmailer/phpmailer</pre>";
+            
+            echo "<p><strong>Option 2 - Manual Download:</strong></p>";
+            echo "<ol>";
+            echo "<li>Download from: <a href='https://github.com/PHPMailer/PHPMailer/archive/refs/heads/master.zip' target='_blank'>GitHub</a></li>";
+            echo "<li>Extract to your web directory as 'PHPMailer' folder</li>";
+            echo "<li>Ensure structure: PHPMailer/src/PHPMailer.php</li>";
+            echo "</ol>";
+        }
+        
+        echo "</div>";
+    }
 }
-
-debugLockoutStatus();
-
-?>
-
-
