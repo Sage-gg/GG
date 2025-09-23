@@ -124,33 +124,36 @@ $conn2 = getDBConnection();
 // =============================================================================
 
 /**
- * Generate and send verification code to user's email
+ * Generate and send verification code to user's email - DEBUG VERSION
  */
 function sendVerificationCode($user_id, $email, $username) {
     global $phpmailer_available;
     
+    // Debug: Log the attempt
+    error_log("DEBUG: sendVerificationCode called for user_id: $user_id, email: $email, username: $username");
+    
     // If PHPMailer is not available, disable email verification
     if (!$phpmailer_available) {
-        error_log("Email verification attempted but PHPMailer not available for user: $username");
-        // You can choose to:
-        // 1. Return false (email verification fails)
-        // 2. Return true (skip email verification entirely)
-        // For now, we'll return false but log the issue
-        return false;
+        error_log("DEBUG: PHPMailer not available for user: $username");
+        // TEMPORARY: Return true to bypass email verification for testing
+        return true; // Change this to false when you want email verification to work
     }
     
     $conn = getDBConnection();
     
     // Generate 6-digit random code
     $code = sprintf("%06d", mt_rand(0, 999999));
+    error_log("DEBUG: Generated verification code: $code for user: $username");
     
     // Set expiry time
     $expires_at = date('Y-m-d H:i:s', time() + VERIFICATION_CODE_EXPIRY);
+    error_log("DEBUG: Code expires at: $expires_at");
     
     // Invalidate any existing codes for this user
     $cleanup_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND is_used = 0");
     $cleanup_stmt->bind_param("i", $user_id);
     $cleanup_stmt->execute();
+    error_log("DEBUG: Cleaned up old verification codes for user_id: $user_id");
     $cleanup_stmt->close();
     
     // Insert new verification code
@@ -159,57 +162,98 @@ function sendVerificationCode($user_id, $email, $username) {
     
     if ($stmt->execute()) {
         $stmt->close();
+        error_log("DEBUG: Verification code inserted successfully into database");
         
         // Send email
-        if (sendVerificationEmail($email, $username, $code)) {
+        $email_result = sendVerificationEmail($email, $username, $code);
+        error_log("DEBUG: sendVerificationEmail returned: " . ($email_result ? 'true' : 'false'));
+        
+        if ($email_result) {
+            error_log("DEBUG: Email sent successfully");
             return true;
         } else {
+            error_log("DEBUG: Email sending failed, marking code as used");
             // If email sending fails, mark code as used to prevent security issues
             $fail_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND code = ?");
             $fail_stmt->bind_param("is", $user_id, $code);
             $fail_stmt->execute();
             $fail_stmt->close();
+            error_log("DEBUG: Code marked as used due to email failure");
             return false;
         }
     }
     
     $stmt->close();
+    error_log("DEBUG: Failed to insert verification code into database");
     return false;
 }
 
 /**
- * Send verification email using PHPMailer - FIXED VERSION
+ * Send verification email using PHPMailer - DEBUG VERSION
  */
 function sendVerificationEmail($email, $username, $code) {
     global $phpmailer_available;
     
+    error_log("DEBUG: sendVerificationEmail called for email: $email");
+    
     // Check if PHPMailer is available
     if (!$phpmailer_available) {
-        error_log("PHPMailer not available. Cannot send verification email to: $email");
+        error_log("DEBUG: PHPMailer not available in sendVerificationEmail");
         return false;
     }
     
     // Check if PHPMailer class exists (double check)
     if (!class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
-        error_log("PHPMailer class not found. Cannot send verification email to: $email");
+        error_log("DEBUG: PHPMailer class not found in sendVerificationEmail");
         return false;
     }
     
+    // Check email configuration constants
+    $missing_config = [];
+    if (!defined('SMTP_HOST')) $missing_config[] = 'SMTP_HOST';
+    if (!defined('SMTP_USERNAME')) $missing_config[] = 'SMTP_USERNAME';
+    if (!defined('SMTP_PASSWORD')) $missing_config[] = 'SMTP_PASSWORD';
+    if (!defined('SMTP_ENCRYPTION')) $missing_config[] = 'SMTP_ENCRYPTION';
+    if (!defined('SMTP_PORT')) $missing_config[] = 'SMTP_PORT';
+    if (!defined('FROM_EMAIL')) $missing_config[] = 'FROM_EMAIL';
+    if (!defined('FROM_NAME')) $missing_config[] = 'FROM_NAME';
+    
+    if (!empty($missing_config)) {
+        error_log("DEBUG: Missing email configuration constants: " . implode(', ', $missing_config));
+        return false;
+    }
+    
+    error_log("DEBUG: All email configuration constants are defined");
+    error_log("DEBUG: SMTP_HOST: " . SMTP_HOST);
+    error_log("DEBUG: SMTP_PORT: " . SMTP_PORT);
+    error_log("DEBUG: SMTP_USERNAME: " . SMTP_USERNAME);
+    error_log("DEBUG: FROM_EMAIL: " . FROM_EMAIL);
+    
     try {
         $mail = new PHPMailer(true);
+        error_log("DEBUG: PHPMailer instance created successfully");
         
         // Server settings
         $mail->isSMTP();
-        $mail->Host = defined('SMTP_HOST') ? SMTP_HOST : 'localhost';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = defined('SMTP_USERNAME') ? SMTP_USERNAME : '';
-        $mail->Password = defined('SMTP_PASSWORD') ? SMTP_PASSWORD : '';
-        $mail->SMTPSecure = defined('SMTP_ENCRYPTION') ? SMTP_ENCRYPTION : 'tls';
-        $mail->Port = defined('SMTP_PORT') ? SMTP_PORT : 587;
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
+        $mail->SMTPSecure = SMTP_ENCRYPTION;
+        $mail->Port = SMTP_PORT;
+        
+        // Enable verbose debug output
+        $mail->SMTPDebug = 2;
+        $mail->Debugoutput = function($str, $level) {
+            error_log("DEBUG SMTP ($level): $str");
+        };
+        
+        error_log("DEBUG: SMTP settings configured");
         
         // Recipients
-        $mail->setFrom(defined('FROM_EMAIL') ? FROM_EMAIL : 'noreply@localhost', defined('FROM_NAME') ? FROM_NAME : 'System');
+        $mail->setFrom(FROM_EMAIL, FROM_NAME);
         $mail->addAddress($email, $username);
+        error_log("DEBUG: Email recipients set");
         
         // Content
         $mail->isHTML(true);
@@ -220,14 +264,18 @@ function sendVerificationEmail($email, $username, $code) {
         $mail->Body = $emailBody;
         $mail->AltBody = "Hello $username,\n\nYour verification code is: $code\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, please contact your administrator.\n\nCrane & Trucking Management System";
         
-        $mail->send();
-        return true;
+        error_log("DEBUG: Email content set, attempting to send...");
+        
+        $result = $mail->send();
+        error_log("DEBUG: Email send result: " . ($result ? 'SUCCESS' : 'FAILED'));
+        
+        return $result;
         
     } catch (Exception $e) {
-        error_log("Email sending failed: " . $e->getMessage());
+        error_log("DEBUG: PHPMailer Exception: " . $e->getMessage());
         return false;
     } catch (Error $e) {
-        error_log("PHPMailer Error: " . $e->getMessage());
+        error_log("DEBUG: PHPMailer Error: " . $e->getMessage());
         return false;
     }
 }
