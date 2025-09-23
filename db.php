@@ -20,11 +20,11 @@ require_once 'email_config.php';
 if (file_exists('vendor/autoload.php')) {
     require_once 'vendor/autoload.php';
 } 
-// Option 2: If manually installed
-elseif (file_exists('PHPMailer/src/PHPMailer.php')) {
-    require_once 'PHPMailer/src/PHPMailer.php';
-    require_once 'PHPMailer/src/SMTP.php';
-    require_once 'PHPMailer/src/Exception.php';
+elseif (file_exists('lib/phpmailer/PHPMailer.php')) {
+    require_once 'lib/phpmailer/PHPMailer.php';
+    require_once 'lib/phpmailer/SMTP.php';
+    require_once 'lib/phpmailer/Exception.php';
+
 }
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -701,3 +701,4 @@ if (rand(1, 20) === 1) {
 debugLockoutStatus();
 
 ?>
+
