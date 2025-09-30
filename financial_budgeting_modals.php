@@ -24,10 +24,10 @@
             <label class="form-label">Department</label>
             <select class="form-select" name="department" id="add_department" onchange="updateCostCenter('add')" required>
               <option disabled selected value="">Select Department</option>
-              <option value="HR2">HR2</option>
-              <option value="HR4">HR4</option>
-              <option value="Core 2">Core 2</option>
-              <option value="Core 4">Core 4</option>
+              <option value="HR2">HR2 (Training Management/Claims and Reimbursement)</option>
+              <option value="HR4">HR4 (Benefits Management)</option>
+              <option value="Core 2">Core 2 (Asset Management)</option>
+              <option value="Core 4">Core 4 (Fleet Management)</option>
             </select>
           </div>
           <div class="col-md-6">
@@ -131,10 +131,10 @@
           <div class="col-md-6">
             <label class="form-label">Department</label>
             <select class="form-select" name="department" id="edit_department" onchange="updateCostCenter('edit')">
-              <option value="HR2">HR2</option>
-              <option value="HR4">HR4</option>
-              <option value="Core 2">Core 2</option>
-              <option value="Core 4">Core 4</option>
+              <option value="HR2">HR2 (Training Management/Claims and Reimbursement)</option>
+              <option value="HR4">HR4 (Benefits Management)</option>
+              <option value="Core 2">Core 2 (Asset Management)</option>
+              <option value="Core 4">Core 4 (Fleet Management)</option>
             </select>
           </div>
           <div class="col-md-6">
