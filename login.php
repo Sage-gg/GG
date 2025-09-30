@@ -1,6 +1,6 @@
 <?php
 require_once 'db.php';
-
+// login.php
 // Redirect if already logged in
 if (isLoggedIn()) {
     header("Location: index.php");
@@ -530,6 +530,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <script>
+    // FIXED JavaScript for login page - prevents session timeout loops
     let countdownInterval;
     let lockoutRemaining = <?php echo $lockout_remaining; ?>;
     let serverSyncInterval;
@@ -664,42 +665,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     });
 
-    let sessionTimeout;
-    let warningTimeout;
-    let lastActivity = Date.now();
-
-    function resetSessionTimer() {
-      clearTimeout(sessionTimeout);
-      clearTimeout(warningTimeout);
-      lastActivity = Date.now();
-      
-      warningTimeout = setTimeout(function() {
-        if (confirm('Your session will expire in 5 minutes due to inactivity. Click OK to continue your session.')) {
-          fetch(window.location.href, {
-            method: 'HEAD',
-            credentials: 'same-origin'
-          });
-          resetSessionTimer();
-        }
-      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>);
-      
-      sessionTimeout = setTimeout(function() {
-        alert('Your session has expired due to inactivity. You will be redirected to the login page.');
-        window.location.href = 'login.php?timeout=1';
-      }, <?php echo SESSION_TIMEOUT * 1000; ?>);
-    }
-
-    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
-      document.addEventListener(event, function() {
-        if (Date.now() - lastActivity > 60000) {
-          resetSessionTimer();
-        }
-      }, { capture: true, passive: true });
-    });
-
-    <?php if (isLoggedIn()): ?>
-    resetSessionTimer();
-    <?php endif; ?>
+    // Simple activity tracking - no session timeout management on login page
+    // (Session timeout only applies to logged-in users)
+    
   </script>
 
 </body>
