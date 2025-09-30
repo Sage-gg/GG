@@ -1,4 +1,13 @@
-<?php include 'db.php'; ?>
+<?php
+require_once 'db.php';
+
+// CRITICAL: Check authentication and session timeout BEFORE any output
+requireLogin();
+
+// Your existing collections logic here...
+// Add all your current collections management code after this point
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
