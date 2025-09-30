@@ -1,4 +1,10 @@
 <?php
+require_once 'db.php';
+
+// CRITICAL: Check authentication and session timeout BEFORE any output
+requireLogin();
+
+// Now include your ledger functions after authentication
 require_once 'ledger_functions.php';
 
 // Get filter parameters
@@ -13,6 +19,7 @@ $summary = getLedgerSummary($fromDate, $toDate);
 $accounts = getChartOfAccounts();
 $liquidations = getLiquidationRecords();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
