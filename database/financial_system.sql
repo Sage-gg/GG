@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 10, 2025 at 01:55 PM
+-- Generation Time: Sep 30, 2025 at 08:42 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -83,7 +83,7 @@ CREATE TABLE `chart_of_accounts` (
   `id` int(11) NOT NULL,
   `account_code` varchar(10) NOT NULL,
   `account_name` varchar(100) NOT NULL,
-  `account_type` enum('Asset','Liability','Equity','Income','Expense') NOT NULL,
+  `account_type` enum('Asset','Liability','Equity','Revenue','Expense') DEFAULT NULL,
   `description` text DEFAULT NULL,
   `status` enum('Active','Inactive') DEFAULT 'Active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -97,9 +97,11 @@ CREATE TABLE `chart_of_accounts` (
 INSERT INTO `chart_of_accounts` (`id`, `account_code`, `account_name`, `account_type`, `description`, `status`, `created_at`, `updated_at`) VALUES
 (1, '1001', 'Cash', 'Asset', 'Main company cash account', 'Active', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
 (2, '2001', 'Accounts Payable', 'Liability', 'Amounts owed to suppliers', 'Active', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
-(3, '4001', 'Revenue', 'Income', 'Sales and service income', 'Active', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
+(3, '4001', 'Revenue', 'Revenue', 'Sales and service income', 'Active', '2025-08-30 14:51:55', '2025-09-30 06:38:47'),
 (4, '5001', 'Fuel Expenses', 'Expense', 'Fuel for vehicles', 'Active', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
-(5, '5002', 'Vehicle Maintenance', 'Expense', 'Vehicle maintenance and repairs', 'Active', '2025-08-30 14:51:55', '2025-08-30 14:51:55');
+(5, '5002', 'Vehicle Maintenance', 'Expense', 'Vehicle maintenance and repairs', 'Active', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
+(6, '1231', '1231', 'Revenue', '1231', 'Active', '2025-09-13 12:50:27', '2025-09-30 06:38:39'),
+(7, '1232', '1232', 'Asset', 'test', 'Active', '2025-09-30 06:01:41', '2025-09-30 06:01:41');
 
 -- --------------------------------------------------------
 
@@ -211,7 +213,8 @@ CREATE TABLE `journal_entries` (
 
 INSERT INTO `journal_entries` (`id`, `entry_id`, `date`, `account_code`, `debit`, `credit`, `description`, `reference`, `source_module`, `approved_by`, `status`, `created_at`, `updated_at`) VALUES
 (1, 'GL-1001', '2025-07-10', '5001', 8000.00, 0.00, 'Truck Fuel - Petron', 'COL-2001', 'Expenses', 'Admin', 'Posted', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
-(2, 'GL-1002', '2025-07-11', '4001', 0.00, 25000.00, 'Client Payment - ABC Construction', 'COL-2002', 'Collections', 'Admin', 'Posted', '2025-08-30 14:51:55', '2025-08-30 14:51:55');
+(2, 'GL-1002', '2025-07-11', '4001', 0.00, 25000.00, 'Client Payment - ABC Construction', 'COL-2002', 'Collections', 'Admin', 'Posted', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
+(4, 'GL-1003', '2025-09-30', '5001', 1000.00, 0.00, 'Fuel expense from 9/30/25', NULL, NULL, 'Admin', 'Posted', '2025-09-30 05:59:46', '2025-09-30 06:01:14');
 
 -- --------------------------------------------------------
 
@@ -236,7 +239,8 @@ CREATE TABLE `liquidation_records` (
 --
 
 INSERT INTO `liquidation_records` (`id`, `liquidation_id`, `date`, `employee`, `purpose`, `total_amount`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'LQ-2025-001', '2025-08-01', 'John Doe', 'Fuel Reimbursement', 1500.00, 'Approved', '2025-08-30 14:51:55', '2025-08-30 14:51:55');
+(1, 'LQ-2025-001', '2025-08-01', 'John Doe', 'Fuel Reimbursement', 1500.00, 'Approved', '2025-08-30 14:51:55', '2025-08-30 14:51:55'),
+(3, 'LQ-2025-002', '2025-09-30', '123', '123', 123.00, 'Approved', '2025-09-30 06:02:37', '2025-09-30 06:02:45');
 
 -- --------------------------------------------------------
 
@@ -257,23 +261,81 @@ CREATE TABLE `login_attempts` (
 --
 
 INSERT INTO `login_attempts` (`id`, `ip_address`, `username`, `success`, `attempted_at`) VALUES
-(135, '::1', 'admin', 1, '2025-09-09 03:15:50'),
-(136, '::1', 'admin', 1, '2025-09-09 09:37:04'),
-(137, '::1', 'admin', 1, '2025-09-09 13:23:14'),
-(138, '::1', 'admin', 1, '2025-09-09 18:40:08'),
-(139, '::1', 'admin', 1, '2025-09-09 19:09:57'),
-(140, '::1', 'admin', 1, '2025-09-09 19:59:57'),
-(141, '::1', 'admin', 1, '2025-09-09 21:14:13'),
-(142, '::1', 'admin', 1, '2025-09-09 21:41:07'),
-(143, '::1', 'admin', 1, '2025-09-09 22:06:34'),
-(144, '::1', 'admin', 1, '2025-09-09 22:24:38'),
-(145, '::1', 'admin', 1, '2025-09-09 23:11:44'),
-(146, '::1', 'admin', 1, '2025-09-09 23:27:18'),
-(147, '::1', 'admin', 1, '2025-09-10 10:21:59'),
-(148, '::1', 'admin', 1, '2025-09-10 10:24:34'),
-(149, '::1', 'admin', 1, '2025-09-10 10:48:37'),
-(150, '::1', 'admin', 1, '2025-09-10 11:02:41'),
-(151, '::1', 'admin', 1, '2025-09-10 11:37:18');
+(253, '::1', 'francislloyd.manabat4', 1, '2025-09-22 23:45:33'),
+(254, '::1', 'lloydvonpola', 1, '2025-09-23 00:02:04'),
+(255, '::1', 'lloydvonpola', 1, '2025-09-23 00:03:26'),
+(256, '::1', 'francislloyd.manabat4', 1, '2025-09-23 00:07:13'),
+(257, '::1', 'francislloyd.manabat4', 1, '2025-09-23 00:09:18'),
+(258, '::1', 'lloydvonpola', 1, '2025-09-23 00:13:59'),
+(259, '::1', 'lloydvonpola', 1, '2025-09-23 00:14:39'),
+(260, '::1', 'lloydvonpola', 1, '2025-09-23 00:14:44'),
+(261, '::1', 'lloydvonpola', 1, '2025-09-23 00:15:57'),
+(262, '::1', 'noxperdium', 1, '2025-09-23 00:17:41'),
+(263, '::1', 'francislloyd.manabat4', 1, '2025-09-23 00:18:36'),
+(274, '::1', 'francislloyd.manabat4', 1, '2025-09-23 00:55:51'),
+(275, '::1', 'francislloyd.manabat4', 1, '2025-09-23 00:56:29'),
+(276, '::1', 'francislloyd.manabat4', 1, '2025-09-23 00:58:04'),
+(277, '::1', 'francislloyd.manabat4', 1, '2025-09-23 01:12:41'),
+(278, '::1', 'francislloyd.manabat4', 1, '2025-09-23 01:15:43'),
+(279, '::1', 'francislloyd.manabat4', 1, '2025-09-23 01:32:47'),
+(280, '::1', 'ellybap62', 1, '2025-09-23 01:35:49'),
+(281, '::1', 'ellybap62', 1, '2025-09-23 01:39:03'),
+(282, '::1', 'francislloyd.manabat4', 1, '2025-09-23 02:03:14'),
+(283, '::1', 'francislloyd.manabat4', 1, '2025-09-23 22:01:22'),
+(284, '::1', 'francislloyd.manabat4', 1, '2025-09-23 22:35:31'),
+(285, '::1', 'francislloyd.manabat4', 1, '2025-09-23 23:00:38'),
+(291, '::1', 'francislloyd.manabat4', 1, '2025-09-23 23:15:21'),
+(292, '::1', 'francislloyd.manabat4', 1, '2025-09-23 23:44:59'),
+(293, '::1', 'francislloyd.manabat4', 1, '2025-09-24 00:02:33'),
+(294, '::1', 'francislloyd.manabat4', 1, '2025-09-24 12:26:10'),
+(300, '::1', 'francislloyd.manabat4', 1, '2025-09-24 12:53:29'),
+(301, '::1', 'lloydvonpola', 1, '2025-09-24 12:56:37'),
+(302, '::1', 'lloydvonpola', 1, '2025-09-24 13:16:47'),
+(303, '::1', 'lloydvonpola', 1, '2025-09-26 22:45:02'),
+(304, '::1', 'lloydvonpola', 1, '2025-09-26 22:52:13'),
+(305, '::1', 'lloydvonpola', 1, '2025-09-26 23:13:26'),
+(306, '::1', 'lloydvonpola', 1, '2025-09-27 04:51:49'),
+(307, '::1', 'lloydvonpola', 1, '2025-09-27 04:55:55'),
+(308, '::1', 'lloydvonpola', 1, '2025-09-27 04:57:43'),
+(309, '::1', 'lloydvonpola', 1, '2025-09-27 05:09:23'),
+(310, '::1', 'francislloyd4113', 1, '2025-09-27 05:15:06'),
+(311, '::1', 'francislloyd4113', 1, '2025-09-27 05:21:06'),
+(312, '::1', 'francislloyd.manabat4', 1, '2025-09-27 05:21:40'),
+(313, '::1', 'francislloyd4113', 1, '2025-09-27 05:23:56'),
+(314, '::1', 'francislloyd4113', 1, '2025-09-27 05:35:45'),
+(315, '::1', 'francislloyd4113', 1, '2025-09-27 05:43:16'),
+(316, '::1', 'francislloyd4113', 1, '2025-09-27 22:27:29'),
+(317, '::1', 'francislloyd4113', 1, '2025-09-27 22:35:25'),
+(318, '::1', 'francislloyd4113', 1, '2025-09-27 22:40:02'),
+(319, '::1', 'francislloyd4113', 1, '2025-09-27 22:42:06'),
+(320, '::1', 'francislloyd4113', 1, '2025-09-27 22:44:34'),
+(321, '::1', 'francislloyd4113', 1, '2025-09-28 00:28:45'),
+(322, '::1', 'francislloyd4113', 1, '2025-09-28 00:45:20'),
+(323, '::1', 'francislloyd4113', 1, '2025-09-28 00:46:56'),
+(324, '::1', 'francislloyd4113', 1, '2025-09-28 00:50:59'),
+(325, '::1', 'francislloyd4113', 1, '2025-09-28 03:51:58'),
+(326, '::1', 'francislloyd4113', 1, '2025-09-28 04:08:24'),
+(327, '::1', 'francislloyd4113', 1, '2025-09-28 05:13:39'),
+(328, '::1', 'francislloyd4113', 1, '2025-09-28 05:26:52'),
+(330, '::1', 'francislloyd.manabat4', 1, '2025-09-28 05:27:13'),
+(331, '::1', 'francislloyd4113', 1, '2025-09-28 05:31:29'),
+(332, '::1', 'francislloyd4113', 1, '2025-09-28 05:32:15'),
+(333, '::1', 'francislloyd.manabat4', 1, '2025-09-28 05:43:04'),
+(334, '::1', 'francislloyd4113', 1, '2025-09-28 05:43:14'),
+(335, '::1', 'francislloyd4113', 1, '2025-09-28 05:45:46'),
+(336, '::1', 'francislloyd4113', 1, '2025-09-28 06:53:29'),
+(337, '::1', 'francislloyd4113', 1, '2025-09-28 06:57:59'),
+(338, '::1', 'francislloyd.manabat4', 1, '2025-09-28 06:58:08'),
+(339, '::1', 'francislloyd4113', 1, '2025-09-28 06:59:18'),
+(340, '::1', 'francislloyd4113', 1, '2025-09-28 07:35:36'),
+(341, '::1', 'francislloyd.manabat4', 1, '2025-09-29 22:35:44'),
+(342, '::1', 'francislloyd4113', 1, '2025-09-29 22:38:06'),
+(343, '::1', 'francislloyd4113', 1, '2025-09-29 23:05:18'),
+(344, '::1', 'francislloyd4113', 1, '2025-09-29 23:47:46'),
+(345, '::1', 'francislloyd.manabat4', 1, '2025-09-30 02:33:41'),
+(346, '::1', 'francislloyd.manabat4', 1, '2025-09-30 02:52:12'),
+(347, '::1', 'francislloyd4113', 1, '2025-09-30 05:58:39'),
+(348, '::1', 'francislloyd.manabat4', 1, '2025-09-30 06:34:37');
 
 -- --------------------------------------------------------
 
@@ -297,8 +359,32 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `email`, `username`, `password`, `role`, `created_at`, `updated_at`, `is_active`) VALUES
-(1, 'admin@system.com', 'admin', '$2y$10$cBzjiYnpoPsVWBR/Iv.8q.CTFH9UVX78KtPO15WGfXa1RaEusgv6.', 'admin', '2025-08-26 21:30:57', '2025-09-03 07:18:45', 1),
-(5, 'testuser@gmail.com', 'testuser', '$2y$10$JdzfERQRwXG9dpvp.upm1eDhUIEfba9H5JsuVNTH5EfDWv2adKFGW', 'user', '2025-08-26 22:39:59', '2025-08-27 04:57:46', 1);
+(6, 'francislloyd.manabat4@gmail.com', 'francislloyd.manabat4', '$2y$10$TjXuvCwgFxonjPRNHWOoNuif/0ecXjNwVGj1oOrnTXHYHj6/jXkoO', 'admin', '2025-09-20 22:35:07', '2025-09-20 22:35:07', 1),
+(9, 'ellybap62@gmail.com', 'ellybap62', '$2y$10$o6OB9G2AYFr6ztGMdZt8deRG/OLQ0tRXdLn4TEObQoNgy1Ta8sRVW', 'admin', '2025-09-23 01:35:39', '2025-09-23 01:35:39', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_access_tokens`
+--
+
+CREATE TABLE `user_access_tokens` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `granted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime NOT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `user_access_tokens`
+--
+
+INSERT INTO `user_access_tokens` (`id`, `user_id`, `token`, `granted_at`, `expires_at`, `ip_address`, `user_agent`) VALUES
+(11, 6, '805738add18c8c15e776b424c73a294a2c6268d871b30d8c8d63a4869ae3cc42', '2025-09-23 01:12:08', '2025-10-03 09:12:08', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'),
+(12, 9, '923773348685a6a37fa6b8ddd96be026161da9e6f9702d0ce7cb51c035591fa8', '2025-09-23 01:36:43', '2025-10-03 09:36:43', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36');
 
 -- --------------------------------------------------------
 
@@ -317,12 +403,22 @@ CREATE TABLE `user_sessions` (
   `is_active` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `user_sessions`
+-- Table structure for table `verification_codes`
 --
 
-INSERT INTO `user_sessions` (`id`, `user_id`, `session_id`, `ip_address`, `user_agent`, `created_at`, `expires_at`, `is_active`) VALUES
-(112, 1, 'bvmldan5q486a6n5vsfdrdf6ah', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36', '2025-09-10 11:37:18', '2025-09-10 11:47:18', 1);
+CREATE TABLE `verification_codes` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `code` varchar(6) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime NOT NULL,
+  `is_used` tinyint(1) DEFAULT 0,
+  `attempts` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables
@@ -384,12 +480,31 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `username` (`username`);
 
 --
+-- Indexes for table `user_access_tokens`
+--
+ALTER TABLE `user_access_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_user_id` (`user_id`),
+  ADD KEY `idx_token` (`token`),
+  ADD KEY `idx_expires_at` (`expires_at`);
+
+--
 -- Indexes for table `user_sessions`
 --
 ALTER TABLE `user_sessions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `session_id` (`session_id`),
   ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `verification_codes`
+--
+ALTER TABLE `verification_codes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_email` (`email`),
+  ADD KEY `idx_expires_at` (`expires_at`),
+  ADD KEY `idx_user_active` (`user_id`,`is_used`,`expires_at`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -405,13 +520,13 @@ ALTER TABLE `budgets`
 -- AUTO_INCREMENT for table `chart_of_accounts`
 --
 ALTER TABLE `chart_of_accounts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `collections`
 --
 ALTER TABLE `collections`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 --
 -- AUTO_INCREMENT for table `expenses`
@@ -423,31 +538,43 @@ ALTER TABLE `expenses`
 -- AUTO_INCREMENT for table `journal_entries`
 --
 ALTER TABLE `journal_entries`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `liquidation_records`
 --
 ALTER TABLE `liquidation_records`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `login_attempts`
 --
 ALTER TABLE `login_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=152;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=349;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `user_access_tokens`
+--
+ALTER TABLE `user_access_tokens`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `user_sessions`
 --
 ALTER TABLE `user_sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
+
+--
+-- AUTO_INCREMENT for table `verification_codes`
+--
+ALTER TABLE `verification_codes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=181;
 
 --
 -- Constraints for dumped tables
@@ -460,10 +587,22 @@ ALTER TABLE `journal_entries`
   ADD CONSTRAINT `journal_entries_ibfk_1` FOREIGN KEY (`account_code`) REFERENCES `chart_of_accounts` (`account_code`);
 
 --
+-- Constraints for table `user_access_tokens`
+--
+ALTER TABLE `user_access_tokens`
+  ADD CONSTRAINT `user_access_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `user_sessions`
 --
 ALTER TABLE `user_sessions`
   ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `verification_codes`
+--
+ALTER TABLE `verification_codes`
+  ADD CONSTRAINT `verification_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
