@@ -1,6 +1,8 @@
 <?php
-// financial_reporting.php - Complete Financial Reporting with Date Filtering and Export
-include 'db.php';
+require_once 'db.php';
+
+// CRITICAL: Check authentication and session timeout BEFORE any output
+requireLogin();
 
 // Enhanced getFinancialSummary function with proper date filtering
 function getFinancialSummary($conn, $start_date = null, $end_date = null) {
