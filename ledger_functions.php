@@ -497,9 +497,11 @@ function calculateRunningBalance($entries) {
 // UTILITY FUNCTIONS
 // ===================
 
-// Format currency
-function formatCurrency($amount) {
-    return number_format($amount, 2);
+// Format currency - Protected against redeclaration
+if (!function_exists('formatCurrency')) {
+    function formatCurrency($amount) {
+        return number_format($amount, 2);
+    }
 }
 
 // Validate date format
