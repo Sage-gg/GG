@@ -1,9 +1,10 @@
 <?php
-// financial_budgeting.php
-session_start();
-
-// Include database connection with error handling
 require_once 'db.php';
+
+// CRITICAL: Check authentication and session timeout BEFORE any output
+requireLogin();
+
+// Include pagination after authentication
 require_once 'financial_budgeting_pagination.php';
 
 // Check if database connection exists
@@ -197,8 +198,8 @@ function peso($n) {
 
 // Get pagination info for display
 $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage, $totalRecords, count($rows));
-
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
