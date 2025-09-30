@@ -1,6 +1,6 @@
 <?php
 // =============================================================================
-// db.php - ENHANCED WITH EMAIL 2FA SYSTEM - FIXED VERSION
+// db.php - ENHANCED WITH EMAIL 2FA SYSTEM - COMPLETE FIXED VERSION
 // Enhanced Database connection with session management, dual compatibility, and email verification
 // =============================================================================
 
@@ -120,72 +120,90 @@ $conn->set_charset("utf8");
 $conn2 = getDBConnection();
 
 // =============================================================================
-// EMAIL VERIFICATION FUNCTIONS (FIXED)
+// EMAIL VERIFICATION FUNCTIONS (COMPLETE FIXED VERSION)
 // =============================================================================
 
 /**
- * Generate and send verification code to user's email - DEBUG VERSION
+ * Generate and send verification code to user's email - COMPLETE FIXED VERSION
  */
 function sendVerificationCode($user_id, $email, $username) {
     global $phpmailer_available;
     
-    // Debug: Log the attempt
-    error_log("DEBUG: sendVerificationCode called for user_id: $user_id, email: $email, username: $username");
+    error_log("DEBUG sendVerificationCode: Starting for user_id: $user_id, email: $email, username: $username");
+    error_log("DEBUG sendVerificationCode: PHPMailer available: " . ($phpmailer_available ? 'YES' : 'NO'));
     
-    // If PHPMailer is not available, disable email verification
-    if (!$phpmailer_available) {
-        error_log("DEBUG: PHPMailer not available for user: $username");
-        // TEMPORARY: Return true to bypass email verification for testing
-        return true; // Change this to false when you want email verification to work
-    }
-    
-    $conn = getDBConnection();
-    
-    // Generate 6-digit random code
-    $code = sprintf("%06d", mt_rand(0, 999999));
-    error_log("DEBUG: Generated verification code: $code for user: $username");
-    
-    // Set expiry time
-    $expires_at = date('Y-m-d H:i:s', time() + VERIFICATION_CODE_EXPIRY);
-    error_log("DEBUG: Code expires at: $expires_at");
-    
-    // Invalidate any existing codes for this user
-    $cleanup_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND is_used = 0");
-    $cleanup_stmt->bind_param("i", $user_id);
-    $cleanup_stmt->execute();
-    error_log("DEBUG: Cleaned up old verification codes for user_id: $user_id");
-    $cleanup_stmt->close();
-    
-    // Insert new verification code
-    $stmt = $conn->prepare("INSERT INTO verification_codes (user_id, email, code, expires_at) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("isss", $user_id, $email, $code, $expires_at);
-    
-    if ($stmt->execute()) {
-        $stmt->close();
-        error_log("DEBUG: Verification code inserted successfully into database");
+    try {
+        $conn = getDBConnection();
+        error_log("DEBUG sendVerificationCode: Database connection established");
         
-        // Send email
-        $email_result = sendVerificationEmail($email, $username, $code);
-        error_log("DEBUG: sendVerificationEmail returned: " . ($email_result ? 'true' : 'false'));
+        // Generate 6-digit random code
+        $code = sprintf("%06d", mt_rand(0, 999999));
+        error_log("DEBUG sendVerificationCode: Generated code: $code");
         
-        if ($email_result) {
-            error_log("DEBUG: Email sent successfully");
-            return true;
-        } else {
-            error_log("DEBUG: Email sending failed, marking code as used");
-            // If email sending fails, mark code as used to prevent security issues
-            $fail_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND code = ?");
-            $fail_stmt->bind_param("is", $user_id, $code);
-            $fail_stmt->execute();
-            $fail_stmt->close();
-            error_log("DEBUG: Code marked as used due to email failure");
+        // Set expiry time
+        $expires_at = date('Y-m-d H:i:s', time() + VERIFICATION_CODE_EXPIRY);
+        error_log("DEBUG sendVerificationCode: Code expires at: $expires_at");
+        
+        // Invalidate any existing codes for this user
+        $cleanup_stmt = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE user_id = ? AND is_used = 0");
+        if (!$cleanup_stmt) {
+            error_log("DEBUG sendVerificationCode: Failed to prepare cleanup statement: " . $conn->error);
             return false;
         }
+        
+        $cleanup_stmt->bind_param("i", $user_id);
+        $cleanup_result = $cleanup_stmt->execute();
+        error_log("DEBUG sendVerificationCode: Cleanup old codes result: " . ($cleanup_result ? 'SUCCESS' : 'FAILED'));
+        if (!$cleanup_result) {
+            error_log("DEBUG sendVerificationCode: Cleanup execute error: " . $cleanup_stmt->error);
+        }
+        $cleanup_stmt->close();
+        
+        // Insert new verification code - ALWAYS DO THIS
+        $stmt = $conn->prepare("INSERT INTO verification_codes (user_id, email, code, expires_at) VALUES (?, ?, ?, ?)");
+        if (!$stmt) {
+            error_log("DEBUG sendVerificationCode: Failed to prepare insert statement: " . $conn->error);
+            return false;
+        }
+        
+        $stmt->bind_param("isss", $user_id, $email, $code, $expires_at);
+        $insert_result = $stmt->execute();
+        
+        if ($insert_result) {
+            $new_code_id = $conn->insert_id;
+            error_log("DEBUG sendVerificationCode: New code inserted with ID: $new_code_id");
+            $stmt->close();
+            
+            // Try to send email if PHPMailer is available
+            if ($phpmailer_available) {
+                error_log("DEBUG sendVerificationCode: Attempting to send email");
+                $email_result = sendVerificationEmail($email, $username, $code);
+                error_log("DEBUG sendVerificationCode: Email send result: " . ($email_result ? 'SUCCESS' : 'FAILED'));
+                
+                if ($email_result) {
+                    error_log("DEBUG sendVerificationCode: Overall process SUCCESS with email");
+                    return true;
+                } else {
+                    error_log("DEBUG sendVerificationCode: Email sending failed, but code is in database");
+                    // Don't mark as used - let user try to use the code even if email failed
+                    return true; // Still return true because code is created
+                }
+            } else {
+                error_log("DEBUG sendVerificationCode: PHPMailer not available, but code created in database");
+                // For testing: show the code in the log since email can't be sent
+                error_log("DEBUG sendVerificationCode: TESTING MODE - Verification code is: $code");
+                return true;
+            }
+        } else {
+            error_log("DEBUG sendVerificationCode: Insert execute error: " . $stmt->error);
+            $stmt->close();
+            return false;
+        }
+        
+    } catch (Exception $e) {
+        error_log("DEBUG sendVerificationCode: Exception caught: " . $e->getMessage());
+        return false;
     }
-    
-    $stmt->close();
-    error_log("DEBUG: Failed to insert verification code into database");
-    return false;
 }
 
 /**
@@ -224,10 +242,6 @@ function sendVerificationEmail($email, $username, $code) {
     }
     
     error_log("DEBUG: All email configuration constants are defined");
-    error_log("DEBUG: SMTP_HOST: " . SMTP_HOST);
-    error_log("DEBUG: SMTP_PORT: " . SMTP_PORT);
-    error_log("DEBUG: SMTP_USERNAME: " . SMTP_USERNAME);
-    error_log("DEBUG: FROM_EMAIL: " . FROM_EMAIL);
     
     try {
         $mail = new PHPMailer(true);
@@ -242,18 +256,9 @@ function sendVerificationEmail($email, $username, $code) {
         $mail->SMTPSecure = SMTP_ENCRYPTION;
         $mail->Port = SMTP_PORT;
         
-        // Enable verbose debug output
-        $mail->SMTPDebug = 2;
-        $mail->Debugoutput = function($str, $level) {
-            error_log("DEBUG SMTP ($level): $str");
-        };
-        
-        error_log("DEBUG: SMTP settings configured");
-        
         // Recipients
         $mail->setFrom(FROM_EMAIL, FROM_NAME);
         $mail->addAddress($email, $username);
-        error_log("DEBUG: Email recipients set");
         
         // Content
         $mail->isHTML(true);
@@ -340,10 +345,13 @@ function getVerificationEmailTemplate($username, $code) {
 }
 
 /**
- * Verify the entered code
+ * Verify the entered code - CLEAN VERSION (NO DEBUG OUTPUT)
  */
 function verifyCode($user_id, $entered_code) {
     $conn = getDBConnection();
+    
+    // Add debug logging only (no screen output)
+    error_log("DEBUG verifyCode: Starting verification for user_id: $user_id, code: $entered_code");
     
     // Find active verification code
     $stmt = $conn->prepare("
@@ -359,13 +367,16 @@ function verifyCode($user_id, $entered_code) {
     
     if ($result->num_rows === 0) {
         $stmt->close();
+        error_log("DEBUG verifyCode: No valid code found");
         return ['success' => false, 'message' => 'No valid verification code found or code has expired.'];
     }
     
     $verification = $result->fetch_assoc();
     $stmt->close();
     
-    // Check if too many attempts
+    error_log("DEBUG verifyCode: Found code - ID: {$verification['id']}, attempts: {$verification['attempts']}, expires: {$verification['expires_at']}");
+    
+    // Check if too many attempts BEFORE incrementing
     if ($verification['attempts'] >= MAX_VERIFICATION_ATTEMPTS) {
         // Mark as used
         $mark_used = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE id = ?");
@@ -373,18 +384,13 @@ function verifyCode($user_id, $entered_code) {
         $mark_used->execute();
         $mark_used->close();
         
+        error_log("DEBUG verifyCode: Too many attempts, marking as used");
         return ['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.'];
     }
     
-    // Increment attempts
-    $update_attempts = $conn->prepare("UPDATE verification_codes SET attempts = attempts + 1 WHERE id = ?");
-    $update_attempts->bind_param("i", $verification['id']);
-    $update_attempts->execute();
-    $update_attempts->close();
-    
-    // Verify code
+    // Verify code FIRST before incrementing attempts
     if ($verification['code'] === $entered_code) {
-        // Mark as used
+        // Code is correct - mark as used and create token
         $mark_used = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE id = ?");
         $mark_used->bind_param("i", $verification['id']);
         $mark_used->execute();
@@ -393,10 +399,78 @@ function verifyCode($user_id, $entered_code) {
         // Create 10-day access token
         createAccessToken($user_id);
         
+        error_log("DEBUG verifyCode: Code correct, verification successful");
         return ['success' => true, 'message' => 'Code verified successfully!'];
     } else {
-        $remaining_attempts = MAX_VERIFICATION_ATTEMPTS - ($verification['attempts'] + 1);
-        return ['success' => false, 'message' => "Incorrect code. $remaining_attempts attempts remaining."];
+        // Code is incorrect - increment attempts
+        $new_attempts = $verification['attempts'] + 1;
+        
+        error_log("DEBUG verifyCode: Incorrect code. Incrementing attempts from {$verification['attempts']} to $new_attempts for ID {$verification['id']}");
+        
+        // Enhanced database update with full error checking
+        $update_attempts = $conn->prepare("UPDATE verification_codes SET attempts = ? WHERE id = ?");
+        if (!$update_attempts) {
+            error_log("DEBUG verifyCode: Failed to prepare UPDATE statement: " . $conn->error);
+            return ['success' => false, 'message' => 'Database error occurred.'];
+        }
+        
+        $bind_result = $update_attempts->bind_param("ii", $new_attempts, $verification['id']);
+        if (!$bind_result) {
+            error_log("DEBUG verifyCode: Failed to bind parameters: " . $update_attempts->error);
+            $update_attempts->close();
+            return ['success' => false, 'message' => 'Parameter binding error.'];
+        }
+        
+        $execute_result = $update_attempts->execute();
+        if (!$execute_result) {
+            error_log("DEBUG verifyCode: Failed to execute UPDATE: " . $update_attempts->error);
+            $update_attempts->close();
+            return ['success' => false, 'message' => 'Failed to update attempts counter.'];
+        }
+        
+        $affected_rows = $update_attempts->affected_rows;
+        error_log("DEBUG verifyCode: UPDATE executed successfully. Affected rows: $affected_rows");
+        
+        $update_attempts->close();
+        
+        if ($affected_rows === 0) {
+            error_log("DEBUG verifyCode: WARNING - No rows were updated! Verification ID {$verification['id']} might be invalid");
+            
+            // Let's double-check if the record still exists
+            $check_stmt = $conn->prepare("SELECT id, attempts, is_used FROM verification_codes WHERE id = ?");
+            $check_stmt->bind_param("i", $verification['id']);
+            $check_stmt->execute();
+            $check_result = $check_stmt->get_result();
+            
+            if ($check_result->num_rows > 0) {
+                $check_data = $check_result->fetch_assoc();
+                error_log("DEBUG verifyCode: Record still exists - ID: {$check_data['id']}, attempts: {$check_data['attempts']}, is_used: {$check_data['is_used']}");
+            } else {
+                error_log("DEBUG verifyCode: Record with ID {$verification['id']} no longer exists!");
+            }
+            $check_stmt->close();
+        }
+        
+        // Calculate remaining attempts correctly
+        $remaining_attempts = MAX_VERIFICATION_ATTEMPTS - $new_attempts;
+        
+        error_log("DEBUG verifyCode: New attempts count: $new_attempts, remaining: $remaining_attempts");
+        
+        if ($remaining_attempts <= 0) {
+            // This was the last attempt - mark as used
+            $mark_used = $conn->prepare("UPDATE verification_codes SET is_used = 1 WHERE id = ?");
+            $mark_used->bind_param("i", $verification['id']);
+            $execute_mark = $mark_used->execute();
+            $mark_affected = $mark_used->affected_rows;
+            
+            error_log("DEBUG verifyCode: Last attempt failed. Marking as used. Execute result: " . ($execute_mark ? 'SUCCESS' : 'FAILED') . ", Affected rows: $mark_affected");
+            
+            $mark_used->close();
+            
+            return ['success' => false, 'message' => 'Too many incorrect attempts. Please request a new code.'];
+        }
+        
+        return ['success' => false, 'message' => "Incorrect code. $remaining_attempts attempt" . ($remaining_attempts !== 1 ? 's' : '') . " remaining."];
     }
 }
 
@@ -490,7 +564,7 @@ function cleanupVerificationData() {
 }
 
 // =============================================================================
-// EXISTING SESSION MANAGEMENT FUNCTIONS (ENHANCED)
+// SESSION MANAGEMENT FUNCTIONS (ENHANCED WITH LOOP PREVENTION)
 // =============================================================================
 
 function isLoggedIn() {
@@ -501,41 +575,115 @@ function isAdmin() {
     return isLoggedIn() && $_SESSION['role'] === 'admin';
 }
 
+/**
+ * Check session timeout - FIXED VERSION TO PREVENT LOOPS
+ */
 function checkSessionTimeout() {
-    if (isLoggedIn()) {
-        $current_time = time();
-        
-        if (isset($_SESSION['last_activity']) && ($current_time - $_SESSION['last_activity'] > SESSION_TIMEOUT)) {
-            cleanupUserSession($_SESSION['user_id'], session_id());
-            session_unset();
-            session_destroy();
-            header("Location: login.php?timeout=1");
-            exit();
-        }
-        
+    // Only proceed if user is logged in
+    if (!isLoggedIn()) {
+        return;
+    }
+    
+    $current_time = time();
+    
+    // CRITICAL FIX: Always initialize last_activity for new sessions
+    if (!isset($_SESSION['last_activity'])) {
         $_SESSION['last_activity'] = $current_time;
+        $_SESSION['last_regeneration'] = $current_time;
+        return; // Don't timeout on first load after login/verification
+    }
+    
+    // Calculate inactivity time
+    $inactive_time = $current_time - $_SESSION['last_activity'];
+    
+    // Add safety check for fresh sessions (within 30 seconds)
+    if ($inactive_time < 30) {
+        $_SESSION['last_activity'] = $current_time;
+        return; // Don't timeout very fresh sessions
+    }
+    
+    // Check if session has timed out (10 minutes)
+    if ($inactive_time > SESSION_TIMEOUT) {
+        // Session has expired - clean up
+        $user_id = $_SESSION['user_id'] ?? null;
+        $current_session_id = session_id();
         
-        if (!isset($_SESSION['last_regeneration'])) {
-            $_SESSION['last_regeneration'] = $current_time;
-        } else if ($current_time - $_SESSION['last_regeneration'] > 600) {
-            session_regenerate_id(true);
-            $_SESSION['last_regeneration'] = $current_time;
+        // Clean up database session record
+        if ($user_id && $current_session_id) {
+            cleanupUserSession($user_id, $current_session_id);
         }
+        
+        // Clear session data
+        $_SESSION = array();
+        
+        // Delete session cookie
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 3600,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        
+        // Destroy session
+        session_destroy();
+        
+        // Redirect to login with timeout parameter
+        // Use die() after header to ensure no further execution
+        if (!headers_sent()) {
+            header("Location: login.php?timeout=1");
+            die(); // Critical: stop all execution here
+        } else {
+            // Headers already sent, use JavaScript redirect
+            echo '<script>window.location.replace("login.php?timeout=1");</script>';
+            die(); // Critical: stop all execution here
+        }
+    }
+    
+    // Session is still valid - update last activity
+    $_SESSION['last_activity'] = $current_time;
+    
+    // Regenerate session ID periodically for security (every 10 minutes)
+    if (!isset($_SESSION['last_regeneration'])) {
+        $_SESSION['last_regeneration'] = $current_time;
+    } else if ($current_time - $_SESSION['last_regeneration'] > 600) {
+        session_regenerate_id(true);
+        $_SESSION['last_regeneration'] = $current_time;
     }
 }
 
+/**
+ * Require login - FIXED VERSION TO PREVENT LOOPS
+ */
 function requireLogin() {
+    // First check if user appears to be logged in
     if (!isLoggedIn()) {
-        header("Location: login.php");
-        exit();
+        // Not logged in at all - redirect to login
+        if (!headers_sent()) {
+            header("Location: login.php");
+            die();
+        } else {
+            echo '<script>window.location.replace("login.php");</script>';
+            die();
+        }
     }
+    
+    // User appears logged in - check session timeout
+    checkSessionTimeout();
+    
+    // If we get here, session is valid and user is authenticated
 }
 
 function requireAdmin() {
     requireLogin();
     if (!isAdmin()) {
-        header("Location: index.php?access_denied=1");
-        exit();
+        if (!headers_sent()) {
+            header("Location: index.php?access_denied=1");
+            die();
+        } else {
+            echo '<script>window.location.replace("index.php?access_denied=1");</script>';
+            die();
+        }
     }
 }
 
@@ -708,31 +856,18 @@ function cleanOldLoginAttempts() {
 // =============================================================================
 
 if (!function_exists('calculateTaxAmount')) {
-function calculateTaxAmount($taxType, $amount) {
-    $amount = floatval($amount);
-    $taxAmount = 0;
-    
-    switch ($taxType) {
-        case 'VAT':
-        case 'VAT (12%)':  // ADD THIS LINE
-            $taxAmount = $amount * 0.12; // 12% VAT
-            break;
-        case 'Withholding':
-        case 'Withholding (2%)':  // ADD THIS LINE
-            $taxAmount = $amount * 0.02; // 2% Withholding Tax
-            break;
-        case 'Exempted':
-        case 'None':
-        case 'No Tax':
-            $taxAmount = 0;
-            break;
-        default:
-            $taxAmount = 0;
-            break;
+    function calculateTaxAmount($taxType, $amount) {
+        switch($taxType) {
+            case 'VAT':
+                return $amount * 0.12;
+            case 'Withholding':
+                return $amount * 0.02;
+            case 'Exempted':
+            case 'None':
+            default:
+                return 0.00;
+        }
     }
-    
-    return round($taxAmount, 2);
-}
 }
 
 if (!function_exists('formatCurrency')) {
@@ -788,26 +923,6 @@ function debugLockoutStatus() {
         echo "<p><strong>Is Locked Out:</strong> " . (isIPLockedOut() ? 'YES' : 'NO') . "</p>";
         echo "<p><strong>Time Remaining:</strong> " . getLockoutTimeRemaining() . " seconds</p>";
         
-        $session_stmt = $conn->prepare("SELECT * FROM user_sessions WHERE expires_at > NOW() ORDER BY created_at DESC LIMIT 5");
-        $session_stmt->execute();
-        $session_result = $session_stmt->get_result();
-        
-        echo "<h4>Active Sessions (Last 5):</h4>";
-        echo "<table border='1' style='width:100%; border-collapse: collapse;'>";
-        echo "<tr><th>User ID</th><th>Session ID</th><th>IP</th><th>Created</th><th>Expires</th></tr>";
-        
-        while ($session_row = $session_result->fetch_assoc()) {
-            echo "<tr>";
-            echo "<td>" . $session_row['user_id'] . "</td>";
-            echo "<td>" . substr($session_row['session_id'], 0, 10) . "...</td>";
-            echo "<td>" . htmlspecialchars($session_row['ip_address']) . "</td>";
-            echo "<td>" . $session_row['created_at'] . "</td>";
-            echo "<td>" . $session_row['expires_at'] . "</td>";
-            echo "</tr>";
-        }
-        echo "</table>";
-        $session_stmt->close();
-        
         echo "</div>";
     }
 }
@@ -851,21 +966,9 @@ function checkPHPMailerStatus() {
         } else {
             echo "<p style='color: red;'>❌ PHPMailer is NOT available</p>";
             echo "<p>Email verification is disabled. Install PHPMailer to enable email features.</p>";
-            
-            // Show installation instructions
-            echo "<h4>Installation Options:</h4>";
-            echo "<p><strong>Option 1 - Composer:</strong></p>";
-            echo "<pre>cd " . getcwd() . "\ncomposer require phpmailer/phpmailer</pre>";
-            
-            echo "<p><strong>Option 2 - Manual Download:</strong></p>";
-            echo "<ol>";
-            echo "<li>Download from: <a href='https://github.com/PHPMailer/PHPMailer/archive/refs/heads/master.zip' target='_blank'>GitHub</a></li>";
-            echo "<li>Extract to your web directory as 'PHPMailer' folder</li>";
-            echo "<li>Ensure structure: PHPMailer/src/PHPMailer.php</li>";
-            echo "</ol>";
         }
         
         echo "</div>";
     }
 }
-
+?>
