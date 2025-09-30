@@ -1,6 +1,6 @@
 <?php
 require_once 'db.php';
-
+// index.php
 // Require login to access dashboard
 requireLogin();
 
