@@ -1,0 +1,18 @@
+9/30/25
+
+fix looping issue:
+db.php
+login.php
+logout.php
+sidebar_navbar.php
+
+
+fixed php part of page for better protection
+verify_email.php
+index.php
+financial_collections
+financial_budgeting
+financial_budgeting_modals
+financial_ledger
+ledger_functions
+financial_reporting

@@ -1,0 +1,11 @@
+changes sept. 23, 202
+- installed phpmailer from composer
+- added email_config.php
+- changed db.php
+- added verify_email.php
+- changed login.php
+- add sql table part: verification_codes, and user_access_tokens
+
+Used email - financials.cali@gmail.com
+App name - Mail
+App password - jtkp pgvt ihdb viie
