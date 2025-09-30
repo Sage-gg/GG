@@ -1,5 +1,3 @@
-<!--sidebar_navbar.php-->
-
 <?php
 require_once 'db.php';
 
@@ -699,35 +697,8 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 </style>
 
 <script>
-  // Session timer functionality - BACKGROUND ONLY (NO DISPLAY)
-  let sessionStartTime = <?php echo $_SESSION['last_activity'] * 1000; ?>;
-  let sessionTimeout = <?php echo SESSION_TIMEOUT * 1000; ?>;
-  let sessionTimerInterval;
-
-  function checkSessionTimeout() {
-    let currentTime = Date.now();
-    let elapsedTime = currentTime - sessionStartTime;
-    let remainingTime = sessionTimeout - elapsedTime;
-    
-    if (remainingTime <= 0) {
-      clearInterval(sessionTimerInterval);
-      alert('Your session has expired. You will be redirected to the login page.');
-      window.location.href = 'login.php?timeout=1';
-      return;
-    }
-  }
-
-  // Check session timeout every second (but don't display timer)
-  sessionTimerInterval = setInterval(checkSessionTimeout, 1000);
-  checkSessionTimeout(); // Initial call
-
-  // Reset session timer on activity
-  ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
-    document.addEventListener(event, function() {
-      sessionStartTime = Date.now();
-    }, { capture: true, passive: true });
-  });
-
+  // FIXED JavaScript for sidebar - UI functionality only (No session management)
+  
   // Financial System button click handler
   document.getElementById('financialBtn').addEventListener('click', function() {
     window.location.href = 'index.php';
@@ -748,17 +719,19 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   const bellIcon = document.getElementById('bellIcon');
   const bellPopup = document.getElementById('bellPopup');
 
-  bellIcon.addEventListener('click', function(e) {
-    e.preventDefault();
-    bellPopup.classList.toggle('d-none');
-  });
+  if (bellIcon && bellPopup) {
+    bellIcon.addEventListener('click', function(e) {
+      e.preventDefault();
+      bellPopup.classList.toggle('d-none');
+    });
 
-  // Close popups when clicking outside
-  document.addEventListener('click', function(event) {
-    if (!bellIcon.contains(event.target) && !bellPopup.contains(event.target)) {
-      bellPopup.classList.add('d-none');
-    }
-  });
+    // Close popups when clicking outside
+    document.addEventListener('click', function(event) {
+      if (!bellIcon.contains(event.target) && !bellPopup.contains(event.target)) {
+        bellPopup.classList.add('d-none');
+      }
+    });
+  }
 
   // Set active navigation link
   document.addEventListener('DOMContentLoaded', function() {
@@ -780,7 +753,9 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
       const sidebar = document.getElementById('sidebar');
       const toggleBtn = document.getElementById('toggleSidebar');
       
-      if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+      if (sidebar && toggleBtn && 
+          !sidebar.contains(event.target) && 
+          !toggleBtn.contains(event.target)) {
         document.body.classList.remove('sidebar-mobile-open');
       }
     }
@@ -792,4 +767,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
       document.body.classList.remove('sidebar-mobile-open');
     }
   });
+
+  // Session timeout management is now handled by PHP server-side checks
+  // This prevents JavaScript conflicts and loops
 </script>
