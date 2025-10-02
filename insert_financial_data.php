@@ -28,29 +28,101 @@ try {
         throw new Exception('Database connection failed: ' . ($conn->connect_error ?? 'Connection not available'));
     }
     
-    // Get POST data
-    $input = json_decode(file_get_contents('php://input'), true);
+    // Check if this is a file upload request (FormData) or JSON request
+    $isFileUpload = !empty($_FILES);
     
-    if (!$input) {
-        throw new Exception('No data received or invalid JSON');
+    if ($isFileUpload) {
+        // Handle FormData request with file upload
+        $table = $_POST['table'] ?? null;
+        $module = $_POST['module'] ?? 'unknown';
+        
+        // Get all POST data except table and module
+        $data = [];
+        foreach ($_POST as $key => $value) {
+            if ($key !== 'table' && $key !== 'module' && !empty($value)) {
+                $data[$key] = $value;
+            }
+        }
+        
+        // Handle file upload if present
+        $fileUploaded = false;
+        $uploadPath = '';
+        
+        // Check for either attach_receipt or receipt_attachment
+        $fileFieldName = null;
+        if (isset($_FILES['attach_receipt']) && $_FILES['attach_receipt']['error'] === UPLOAD_ERR_OK) {
+            $fileFieldName = 'attach_receipt';
+        } elseif (isset($_FILES['receipt_attachment']) && $_FILES['receipt_attachment']['error'] === UPLOAD_ERR_OK) {
+            $fileFieldName = 'receipt_attachment';
+        }
+        
+        if ($fileFieldName) {
+            $uploadDir = 'uploads/receipts/';
+            
+            // Create directory if it doesn't exist
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            
+            $fileName = $_FILES[$fileFieldName]['name'];
+            $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
+            $newFileName = uniqid('receipt_') . '.' . $fileExtension;
+            $uploadPath = $uploadDir . $newFileName;
+            
+            // Validate file type
+            $allowedTypes = ['jpg', 'jpeg', 'png', 'pdf', 'gif'];
+            if (!in_array(strtolower($fileExtension), $allowedTypes)) {
+                throw new Exception('Invalid file type. Only JPG, PNG, PDF allowed.');
+            }
+            
+            // Validate file size (max 5MB)
+            if ($_FILES[$fileFieldName]['size'] > 5 * 1024 * 1024) {
+                throw new Exception('File size exceeds 5MB limit.');
+            }
+            
+            if (move_uploaded_file($_FILES[$fileFieldName]['tmp_name'], $uploadPath)) {
+                $data[$fileFieldName] = $uploadPath;
+                $fileUploaded = true;
+            } else {
+                throw new Exception('Failed to upload file.');
+            }
+        }
+        
+    } else {
+        // Handle JSON request
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            throw new Exception('No data received or invalid JSON');
+        }
+        
+        $table = $input['table'] ?? null;
+        $data = $input['data'] ?? [];
+        $module = $input['module'] ?? 'unknown';
     }
     
-    if (!isset($input['table']) || !isset($input['data'])) {
+    if (!$table || empty($data)) {
         throw new Exception('Missing required fields: table or data');
     }
     
-    $table = $input['table'];
-    $data = $input['data'];
-    $module = $input['module'] ?? 'unknown';
+    // Validate table name (security check) - UPDATED with new tables
+    $allowed_tables = [
+        'budgets', 
+        'collections', 
+        'expenses', 
+        'journal_entries', 
+        'chart_of_accounts', 
+        'liquidation_records', 
+        'financial_reports'
+    ];
     
-    if (empty($data)) {
-        throw new Exception('No data provided for insertion');
-    }
-    
-    // Validate table name (security check)
-    $allowed_tables = ['budgets', 'collections', 'expenses', 'journal_entries', 'financial_reports'];
     if (!in_array($table, $allowed_tables)) {
         throw new Exception('Invalid table name: ' . $table);
+    }
+    
+    // Remove the ledger_table_type field if it exists (it's only for UI selection)
+    if (isset($data['ledger_table_type'])) {
+        unset($data['ledger_table_type']);
     }
     
     // Add timestamp if not provided
@@ -105,6 +177,11 @@ try {
             'columns_inserted' => count($columns),
             'timestamp' => date('Y-m-d H:i:s')
         ];
+        
+        if (isset($fileUploaded) && $fileUploaded) {
+            $response['file_uploaded'] = true;
+            $response['file_path'] = $uploadPath;
+        }
     } else {
         $error = $stmt->error;
         $stmt->close();
