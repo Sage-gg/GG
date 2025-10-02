@@ -268,6 +268,14 @@
     .scroll-smooth {
       scroll-behavior: smooth;
     }
+    
+    .table-selector-alert {
+      background: linear-gradient(135deg, #fff3cd, #fff8e1);
+      border: 2px solid #ffc107;
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
   </style>
 </head>
 <body class="scroll-smooth">
@@ -367,7 +375,7 @@
                 <i class="bi bi-journal-text"></i>
               </div>
               <h6 class="fw-bold mb-2">General Ledger</h6>
-              <p class="text-muted small mb-3">Insert journal entries</p>
+              <p class="text-muted small mb-3">Insert ledger records</p>
               <span class="status-indicator status-success"></span>
               <small class="text-muted">Active</small>
             </div>
@@ -611,8 +619,8 @@ class FinancialDataSender {
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="number" class="form-control" name="amount_allocated" placeholder="0.00" step="0.01" required>
-                            <label>Allocated Amount *</label>
+                            <input type="number" class="form-control" name="budgeted_amount" placeholder="0.00" step="0.01" required>
+                            <label>Budgeted Amount *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -661,8 +669,8 @@ class FinancialDataSender {
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="text" class="form-control" name="invoice_no" placeholder="INV-000" required>
-                            <label>Invoice Number *</label>
+                            <input type="text" class="form-control" name="job_order_invoice_no" placeholder="JO-000 / INV-000" required>
+                            <label>Job Order/Invoice No. *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -677,42 +685,22 @@ class FinancialDataSender {
                             <label>Due Date *</label>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="number" class="form-control" name="amount_base" step="0.01" required>
-                            <label>Base Amount *</label>
+                            <input type="number" class="form-control" name="amount_before_vat" step="0.01" required>
+                            <label>Amount (before VAT) *</label>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="form-floating">
                             <input type="number" class="form-control" name="amount_paid" step="0.01" value="0">
                             <label>Amount Paid</label>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating">
-                            <select class="form-select" name="vat_applied">
-                                <option value="No">No VAT</option>
-                                <option value="Yes" selected>Yes (12%)</option>
-                            </select>
-                            <label>VAT Applied</label>
-                        </div>
-                    </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <select class="form-select" name="payment_status">
-                                <option value="Pending" selected>Pending</option>
-                                <option value="Partial">Partial</option>
-                                <option value="Paid">Paid</option>
-                                <option value="Overdue">Overdue</option>
-                            </select>
-                            <label>Payment Status</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" name="collector_name" placeholder="Collector Name">
-                            <label>Collector Name</label>
+                            <input type="number" class="form-control" name="penalty" step="0.01" value="0" readonly>
+                            <label>Penalty (Auto-calculated)</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -730,6 +718,25 @@ class FinancialDataSender {
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
+                            <select class="form-select" name="payment_status">
+                                <option value="Unpaid" selected>Unpaid</option>
+                                <option value="Partial">Partial</option>
+                                <option value="Paid">Paid</option>
+                            </select>
+                            <label>Payment Status</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="vat_applied">
+                                <option value="No">No</option>
+                                <option value="Yes" selected>Yes</option>
+                            </select>
+                            <label>VAT Applied? *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
                             <select class="form-select" name="receipt_type">
                                 <option value="">Select Receipt Type</option>
                                 <option value="Official Receipt">Official Receipt</option>
@@ -738,6 +745,17 @@ class FinancialDataSender {
                             </select>
                             <label>Receipt Type</label>
                         </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="collector_name" placeholder="Collector Name">
+                            <label>Collector Name</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Receipt Attachment</label>
+                        <input type="file" class="form-control" name="receipt_attachment" accept="image/*,.pdf">
+                        <small class="text-muted">Accepted formats: Images (JPG, PNG) or PDF</small>
                     </div>
                 </div>
             </form>
@@ -750,8 +768,8 @@ class FinancialDataSender {
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="date" class="form-control" name="expense_date" required>
-                            <label>Expense Date *</label>
+                            <input type="date" class="form-control" name="date" required>
+                            <label>Date *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -759,23 +777,18 @@ class FinancialDataSender {
                             <select class="form-select" name="category" required>
                                 <option value="">Select Category</option>
                                 <option value="Fuel">Fuel</option>
-                                <option value="Maintenance">Maintenance</option>
-                                <option value="Office Supplies">Office Supplies</option>
-                                <option value="Professional Services">Professional Services</option>
-                                <option value="Utilities">Utilities</option>
-                                <option value="Travel">Travel</option>
-                                <option value="Equipment">Equipment</option>
-                                <option value="Training">Training</option>
-                                <option value="Insurance">Insurance</option>
-                                <option value="Other">Other</option>
+                                <option value="Repair & Maintenance">Repair & Maintenance</option>
+                                <option value="Toll Parking">Toll Parking</option>
+                                <option value="Supplies">Supplies</option>
+                                <option value="Others">Others</option>
                             </select>
                             <label>Category *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="text" class="form-control" name="vendor" placeholder="Vendor Name" required>
-                            <label>Vendor *</label>
+                            <input type="text" class="form-control" name="vendor_payee" placeholder="Vendor/Payee Name" required>
+                            <label>Vendor/Payee *</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -790,33 +803,16 @@ class FinancialDataSender {
                                 <option value="None">No Tax</option>
                                 <option value="VAT" selected>VAT (12%)</option>
                                 <option value="Withholding">Withholding Tax</option>
+                                <option value="Exempted">Exempted</option>
                                 <option value="Other">Other Tax</option>
                             </select>
                             <label>Tax Type</label>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="number" class="form-control" name="tax_amount" step="0.01" value="0">
-                            <label>Tax Amount</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <select class="form-select" name="status">
-                                <option value="Pending">Pending</option>
-                                <option value="Approved" selected>Approved</option>
-                                <option value="Rejected">Rejected</option>
-                                <option value="Reimbursed">Reimbursed</option>
-                            </select>
-                            <label>Status</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" name="approved_by" placeholder="Approver Name">
-                            <label>Approved By</label>
-                        </div>
+                    <div class="col-12">
+                        <label class="form-label">Attach Receipt</label>
+                        <input type="file" class="form-control" name="attach_receipt" accept="image/*,.pdf">
+                        <small class="text-muted">Accepted formats: Images (JPG, PNG) or PDF</small>
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
@@ -833,8 +829,31 @@ class FinancialDataSender {
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating">
-                            <input type="text" class="form-control" name="vehicle_crane" placeholder="Vehicle/Equipment ID">
-                            <label>Vehicle/Crane ID</label>
+                            <input type="text" class="form-control" name="vehicle_crane_assigned" placeholder="Vehicle/Crane ID">
+                            <label>Vehicle/Crane Assigned</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="job_rental_linked" placeholder="Job/Rental Reference">
+                            <label>Job/Rental Linked</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="approved_by" placeholder="Approver Name">
+                            <label>Approved By</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="status">
+                                <option value="Pending">Pending</option>
+                                <option value="Approved" selected>Approved</option>
+                                <option value="Rejected">Rejected</option>
+                                <option value="Reimbursed">Reimbursed</option>
+                            </select>
+                            <label>Status</label>
                         </div>
                     </div>
                     <div class="col-12">
@@ -852,6 +871,31 @@ class FinancialDataSender {
         return `
             <form id="ledgerForm">
                 <div class="row g-3">
+                    <div class="col-12">
+                        <div class="table-selector-alert">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Select Destination Table:</strong> Choose where to insert your ledger data
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <select class="form-select" id="ledgerTableSelect" name="ledger_table_type" required>
+                                <option value="">Choose destination table...</option>
+                                <option value="journal_entries" selected>Journal Entries</option>
+                                <option value="chart_of_accounts">Chart of Accounts</option>
+                                <option value="liquidation_records">Liquidation Records</option>
+                            </select>
+                            <label>Ledger Table Destination *</label>
+                        </div>
+                    </div>
+                    <div id="ledgerFormFields"></div>
+                </div>
+            </form>
+        `;
+    }
+    
+    getJournalEntriesFields() {
+        return `
                     <div class="col-md-6">
                         <div class="form-floating">
                             <input type="date" class="form-control" name="date" required>
@@ -929,8 +973,89 @@ class FinancialDataSender {
                             <label>Description</label>
                         </div>
                     </div>
-                </div>
-            </form>
+        `;
+    }
+    
+    getChartOfAccountsFields() {
+        return `
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="account_code" placeholder="1001" required>
+                            <label>Account Code *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="account_name" placeholder="Cash" required>
+                            <label>Account Name *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="account_type" required>
+                                <option value="">Select Account Type</option>
+                                <option value="Asset">Asset</option>
+                                <option value="Liability">Liability</option>
+                                <option value="Equity">Equity</option>
+                                <option value="Revenue">Revenue</option>
+                                <option value="Expense">Expense</option>
+                            </select>
+                            <label>Account Type *</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <textarea class="form-control" name="description" style="height: 100px" placeholder="Account description..."></textarea>
+                            <label>Description</label>
+                        </div>
+                    </div>
+        `;
+    }
+    
+    getLiquidationRecordsFields() {
+        return `
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="date" class="form-control" name="date" required>
+                            <label>Date *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="liquidation_id" placeholder="LQ-000" required>
+                            <label>Liquidation ID *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" name="employee" placeholder="Employee Name" required>
+                            <label>Employee *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="number" class="form-control" name="total_amount" step="0.01" required>
+                            <label>Total Amount *</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select class="form-select" name="status" required>
+                                <option value="">Select Status</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Approved" selected>Approved</option>
+                                <option value="Rejected">Rejected</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                            <label>Status *</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <textarea class="form-control" name="purpose" style="height: 100px" placeholder="Purpose and details of liquidation..." required></textarea>
+                            <label>Purpose *</label>
+                        </div>
+                    </div>
         `;
     }
     
@@ -1019,12 +1144,30 @@ class FinancialDataSender {
     }
     
     attachFormListeners() {
+        const ledgerTableSelect = document.getElementById('ledgerTableSelect');
+        if (ledgerTableSelect) {
+            ledgerTableSelect.addEventListener('change', (e) => {
+                this.updateLedgerFormFields(e.target.value);
+                this.selectedTable = e.target.value || 'journal_entries';
+                document.getElementById('selectedTableName').textContent = this.selectedTable;
+                this.addLog(`Ledger table changed to: ${this.selectedTable}`, 'info');
+            });
+            
+            if (ledgerTableSelect.value) {
+                this.updateLedgerFormFields(ledgerTableSelect.value);
+            }
+        }
+        
         document.querySelectorAll('#dataForm input, #dataForm select, #dataForm textarea').forEach(input => {
             input.addEventListener('input', () => {
                 this.updatePreview();
             });
             input.addEventListener('change', () => {
                 this.updatePreview();
+                // Auto-calculate penalty for collections
+                if (this.selectedModule === 'collections') {
+                    this.calculatePenalty();
+                }
             });
         });
         
@@ -1040,6 +1183,81 @@ class FinancialDataSender {
         document.getElementById('sendDataBtn').disabled = !this.dbConnected;
     }
     
+    calculatePenalty() {
+        const dueDateInput = document.querySelector('input[name="due_date"]');
+        const amountInput = document.querySelector('input[name="amount_before_vat"]');
+        const penaltyInput = document.querySelector('input[name="penalty"]');
+        const paymentStatusSelect = document.querySelector('select[name="payment_status"]');
+        
+        if (!dueDateInput || !amountInput || !penaltyInput) return;
+        
+        const dueDate = new Date(dueDateInput.value);
+        const today = new Date();
+        const amount = parseFloat(amountInput.value) || 0;
+        const paymentStatus = paymentStatusSelect ? paymentStatusSelect.value : '';
+        
+        // Only calculate penalty if overdue or payment status is overdue
+        if ((today > dueDate || paymentStatus === 'Overdue') && amount > 0) {
+            const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+            
+            if (daysOverdue > 0) {
+                // Calculate 2% penalty per month (0.0667% per day approximately)
+                const penaltyRate = 0.02; // 2% per month
+                const monthsOverdue = daysOverdue / 30;
+                const penalty = amount * penaltyRate * monthsOverdue;
+                
+                penaltyInput.value = penalty.toFixed(2);
+            } else {
+                penaltyInput.value = '0.00';
+            }
+        } else {
+            penaltyInput.value = '0.00';
+        }
+        
+        this.updatePreview();
+    }
+    
+    updateLedgerFormFields(tableType) {
+        const fieldsContainer = document.getElementById('ledgerFormFields');
+        if (!fieldsContainer) return;
+        
+        let fieldsHTML = '';
+        
+        switch (tableType) {
+            case 'journal_entries':
+                fieldsHTML = this.getJournalEntriesFields();
+                break;
+            case 'chart_of_accounts':
+                fieldsHTML = this.getChartOfAccountsFields();
+                break;
+            case 'liquidation_records':
+                fieldsHTML = this.getLiquidationRecordsFields();
+                break;
+            default:
+                fieldsHTML = '<div class="col-12"><p class="text-muted">Please select a destination table</p></div>';
+        }
+        
+        fieldsContainer.innerHTML = fieldsHTML;
+        
+        document.querySelectorAll('#ledgerFormFields input, #ledgerFormFields select, #ledgerFormFields textarea').forEach(input => {
+            input.addEventListener('input', () => {
+                this.updatePreview();
+            });
+            input.addEventListener('change', () => {
+                this.updatePreview();
+            });
+        });
+        
+        const today = new Date().toISOString().split('T')[0];
+        fieldsContainer.querySelectorAll('input[type="date"]').forEach(input => {
+            if (!input.value) {
+                input.value = today;
+            }
+        });
+        
+        this.updatePreview();
+    }
+    
     updatePreview() {
         const form = document.querySelector('#dataForm form');
         if (!form) return;
@@ -1048,7 +1266,11 @@ class FinancialDataSender {
         const data = {};
         
         for (let [key, value] of formData.entries()) {
-            if (value && value.trim() !== '') {
+            if (key === 'attach_receipt' && value instanceof File && value.size > 0) {
+                data[key] = value.name + ' (' + (value.size / 1024).toFixed(2) + ' KB)';
+            } else if (value && value.trim !== undefined && value.trim() !== '') {
+                data[key] = value;
+            } else if (value && typeof value === 'string' && value !== '') {
                 data[key] = value;
             }
         }
@@ -1059,11 +1281,13 @@ class FinancialDataSender {
         let previewHTML = '';
         
         Object.entries(data).forEach(([key, value]) => {
-            previewHTML += `
-                <div class="data-field">
-                    <strong>${this.formatFieldName(key)}:</strong> ${value}
-                </div>
-            `;
+            if (key !== 'ledger_table_type') {
+                previewHTML += `
+                    <div class="data-field">
+                        <strong>${this.formatFieldName(key)}:</strong> ${value}
+                    </div>
+                `;
+            }
         });
         
         if (previewHTML === '') {
@@ -1095,32 +1319,64 @@ class FinancialDataSender {
         sendBtn.disabled = true;
         
         try {
-            const payload = {
-                table: this.selectedTable,
-                module: this.selectedModule,
-                data: this.currentData
-            };
+            const form = document.querySelector('#dataForm form');
+            const formData = new FormData(form);
             
-            const response = await fetch('insert_financial_data.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload)
-            });
+            // Check if there's a file upload
+            const fileInput = form.querySelector('input[type="file"]');
+            const hasFile = fileInput && fileInput.files.length > 0;
             
-            const result = await response.json();
-            
-            if (result.success) {
-                this.addLog(`✅ Data inserted successfully into ${this.selectedTable} table`, 'success');
-                this.addLog(`Record ID: ${result.insert_id} | Affected Rows: ${result.affected_rows}`, 'info');
+            if (hasFile) {
+                // Handle file upload with FormData
+                formData.append('table', this.selectedTable);
+                formData.append('module', this.selectedModule);
                 
-                this.showNotification('Data inserted successfully into database!', 'success');
+                const response = await fetch('insert_financial_data.php', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                this.resetForm();
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.addLog(`✅ Data inserted successfully into ${this.selectedTable} table`, 'success');
+                    this.addLog(`Record ID: ${result.insert_id} | Affected Rows: ${result.affected_rows}`, 'info');
+                    if (result.file_uploaded) {
+                        this.addLog(`📎 Receipt uploaded: ${result.file_path}`, 'success');
+                    }
+                    this.showNotification('Data inserted successfully into database!', 'success');
+                    this.resetForm();
+                } else {
+                    this.addLog(`❌ Database insertion failed: ${result.error}`, 'error');
+                    this.showNotification('Database insertion failed: ' + result.error, 'error');
+                }
             } else {
-                this.addLog(`❌ Database insertion failed: ${result.error}`, 'error');
-                this.showNotification('Database insertion failed: ' + result.error, 'error');
+                // Handle regular JSON data (no file)
+                const payload = {
+                    table: this.selectedTable,
+                    module: this.selectedModule,
+                    data: this.currentData
+                };
+                
+                const response = await fetch('insert_financial_data.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.addLog(`✅ Data inserted successfully into ${this.selectedTable} table`, 'success');
+                    this.addLog(`Record ID: ${result.insert_id} | Affected Rows: ${result.affected_rows}`, 'info');
+                    this.showNotification('Data inserted successfully into database!', 'success');
+                    this.resetForm();
+                } else {
+                    this.addLog(`❌ Database insertion failed: ${result.error}`, 'error');
+                    this.showNotification('Database insertion failed: ' + result.error, 'error');
+                }
             }
             
         } catch (error) {
@@ -1140,6 +1396,11 @@ class FinancialDataSender {
             form.querySelectorAll('input[type="date"]').forEach(input => {
                 input.value = today;
             });
+            
+            const ledgerSelect = document.getElementById('ledgerTableSelect');
+            if (ledgerSelect && ledgerSelect.value) {
+                this.updateLedgerFormFields(ledgerSelect.value);
+            }
         }
         
         this.currentData = {};
