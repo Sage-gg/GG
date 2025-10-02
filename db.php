@@ -854,20 +854,32 @@ function cleanOldLoginAttempts() {
 // =============================================================================
 // EXISTING UTILITY FUNCTIONS (UNCHANGED)
 // =============================================================================
-
 if (!function_exists('calculateTaxAmount')) {
-    function calculateTaxAmount($taxType, $amount) {
-        switch($taxType) {
-            case 'VAT':
-                return $amount * 0.12;
-            case 'Withholding':
-                return $amount * 0.02;
-            case 'Exempted':
-            case 'None':
-            default:
-                return 0.00;
-        }
+function calculateTaxAmount($taxType, $amount) {
+    $amount = floatval($amount);
+    $taxAmount = 0;
+    
+    switch ($taxType) {
+        case 'VAT':
+        case 'VAT (12%)':  // ADD THIS LINE
+            $taxAmount = $amount * 0.12; // 12% VAT
+            break;
+        case 'Withholding':
+        case 'Withholding (2%)':  // ADD THIS LINE
+            $taxAmount = $amount * 0.02; // 2% Withholding Tax
+            break;
+        case 'Exempted':
+        case 'None':
+        case 'No Tax':
+            $taxAmount = 0;
+            break;
+        default:
+            $taxAmount = 0;
+            break;
     }
+    
+    return round($taxAmount, 2);
+}
 }
 
 if (!function_exists('formatCurrency')) {
@@ -972,3 +984,4 @@ function checkPHPMailerStatus() {
     }
 }
 ?>
+
