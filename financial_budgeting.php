@@ -1,6 +1,6 @@
 <?php
 require_once 'db.php';
-
+// this is financial_budgeting.php
 // CRITICAL: Check authentication and session timeout BEFORE any output
 requireLogin();
 
@@ -433,21 +433,23 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
 // Enhanced JavaScript for financial_budgeting.php
 // Complete integration with AI Budget Forecasting System
 
-// Department to Cost Center mapping (Updated to match your current system)
+// Department to Cost Center mapping (UPDATED)
 const departmentCostCenters = {
-  'HR2': ['Training Budget', 'Reimbursement Budget'],
-  'HR4': ['Benefits Budget'],
-  'Core 2': ['Log Maintenance Costs', 'Depreciation Charges', 'Insurance Fees'],
-  'Core 4': ['Vehicle Operational Budget']
+  'HR': ['Training Budget', 'Reimbursement Budget', 'Benefits Budget'],
+  'Core': ['Log Maintenance Costs', 'Depreciation Charges', 'Insurance Fees', 'Vehicle Operational Budget']
 };
 
 // Legacy department mapping for existing records
 const legacyDepartmentMapping = {
-  'Logistics': 'HR2',
-  'Operations': 'Core 4', 
-  'Maintenance': 'Core 2',
-  'Accounting': 'HR4',
-  'Administration': 'HR4'
+  'HR2': 'HR',
+  'HR4': 'HR',
+  'Core 2': 'Core',
+  'Core 4': 'Core',
+  'Logistics': 'Core',
+  'Operations': 'Core', 
+  'Maintenance': 'Core',
+  'Accounting': 'HR',
+  'Administration': 'HR'
 };
 
 // Legacy cost center mapping for existing records
@@ -548,6 +550,9 @@ document.addEventListener('click', function(e){
     const rec = JSON.parse(btn.dataset.record);
     const diff = (parseFloat(rec.amount_allocated || 0) - parseFloat(rec.amount_used || 0));
     
+    // Map legacy department to new structure for display
+    const displayDepartment = legacyDepartmentMapping[rec.department] || rec.department;
+    
     const elements = {
       v_period: document.getElementById('v_period'),
       v_department: document.getElementById('v_department'),
@@ -561,7 +566,7 @@ document.addEventListener('click', function(e){
     };
     
     if (elements.v_period) elements.v_period.textContent = rec.period || '';
-    if (elements.v_department) elements.v_department.textContent = rec.department || '';
+    if (elements.v_department) elements.v_department.textContent = displayDepartment;
     if (elements.v_cost_center) elements.v_cost_center.textContent = rec.cost_center || '';
     if (elements.v_alloc) elements.v_alloc.textContent = peso(rec.amount_allocated);
     if (elements.v_used) elements.v_used.textContent = peso(rec.amount_used);
@@ -606,34 +611,35 @@ document.addEventListener('click', function(e){
     if (elements.edit_approval_status) elements.edit_approval_status.value = rec.approval_status || '';
     if (elements.edit_description) elements.edit_description.value = rec.description || '';
     
-    // Handle department - check if it's legacy data
-    let mappedDepartment = rec.department;
-    if (legacyDepartmentMapping[rec.department]) {
-      mappedDepartment = legacyDepartmentMapping[rec.department];
-      console.log(`Legacy department "${rec.department}" mapped to "${mappedDepartment}"`);
-    }
+    // Handle department - map legacy to new structure
+    let mappedDepartment = legacyDepartmentMapping[rec.department] || rec.department;
+    console.log(`Department "${rec.department}" mapped to "${mappedDepartment}"`);
     
-    // Ensure department option exists
     if (elements.edit_department) {
-      ensureLegacyOption(elements.edit_department, rec.department, rec.department);
-      elements.edit_department.value = rec.department;
+      elements.edit_department.value = mappedDepartment;
     }
     
-    // Update cost center options based on department
+    // Update cost center options based on mapped department
     updateCostCenter('edit');
     
-    // Handle cost center - check if it's legacy data
+    // Handle cost center - ensure it exists in new structure
     setTimeout(() => {
-      let mappedCostCenter = rec.cost_center;
-      if (legacyCostCenterMapping[rec.cost_center]) {
-        mappedCostCenter = legacyCostCenterMapping[rec.cost_center];
-        console.log(`Legacy cost center "${rec.cost_center}" mapped to "${mappedCostCenter}"`);
-      }
+      let mappedCostCenter = legacyCostCenterMapping[rec.cost_center] || rec.cost_center;
+      console.log(`Cost center "${rec.cost_center}" mapped to "${mappedCostCenter}"`);
       
-      // Ensure cost center option exists
       if (elements.edit_cost_center) {
-        ensureLegacyOption(elements.edit_cost_center, rec.cost_center, rec.cost_center);
-        elements.edit_cost_center.value = rec.cost_center;
+        // Check if the mapped cost center exists in the new department's options
+        const costCenterExists = Array.from(elements.edit_cost_center.options).some(
+          option => option.value === mappedCostCenter
+        );
+        
+        if (costCenterExists) {
+          elements.edit_cost_center.value = mappedCostCenter;
+        } else {
+          // Add legacy option if it doesn't exist
+          ensureLegacyOption(elements.edit_cost_center, rec.cost_center, rec.cost_center + ' (Legacy - Please Update)');
+          elements.edit_cost_center.value = rec.cost_center;
+        }
       }
     }, 100);
     
@@ -672,25 +678,20 @@ function notifyDepartment(formType) {
     return;
   }
   
-  // Enhanced notification with department mapping
-  const actualDepartment = legacyDepartmentMapping[department] || department;
-  const actualCostCenter = legacyCostCenterMapping[costCenter] || costCenter;
-  
-  const message = `📧 ENHANCED: Budget notification sent to ${actualDepartment} Department.\n\n` +
+  const message = `Budget notification sent to ${department} Department.\n\n` +
         `Details:\n` +
-        `• Cost Center: ${actualCostCenter || 'Not specified'}\n` +
+        `• Cost Center: ${costCenter || 'Not specified'}\n` +
         `• Amount: ₱${amount ? parseFloat(amount).toLocaleString() : 'Not specified'}\n` +
         `• Budget Period: ${period || 'Not specified'}\n\n` +
         `Notification Message:\n` +
         `"Your budget allocation has been processed. The AI forecasting system has analyzed this allocation and will include it in future predictions. Please monitor your spending against the allocated amount."\n\n` +
-        `🤖 AI Integration: This data will be used for future budget forecasting\n` +
-        `🔗 System Integration: financial_budgeting_departments_v2.1`;
+        `AI Integration: This data will be used for future budget forecasting\n` +
+        `System Integration: financial_budgeting_departments_v2.1`;
   
   alert(message);
   console.log('Enhanced Department Notification:', {
-    originalDepartment: department,
-    mappedDepartment: actualDepartment,
-    costCenter: actualCostCenter,
+    department: department,
+    costCenter: costCenter,
     amount: amount,
     period: period,
     timestamp: new Date().toISOString(),
@@ -716,18 +717,14 @@ function forwardToAdmin(formType) {
     return;
   }
   
-  // Enhanced admin forwarding with AI insights
-  const actualDepartment = legacyDepartmentMapping[department] || department;
-  const actualCostCenter = legacyCostCenterMapping[costCenter] || costCenter;
-  
-  const message = `📤 ENHANCED: Budget request forwarded to Admin Dashboard.\n\n` +
+  const message = `Budget request forwarded to Admin Dashboard.\n\n` +
         `Request Details:\n` +
-        `• Department: ${actualDepartment}\n` +
-        `• Cost Center: ${actualCostCenter || 'Not specified'}\n` +
+        `• Department: ${department}\n` +
+        `• Cost Center: ${costCenter || 'Not specified'}\n` +
         `• Requested Amount: ₱${amount ? parseFloat(amount).toLocaleString() : 'Not specified'}\n` +
         `• Budget Period: ${period || 'Not specified'}\n` +
         `• Description: ${description || 'No description provided'}\n\n` +
-        `🤖 AI Recommendation:\n` +
+        `AI Recommendation:\n` +
         `• Historical data shows this department typically utilizes 85% of allocated budget\n` +
         `• Seasonal factors suggest ${period === 'Monthly' ? 'standard approval' : 'detailed review'} recommended\n` +
         `• Risk assessment: LOW based on department spending patterns\n\n` +
@@ -736,12 +733,15 @@ function forwardToAdmin(formType) {
         `• Compare against historical spending\n` +
         `• Auto-approve based on AI confidence score\n` +
         `• Request additional justification\n\n` +
-        `🔗 Enhanced Integration: financial_budgeting_admin_v2.1`;
+        `Enhanced Integration: financial_budgeting_admin_v2.1`;
   
   alert(message);
   console.log('Enhanced Admin Forward:', {
-    originalData: { department, costCenter, amount, description, period },
-    mappedData: { department: actualDepartment, costCenter: actualCostCenter },
+    department: department,
+    costCenter: costCenter,
+    amount: amount,
+    description: description,
+    period: period,
     timestamp: new Date().toISOString(),
     aiEnhanced: true,
     recommendationLevel: 'automated_with_ai_insights'
@@ -758,15 +758,15 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Verify AI system initialization
   if (window.budgetAI) {
-    console.log('✅ AI Budget Forecasting System: READY');
+    console.log('AI Budget Forecasting System: READY');
   } else {
-    console.warn('⚠️  AI Budget Forecasting System: Loading...');
+    console.warn('AI Budget Forecasting System: Loading...');
     // Retry after a short delay
     setTimeout(() => {
       if (window.budgetAI) {
-        console.log('✅ AI Budget Forecasting System: READY (Delayed)');
+        console.log('AI Budget Forecasting System: READY (Delayed)');
       } else {
-        console.error('❌ AI Budget Forecasting System: Failed to initialize');
+        console.error('AI Budget Forecasting System: Failed to initialize');
       }
     }, 1000);
   }
@@ -817,7 +817,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-console.log('🚀 System Ready - Press Ctrl+Shift+F for AI Forecast, Ctrl+Shift+A for Add Budget');
+console.log('System Ready - Press Ctrl+Shift+F for AI Forecast, Ctrl+Shift+A for Add Budget');
 </script>
 </bpdy>
 </html>
