@@ -420,7 +420,6 @@ if (!function_exists('formatCurrency')) {
                                 <option value="income_statement">Income Statement</option>
                                 <option value="balance_sheet">Balance Sheet</option>
                                 <option value="cash_flow">Cash Flow Statement</option>
-                                <option value="trial_balance">Trial Balance</option>
                                 <option value="budget_performance">Budget Performance</option>
                             </select>
                             
@@ -486,9 +485,6 @@ if (!function_exists('formatCurrency')) {
             <button class="btn btn-outline-info report-card" data-report="cash_flow">
                 💵 Cash Flow
             </button>
-            <button class="btn btn-outline-warning report-card" data-report="trial_balance">
-                📋 Trial Balance
-            </button>
             <button class="btn btn-outline-secondary report-card" data-report="budget_performance">
                 📊 Budget Performance
             </button>
@@ -508,7 +504,6 @@ if (!function_exists('formatCurrency')) {
                     <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('income_statement')">📈 Income Statement</a></li>
                     <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('balance_sheet')">📊 Balance Sheet</a></li>
                     <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('cash_flow')">💵 Cash Flow</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('trial_balance')">📋 Trial Balance</a></li>
                     <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('budget_performance')">📊 Budget Performance</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="exportAllFinancialReports()">📑 Export All Reports</a></li>
@@ -1426,3 +1421,4 @@ function formatCurrency(amount) {
         maximumFractionDigits: 2
     });
 }
+
