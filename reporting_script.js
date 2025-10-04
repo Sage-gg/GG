@@ -271,10 +271,6 @@ class FinancialReportingJS {
                     formData.append('start_date', startDate);
                     formData.append('end_date', endDate);
                     break;
-                case 'trial_balance':
-                    formData.append('action', 'getTrialBalance');
-                    formData.append('as_of_date', endDate);
-                    break;
                 case 'budget_performance':
                     formData.append('action', 'getBudgetPerformance');
                     const period = document.getElementById('budgetPeriod') ? document.getElementById('budgetPeriod').value : null;
@@ -359,15 +355,6 @@ class FinancialReportingJS {
                     financing: 0,
                     net_cash_flow: baseRevenue - baseExpenses
                 };
-            case 'trial_balance':
-                return {
-                    accounts: [
-                        { account_code: '1000', account_name: 'Cash', account_type: 'Asset', total_debit: 50000, total_credit: 0, balance: 50000 },
-                        { account_code: '1200', account_name: 'Accounts Receivable', account_type: 'Asset', total_debit: 25000, total_credit: 0, balance: 25000 }
-                    ],
-                    total_debits: 75000,
-                    total_credits: 75000
-                };
             case 'budget_performance':
                 return [
                     {
@@ -412,10 +399,6 @@ class FinancialReportingJS {
             case 'cash_flow':
                 reportTitle.textContent = '💵 Cash Flow Statement' + dateRangeText;
                 reportContent.innerHTML = this.generateCashFlowHTML(data);
-                break;
-            case 'trial_balance':
-                reportTitle.textContent = '📋 Trial Balance' + ` (As of ${this.formatDateShort(endDate)})`;
-                reportContent.innerHTML = this.generateTrialBalanceHTML(data);
                 break;
             case 'budget_performance':
                 reportTitle.textContent = '📊 Budget Performance' + dateRangeText;
@@ -676,62 +659,6 @@ class FinancialReportingJS {
             </div>`;
     }
     
-    generateTrialBalanceHTML(data) {
-        const asOfDate = document.getElementById('endDate')?.value;
-        
-        let html = `
-            <p><strong>As of:</strong> ${this.formatDate(asOfDate)}</p>
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Account Code</th>
-                            <th>Account Name</th>
-                            <th>Type</th>
-                            <th class="text-end">Debit (₱)</th>
-                            <th class="text-end">Credit (₱)</th>
-                            <th class="text-end">Balance (₱)</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-        
-        if (data.accounts && Array.isArray(data.accounts)) {
-            data.accounts.forEach(account => {
-                html += `
-                    <tr>
-                        <td>${account.account_code || ''}</td>
-                        <td>${account.account_name || ''}</td>
-                        <td>${account.account_type || ''}</td>
-                        <td class="text-end currency">${this.formatCurrency(account.total_debit || 0)}</td>
-                        <td class="text-end currency">${this.formatCurrency(account.total_credit || 0)}</td>
-                        <td class="text-end currency ${(account.balance || 0) >= 0 ? 'text-success' : 'text-danger'}">
-                            ${this.formatCurrency(Math.abs(account.balance || 0))}
-                        </td>
-                    </tr>`;
-            });
-            
-            html += `
-                        <tr class="table-secondary fw-bold">
-                            <td colspan="3">TOTALS</td>
-                            <td class="text-end currency">${this.formatCurrency(data.total_debits || 0)}</td>
-                            <td class="text-end currency">${this.formatCurrency(data.total_credits || 0)}</td>
-                            <td class="text-end"></td>
-                        </tr>`;
-        } else {
-            html += `
-                <tr>
-                    <td colspan="6" class="text-center text-muted">No trial balance data available</td>
-                </tr>`;
-        }
-        
-        html += `
-                    </tbody>
-                </table>
-            </div>`;
-        
-        return html;
-    }
-    
     generateBudgetPerformanceHTML(data) {
         let html = `
             <div class="table-responsive">
@@ -935,4 +862,5 @@ function formatNumber(number, decimals = 2) {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     });
+
 }
