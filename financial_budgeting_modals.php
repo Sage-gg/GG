@@ -1,5 +1,6 @@
-<?php // financial_budgeting_modals.php ?>
+<?php // financial_budgeting_modals.php - UPDATED - COMPLETE VERSION ?>
 <?php include 'budget_forecast_modal.php'; ?>
+
 <!-- ADD Budget Modal -->
 <div class="modal fade" id="addBudgetModal" tabindex="-1" aria-labelledby="addBudgetModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -7,13 +8,13 @@
       <form action="budgets_actions.php" method="post">
         <input type="hidden" name="action" value="create">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold" id="addBudgetModalLabel">➕ Add Budget Allocation</h5>
+          <h5 class="modal-title fw-bold" id="addBudgetModalLabel">Add Budget Allocation</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body row g-3">
           <div class="col-md-6">
             <label class="form-label">Budget Period</label>
-            <select class="form-select" name="period" required>
+            <select class="form-select" name="period" id="add_period" required>
               <option disabled selected value="">Select Period</option>
               <option>Annually</option>
               <option>Monthly</option>
@@ -24,10 +25,8 @@
             <label class="form-label">Department</label>
             <select class="form-select" name="department" id="add_department" onchange="updateCostCenter('add')" required>
               <option disabled selected value="">Select Department</option>
-              <option value="HR2">HR2 (Training Management/Claims and Reimbursement)</option>
-              <option value="HR4">HR4 (Benefits Management)</option>
-              <option value="Core 2">Core 2 (Asset Management)</option>
-              <option value="Core 4">Core 4 (Fleet Management)</option>
+              <option value="HR">HR (Training, Reimbursement & Benefits)</option>
+              <option value="Core">Core (Asset & Fleet Management)</option>
             </select>
           </div>
           <div class="col-md-6">
@@ -65,10 +64,10 @@
           <div class="d-flex justify-content-between w-100">
             <div class="d-flex gap-2">
               <button type="button" class="btn btn-info btn-sm" onclick="notifyDepartment('add')" title="Send notification to department">
-                📧 Notify Department
+                Notify Department
               </button>
               <button type="button" class="btn btn-warning btn-sm" onclick="forwardToAdmin('add')" title="Forward request to admin">
-                📤 Forward to Admin
+                Forward to Admin
               </button>
             </div>
             <div class="d-flex gap-2">
@@ -87,7 +86,7 @@
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold">📄 View Budget Allocation</h5>
+        <h5 class="modal-title fw-bold">View Budget Allocation</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -116,7 +115,7 @@
         <input type="hidden" name="action" value="update">
         <input type="hidden" id="edit_id" name="id">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold" id="editBudgetModalLabel">✏️ Edit Budget Allocation</h5>
+          <h5 class="modal-title fw-bold" id="editBudgetModalLabel">Edit Budget Allocation</h5>
           <button class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body row g-3">
@@ -131,10 +130,8 @@
           <div class="col-md-6">
             <label class="form-label">Department</label>
             <select class="form-select" name="department" id="edit_department" onchange="updateCostCenter('edit')">
-              <option value="HR2">HR2 (Training Management/Claims and Reimbursement)</option>
-              <option value="HR4">HR4 (Benefits Management)</option>
-              <option value="Core 2">Core 2 (Asset Management)</option>
-              <option value="Core 4">Core 4 (Fleet Management)</option>
+              <option value="HR">HR (Training, Reimbursement & Benefits)</option>
+              <option value="Core">Core (Asset & Fleet Management)</option>
             </select>
           </div>
           <div class="col-md-6">
@@ -172,10 +169,10 @@
           <div class="d-flex justify-content-between w-100">
             <div class="d-flex gap-2">
               <button type="button" class="btn btn-info btn-sm" onclick="notifyDepartment('edit')" title="Send notification to department">
-                📧 Notify Department
+                Notify Department
               </button>
               <button type="button" class="btn btn-warning btn-sm" onclick="forwardToAdmin('edit')" title="Forward request to admin">
-                📤 Forward to Admin
+                Forward to Admin
               </button>
             </div>
             <div class="d-flex gap-2">
@@ -197,7 +194,7 @@
         <input type="hidden" name="action" value="delete">
         <input type="hidden" id="delete_id" name="id">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold text-danger">🗑️ Confirm Delete</h5>
+          <h5 class="modal-title fw-bold text-danger">Confirm Delete</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
