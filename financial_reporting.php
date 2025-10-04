@@ -438,7 +438,6 @@ if (!function_exists('formatCurrency')) {
                                 <div class="card-body text-center">
                                     <h6 class="card-title">Total Revenue</h6>
                                     <h4 class="currency" id="totalRevenue"><?php echo formatCurrency($financial_summary['total_revenue']); ?></h4>
-                                    <small class="period-text">Current Period</small>
                                 </div>
                             </div>
                         </div>
@@ -447,7 +446,6 @@ if (!function_exists('formatCurrency')) {
                                 <div class="card-body text-center">
                                     <h6 class="card-title">Total Expenses</h6>
                                     <h4 class="currency" id="totalExpenses"><?php echo formatCurrency($financial_summary['total_expenses']); ?></h4>
-                                    <small class="period-text">Current Period</small>
                                 </div>
                             </div>
                         </div>
@@ -456,7 +454,6 @@ if (!function_exists('formatCurrency')) {
                                 <div class="card-body text-center">
                                     <h6 class="card-title">Net Income</h6>
                                     <h4 class="currency" id="netIncome"><?php echo formatCurrency($financial_summary['net_income']); ?></h4>
-                                    <small class="period-text">Current Period</small>
                                 </div>
                             </div>
                         </div>
@@ -1421,4 +1418,5 @@ function formatCurrency(amount) {
         maximumFractionDigits: 2
     });
 }
+
 
