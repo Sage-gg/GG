@@ -203,50 +203,6 @@ class FinancialReporting {
         return $data;
     }
     
-    // Get Trial Balance Data
-    public function getTrialBalance($asOfDate) {
-        $query = "SELECT 
-                    coa.account_code,
-                    coa.account_name,
-                    coa.account_type,
-                    COALESCE(SUM(je.debit), 0) as total_debit,
-                    COALESCE(SUM(je.credit), 0) as total_credit,
-                    CASE 
-                        WHEN coa.account_type IN ('Asset', 'Expense') THEN 
-                            COALESCE(SUM(je.debit - je.credit), 0)
-                        ELSE 
-                            COALESCE(SUM(je.credit - je.debit), 0)
-                    END as balance
-                  FROM chart_of_accounts coa
-                  LEFT JOIN journal_entries je ON coa.account_code = je.account_code 
-                  AND je.date <= ? AND je.status = 'Posted'
-                  WHERE coa.status = 'Active'
-                  GROUP BY coa.account_code, coa.account_name, coa.account_type
-                  HAVING total_debit != 0 OR total_credit != 0 OR balance != 0
-                  ORDER BY coa.account_code";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bind_param("s", $asOfDate);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        $data = [];
-        $totalDebits = 0;
-        $totalCredits = 0;
-        
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
-            $totalDebits += $row['total_debit'];
-            $totalCredits += $row['total_credit'];
-        }
-        
-        return [
-            'accounts' => $data,
-            'total_debits' => $totalDebits,
-            'total_credits' => $totalCredits
-        ];
-    }
-    
     // Helper function to get income statement details
     private function getIncomeStatementDetails($startDate, $endDate) {
         $details = [];
@@ -500,4 +456,5 @@ function logExportActivity($reportType, $status, $message = '') {
     }
     error_log($logEntry);
 }
+
 ?>
