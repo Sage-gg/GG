@@ -1,8 +1,84 @@
 <?php
 require_once 'db.php';
+// index.php
+// Require login to access dashboard
 requireLogin();
 
-// Function to get detailed collections breakdown
+// ORIGINAL FUNCTIONS - Keep for backward compatibility
+function getCollectionsSummary() {
+  global $conn;
+  
+  $total_collected = 0;
+  $total_pending = 0;
+  $total_overdue = 0;
+  
+  $today = date('Y-m-d');
+  
+  try {
+    $sql = "SELECT * FROM collections";
+    $res = $conn->query($sql);
+    
+    if ($res) {
+      while ($r = $res->fetch_assoc()) {
+        $total_collected += (float)$r['amount_paid'];
+        
+        // Calculate pending amount (amount due - amount paid, not below zero)
+        $pending = max(0, (float)$r['amount_due'] - (float)$r['amount_paid']);
+        $total_pending += $pending;
+
+        // Calculate overdue (pending amounts past due date for unpaid/partial status)
+        if ($r['payment_status'] !== 'Paid' && $r['due_date'] < $today && $pending > 0) {
+          $total_overdue += $pending;
+        }
+      }
+    }
+  } catch (Exception $e) {
+    // Handle database errors gracefully
+    error_log("Dashboard collections summary error: " . $e->getMessage());
+  }
+  
+  return [
+    'total_collected' => round($total_collected, 2),
+    'total_pending' => round($total_pending, 2),
+    'total_overdue' => round($total_overdue, 2)
+  ];
+}
+
+// Function to get budget summary data
+function getBudgetSummary() {
+  global $conn;
+  
+  $total_budget = 0;
+  $total_used = 0;
+  $total_remaining = 0;
+  
+  try {
+    $sql = "SELECT 
+              COALESCE(SUM(amount_allocated),0) AS total_budget,
+              COALESCE(SUM(amount_used),0) AS total_used,
+              COALESCE(SUM(amount_allocated - amount_used),0) AS total_remaining
+            FROM budgets";
+    
+    $result = $conn->query($sql);
+    
+    if ($result && $row = $result->fetch_assoc()) {
+      $total_budget = (float)$row['total_budget'];
+      $total_used = (float)$row['total_used'];
+      $total_remaining = (float)$row['total_remaining'];
+    }
+  } catch (Exception $e) {
+    // Handle database errors gracefully
+    error_log("Dashboard budget summary error: " . $e->getMessage());
+  }
+  
+  return [
+    'total_budget' => round($total_budget, 2),
+    'total_used' => round($total_used, 2),
+    'total_remaining' => round($total_remaining, 2)
+  ];
+}
+
+// NEW DETAILED BREAKDOWN FUNCTIONS
 function getCollectionsBreakdown() {
   global $conn;
   
@@ -91,7 +167,6 @@ function getCollectionsBreakdown() {
   return $breakdown;
 }
 
-// Function to get detailed budget breakdown
 function getBudgetBreakdown() {
   global $conn;
   
@@ -201,23 +276,15 @@ function getBudgetBreakdown() {
   return $breakdown;
 }
 
-// Get the breakdowns
+// Get the summaries (original functions)
+$collectionsSummary = getCollectionsSummary();
+$budgetSummary = getBudgetSummary();
+
+// Get the detailed breakdowns (new functions)
 $collectionsBreakdown = getCollectionsBreakdown();
 $budgetBreakdown = getBudgetBreakdown();
 
-// Get summary totals
-$collectionsSummary = [
-  'total_collected' => round($collectionsBreakdown['total_collected']['amount'], 2),
-  'total_pending' => round($collectionsBreakdown['total_pending']['amount'], 2),
-  'total_overdue' => round($collectionsBreakdown['total_overdue']['amount'], 2)
-];
-
-$budgetSummary = [
-  'total_budget' => round($budgetBreakdown['total_budget']['amount'], 2),
-  'total_used' => round($budgetBreakdown['total_used']['amount'], 2),
-  'total_remaining' => round($budgetBreakdown['total_remaining']['amount'], 2)
-];
-
+// Format currency function
 function formatCurrency($amount) {
   return '₱' . number_format($amount, 2);
 }
@@ -351,6 +418,7 @@ function formatCurrency($amount) {
 
   <?php include 'sidebar_navbar.php'; ?>
 
+  <!-- Main Content -->
   <div class="main-content">
     <div class="container-fluid mt-4 px-4">
       
@@ -361,6 +429,7 @@ function formatCurrency($amount) {
         </div>
       <?php endif; ?>
       
+      <!-- Page Content -->
       <h2 class="fw-bold mb-4">Dashboard</h2>
       
       <!-- Collections Summary -->
@@ -430,6 +499,7 @@ function formatCurrency($amount) {
       <!-- Module Navigation Cards -->
       <h4 class="fw-bold mb-3">Financial Modules</h4>
       <div class="row g-4">
+
         <div class="col-md-4">
           <a href="index.php" class="card-link">
             <div class="card p-4">
@@ -501,6 +571,7 @@ function formatCurrency($amount) {
             </div>
           </a>
         </div>
+
       </div>
     </div>
   </div>
@@ -530,13 +601,13 @@ function formatCurrency($amount) {
           });
           resetSessionTimer();
         }
-      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>); // 5 minutes before timeout
+      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>); // 5 minutes before 10-minute timeout
       
       // Auto logout after full timeout
       sessionTimeout = setTimeout(function() {
         alert('Your session has expired due to inactivity. You will be redirected to the login page.');
         window.location.href = 'login.php?timeout=1';
-      }, <?php echo SESSION_TIMEOUT * 1000; ?>);
+      }, <?php echo SESSION_TIMEOUT * 1000; ?>); // 10 minutes
     }
 
     // Track user activity
@@ -553,7 +624,7 @@ function formatCurrency($amount) {
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  
+
   <script>
   // Store breakdown data
   const breakdownData = <?php echo json_encode([
