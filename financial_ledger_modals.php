@@ -34,6 +34,21 @@
               <option value="credit">Credit</option>
             </select>
           </div>
+          <div class="col-md-6">
+            <label class="form-label">Source Module</label>
+            <select id="add_journal_source_module" name="source_module" class="form-select" required>
+              <option value="" disabled selected>Select Source Module</option>
+              <option value="Manual Entry">Manual Entry</option>
+              <option value="Payroll">Payroll</option>
+              <option value="Procurement">Procurement</option>
+              <option value="Liquidation">Liquidation</option>
+              <option value="Inventory">Inventory</option>
+              <option value="Sales">Sales</option>
+              <option value="Expenses">Expenses</option>
+              <option value="Adjustments">Adjustments</option>
+              <option value="Bank Reconciliation">Bank Reconciliation</option>
+            </select>
+          </div>
           <div class="col-12">
             <label class="form-label">Description</label>
             <textarea id="add_journal_description" name="description" class="form-control" rows="2" placeholder="Enter transaction description..." required></textarea>
@@ -83,6 +98,21 @@
             <select id="edit_journal_type" name="type" class="form-select" required>
               <option value="debit">Debit</option>
               <option value="credit">Credit</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Source Module</label>
+            <select id="edit_journal_source_module" name="source_module" class="form-select" required>
+              <option value="" disabled>Select Source Module</option>
+              <option value="Manual Entry">Manual Entry</option>
+              <option value="Payroll">Payroll</option>
+              <option value="Procurement">Procurement</option>
+              <option value="Liquidation">Liquidation</option>
+              <option value="Inventory">Inventory</option>
+              <option value="Sales">Sales</option>
+              <option value="Expenses">Expenses</option>
+              <option value="Adjustments">Adjustments</option>
+              <option value="Bank Reconciliation">Bank Reconciliation</option>
             </select>
           </div>
           <div class="col-12">
@@ -369,4 +399,5 @@
     </div>
   </div>
 </div>
+
 
