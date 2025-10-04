@@ -59,15 +59,15 @@ $liquidations = getLiquidationRecords();
         <div class="d-flex gap-3 mb-2 ledger-summary-small">
           <div class="text-end">
             <div>Total Debit</div>
-            <div class="text-danger fw-bold">₱<?= formatCurrency($summary['total_debit'] ?? 0) ?></div>
+            <div class="text-danger fw-bold"><?= formatCurrency($summary['total_debit'] ?? 0) ?></div>
           </div>
           <div class="text-end">
             <div>Total Credit</div>
-            <div class="text-success fw-bold">₱<?= formatCurrency($summary['total_credit'] ?? 0) ?></div>
+            <div class="text-success fw-bold"><?= formatCurrency($summary['total_credit'] ?? 0) ?></div>
           </div>
           <div class="text-end">
             <div>Net Balance</div>
-            <div class="text-primary fw-bold">₱<?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
+            <div class="text-primary fw-bold"><?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
           </div>
         </div>
         <div class="d-flex gap-2">
@@ -252,3 +252,4 @@ $liquidations = getLiquidationRecords();
 
 </body>
 </html>
+
