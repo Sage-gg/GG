@@ -78,32 +78,6 @@
   </div>
 </div>
 
-<!-- Trial Balance Modal -->
-<div class="modal fade" id="trialBalanceModal" tabindex="-1" aria-labelledby="trialBalanceModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold">📋 Trial Balance</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="trialBalanceModalContent">
-          <div class="text-center py-4">
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading Trial Balance...</p>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-danger" id="exportTrialBalancePDF">📄 Export PDF</button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Budget Performance Modal -->
 <div class="modal fade" id="budgetPerformanceModal" tabindex="-1" aria-labelledby="budgetPerformanceModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -489,4 +463,5 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('PDF-only export modals initialized successfully');
 });
+
 </script>
