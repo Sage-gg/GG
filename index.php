@@ -319,7 +319,6 @@ function formatCurrency($amount) {
       text-align: center;
       height: 100%;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
-      cursor: pointer;
       position: relative;
     }
     .summary-card:hover {
@@ -360,6 +359,34 @@ function formatCurrency($amount) {
     .text-budget { color: #0d6efd; }
     .text-spent { color: #dc3545; }
     .text-remaining { color: #198754; }
+    
+    /* Privacy Toggle Button */
+    .privacy-toggle {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+    .privacy-toggle:hover {
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .privacy-toggle i {
+      font-size: 0.875rem;
+    }
+    
+    /* Hidden value style */
+    .value-hidden {
+      letter-spacing: 0.2rem;
+      font-size: 1.8rem;
+    }
     
     /* Breakdown Modal Styles */
     .breakdown-section {
@@ -442,24 +469,39 @@ function formatCurrency($amount) {
       
       <div class="row g-4 mb-5">
         <div class="col-md-4">
-          <div class="summary-card" onclick="showBreakdown('collected')">
+          <div class="summary-card" onclick="showBreakdown('collected', event)">
+            <button class="privacy-toggle" onclick="togglePrivacy(event, 'collected')" title="Show/Hide Amount">
+              <i class="bi bi-eye-slash"></i>
+            </button>
             <i class="bi bi-cash-coin summary-icon text-collected"></i>
             <div class="summary-label">Total Collected</div>
-            <div class="summary-value text-collected"><?php echo formatCurrency($collectionsSummary['total_collected']); ?></div>
+            <div class="summary-value text-collected" id="value-collected" data-value="<?php echo formatCurrency($collectionsSummary['total_collected']); ?>">
+              ₱ ••••••••
+            </div>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="summary-card" onclick="showBreakdown('pending')">
+          <div class="summary-card" onclick="showBreakdown('pending', event)">
+            <button class="privacy-toggle" onclick="togglePrivacy(event, 'pending')" title="Show/Hide Amount">
+              <i class="bi bi-eye-slash"></i>
+            </button>
             <i class="bi bi-clock-history summary-icon text-pending"></i>
             <div class="summary-label">Pending Collections</div>
-            <div class="summary-value text-pending"><?php echo formatCurrency($collectionsSummary['total_pending']); ?></div>
+            <div class="summary-value text-pending" id="value-pending" data-value="<?php echo formatCurrency($collectionsSummary['total_pending']); ?>">
+              ₱ ••••••••
+            </div>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="summary-card" onclick="showBreakdown('overdue')">
+          <div class="summary-card" onclick="showBreakdown('overdue', event)">
+            <button class="privacy-toggle" onclick="togglePrivacy(event, 'overdue')" title="Show/Hide Amount">
+              <i class="bi bi-eye-slash"></i>
+            </button>
             <i class="bi bi-exclamation-triangle summary-icon text-overdue"></i>
             <div class="summary-label">Overdue Collections</div>
-            <div class="summary-value text-overdue"><?php echo formatCurrency($collectionsSummary['total_overdue']); ?></div>
+            <div class="summary-value text-overdue" id="value-overdue" data-value="<?php echo formatCurrency($collectionsSummary['total_overdue']); ?>">
+              ₱ ••••••••
+            </div>
           </div>
         </div>
       </div>
@@ -474,24 +516,39 @@ function formatCurrency($amount) {
       
       <div class="row g-4 mb-5">
         <div class="col-md-4">
-          <div class="summary-card" onclick="showBreakdown('budget')">
+          <div class="summary-card" onclick="showBreakdown('budget', event)">
+            <button class="privacy-toggle" onclick="togglePrivacy(event, 'budget')" title="Show/Hide Amount">
+              <i class="bi bi-eye-slash"></i>
+            </button>
             <i class="bi bi-pie-chart summary-icon text-budget"></i>
             <div class="summary-label">Total Budget</div>
-            <div class="summary-value text-budget"><?php echo formatCurrency($budgetSummary['total_budget']); ?></div>
+            <div class="summary-value text-budget" id="value-budget" data-value="<?php echo formatCurrency($budgetSummary['total_budget']); ?>">
+              ₱ ••••••••
+            </div>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="summary-card" onclick="showBreakdown('spent')">
+          <div class="summary-card" onclick="showBreakdown('spent', event)">
+            <button class="privacy-toggle" onclick="togglePrivacy(event, 'spent')" title="Show/Hide Amount">
+              <i class="bi bi-eye-slash"></i>
+            </button>
             <i class="bi bi-cash-stack summary-icon text-spent"></i>
             <div class="summary-label">Total Spent</div>
-            <div class="summary-value text-spent"><?php echo formatCurrency($budgetSummary['total_used']); ?></div>
+            <div class="summary-value text-spent" id="value-spent" data-value="<?php echo formatCurrency($budgetSummary['total_used']); ?>">
+              ₱ ••••••••
+            </div>
           </div>
         </div>
         <div class="col-md-4">
-          <div class="summary-card" onclick="showBreakdown('remaining')">
+          <div class="summary-card" onclick="showBreakdown('remaining', event)">
+            <button class="privacy-toggle" onclick="togglePrivacy(event, 'remaining')" title="Show/Hide Amount">
+              <i class="bi bi-eye-slash"></i>
+            </button>
             <i class="bi bi-wallet2 summary-icon text-remaining"></i>
             <div class="summary-label">Remaining Budget</div>
-            <div class="summary-value text-remaining"><?php echo formatCurrency($budgetSummary['total_remaining']); ?></div>
+            <div class="summary-value text-remaining" id="value-remaining" data-value="<?php echo formatCurrency($budgetSummary['total_remaining']); ?>">
+              ₱ ••••••••
+            </div>
           </div>
         </div>
       </div>
@@ -632,7 +689,49 @@ function formatCurrency($amount) {
     'budget' => $budgetBreakdown
   ]); ?>;
 
-  function showBreakdown(type) {
+  // Track visibility state for each card
+  const visibilityState = {
+    'collected': false,
+    'pending': false,
+    'overdue': false,
+    'budget': false,
+    'spent': false,
+    'remaining': false
+  };
+
+  function togglePrivacy(event, cardId) {
+    // Prevent card click event from firing
+    event.stopPropagation();
+    
+    const valueElement = document.getElementById('value-' + cardId);
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+    
+    // Toggle visibility state
+    visibilityState[cardId] = !visibilityState[cardId];
+    
+    if (visibilityState[cardId]) {
+      // Show the actual value
+      valueElement.textContent = valueElement.getAttribute('data-value');
+      valueElement.classList.remove('value-hidden');
+      icon.className = 'bi bi-eye';
+      button.title = 'Hide Amount';
+    } else {
+      // Hide the value with asterisks
+      valueElement.textContent = '₱ ••••••••';
+      valueElement.classList.add('value-hidden');
+      icon.className = 'bi bi-eye-slash';
+      button.title = 'Show Amount';
+    }
+  }
+
+  function showBreakdown(type, event) {
+    // Check if the click target is the privacy toggle button or its child
+    if (event && (event.target.classList.contains('privacy-toggle') || 
+        event.target.closest('.privacy-toggle'))) {
+      return; // Don't show breakdown if privacy button was clicked
+    }
+    
     const modalId = type + 'BreakdownModal';
     const modal = new bootstrap.Modal(document.getElementById(modalId));
     modal.show();
