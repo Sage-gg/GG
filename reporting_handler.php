@@ -203,6 +203,7 @@ class FinancialReporting {
         return $data;
     }
     
+    
     // Helper function to get income statement details
     private function getIncomeStatementDetails($startDate, $endDate) {
         $details = [];
@@ -391,12 +392,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 echo json_encode($data);
                 break;
                 
-            case 'getTrialBalance':
-                $asOfDate = $_POST['as_of_date'] ?? date('Y-m-d');
-                $data = $financialReporting->getTrialBalance($asOfDate);
-                echo json_encode($data);
-                break;
-                
             case 'getBudgetPerformance':
                 $period = $_POST['period'] ?? null;
                 $data = $financialReporting->getBudgetPerformance($period);
@@ -456,5 +451,4 @@ function logExportActivity($reportType, $status, $message = '') {
     }
     error_log($logEntry);
 }
-
 ?>
