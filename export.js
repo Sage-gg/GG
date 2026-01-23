@@ -1,4 +1,4 @@
-// Enhanced export.js - PDF Export Only with Budget Performance
+// Enhanced export.js - Direct PDF Export (No Additional Windows)
 class FinancialExportManager {
     constructor() {
         this.initializeExportSystem();
@@ -25,7 +25,6 @@ class FinancialExportManager {
             'exportIncomeStatementPDF',
             'exportBalanceSheetPDF', 
             'exportCashFlowPDF',
-            'exportTrialBalancePDF',
             'exportBudgetPerformancePDF'
         ];
 
@@ -78,131 +77,6 @@ class FinancialExportManager {
             });
         }
     }
-
-    // Add this method to your FinancialExportManager class
-async quickExportTrialBalance() {
-    // Instead of calling backend, read the actual table data from the page
-    const trialBalanceData = this.extractTrialBalanceFromPage();
-    
-    if (!trialBalanceData) {
-        this.showError('No trial balance data found on the page. Please load the trial balance first.');
-        return;
-    }
-    
-    // Send the extracted data to backend for formatting
-    const startDate = document.getElementById('startDate')?.value || this.getDefaultStartDate();
-    const endDate = document.getElementById('endDate')?.value || this.getDefaultEndDate();
-    
-    await this.exportTrialBalanceWithPageData(trialBalanceData, startDate, endDate);
-}
-
-extractTrialBalanceFromPage() {
-    // Look for the trial balance table on the page
-    const trialBalanceTable = document.querySelector('#trialBalanceTable, .trial-balance-table, table[data-report="trial-balance"]');
-    
-    if (!trialBalanceTable) {
-        console.log('Trial balance table not found on page');
-        return null;
-    }
-    
-    const accounts = [];
-    const rows = trialBalanceTable.querySelectorAll('tbody tr:not(.total-row):not(.section-header)');
-    
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 5) { // Minimum columns for account data
-            const account = {
-                account_code: cells[0]?.textContent?.trim() || '',
-                account_name: cells[1]?.textContent?.trim() || '',
-                account_type: cells[2]?.textContent?.trim() || '',
-                debit: this.parseCurrency(cells[3]?.textContent || '0'),
-                credit: this.parseCurrency(cells[4]?.textContent || '0'),
-                balance: cells[5] ? this.parseCurrency(cells[5]?.textContent || '0') : 0
-            };
-            
-            if (account.account_name) { // Only add if we have an account name
-                accounts.push(account);
-            }
-        }
-    });
-    
-    // Get totals from the total row
-    const totalRow = trialBalanceTable.querySelector('.total-row, tr.totals');
-    let totalDebits = 0;
-    let totalCredits = 0;
-    
-    if (totalRow) {
-        const totalCells = totalRow.querySelectorAll('td');
-        if (totalCells.length >= 5) {
-            totalDebits = this.parseCurrency(totalCells[3]?.textContent || '0');
-            totalCredits = this.parseCurrency(totalCells[4]?.textContent || '0');
-        }
-    } else {
-        // Calculate totals from account data
-        totalDebits = accounts.reduce((sum, acc) => sum + acc.debit, 0);
-        totalCredits = accounts.reduce((sum, acc) => sum + acc.credit, 0);
-    }
-    
-    return {
-        accounts: accounts,
-        total_debits: totalDebits,
-        total_credits: totalCredits,
-        is_balanced: Math.abs(totalDebits - totalCredits) < 0.01
-    };
-}
-
-parseCurrency(text) {
-    // Remove currency symbols and commas, parse as float
-    return parseFloat(text.replace(/[₱$,\s]/g, '')) || 0;
-}
-
-async exportTrialBalanceWithPageData(data, startDate, endDate) {
-    try {
-        this.showExportProgress(true, 'Exporting trial balance...');
-        
-        const formData = new FormData();
-        formData.append('action', 'exportTrialBalanceFromPage');
-        formData.append('trial_balance_data', JSON.stringify(data));
-        formData.append('start_date', startDate);
-        formData.append('end_date', endDate);
-        
-        const response = await fetch('export.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        
-        if (contentType && contentType.includes('text/html')) {
-            const htmlContent = await response.text();
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = window.URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `Trial_Balance_${startDate}_to_${endDate}.html`;
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            this.showSuccess('Trial Balance exported successfully! Open the file and print to PDF.');
-        }
-        
-    } catch (error) {
-        console.error('Export error:', error);
-        this.showError(`Export failed: ${error.message}`);
-    } finally {
-        this.showExportProgress(false);
-    }
-}
 
     setupBudgetPerformancePreview() {
         // Setup real-time budget performance preview
@@ -313,7 +187,6 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
             'exportIncomeStatementPDF': 'income_statement',
             'exportBalanceSheetPDF': 'balance_sheet',
             'exportCashFlowPDF': 'cash_flow',
-            'exportTrialBalancePDF': 'trial_balance',
             'exportBudgetPerformancePDF': 'budget_performance'
         };
         return typeMap[buttonId] || null;
@@ -346,7 +219,7 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
 
     async performExport(reportType, startDate, endDate) {
         try {
-            this.showExportProgress(true, `Generating ${this.getReportDisplayName(reportType)}...`);
+            this.showExportProgress(true, `Generating ${this.getReportDisplayName(reportType)} PDF...`);
 
             // Validate inputs
             const errors = this.validateExportParameters(reportType, startDate, endDate);
@@ -374,6 +247,7 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
                 if (departmentFilter) formData.append('department_filter', departmentFilter);
             }
 
+            console.log('Sending export request to export.php...');
             const response = await fetch('export.php', {
                 method: 'POST',
                 body: formData
@@ -383,49 +257,66 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Check if response is HTML (for PDF-ready content)
+            // Check content type to determine if it's PDF or error
             const contentType = response.headers.get('content-type');
+            console.log('Response content type:', contentType);
             
-            if (contentType && contentType.includes('text/html')) {
-                // Get the HTML content
-                const htmlContent = await response.text();
-                
-                // Create a blob and download it
-                const blob = new Blob([htmlContent], { type: 'text/html' });
+            if (contentType && contentType.includes('application/pdf')) {
+                // It's a PDF file - download it directly
+                const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 
                 // Create download link
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
-                a.download = `${this.getReportDisplayName(reportType)}_${startDate}_to_${endDate}.html`;
+                a.download = `${this.getReportDisplayName(reportType)}_${startDate}_to_${endDate}.pdf`;
                 
                 document.body.appendChild(a);
                 a.click();
                 
                 // Cleanup
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                }, 100);
 
-                // Show success message with specific instructions for budget performance
+                // Show success message
                 if (reportType === 'budget_performance') {
-                    this.showSuccess(`Budget Performance Report downloaded! Open the file and print to PDF using your browser. The report includes utilization analysis, variance tracking, and performance indicators.`);
+                    this.showSuccess(`✅ Budget Performance Report PDF downloaded successfully! The report includes utilization analysis, variance tracking, and performance indicators.`);
                 } else {
-                    this.showSuccess(`${this.getReportDisplayName(reportType)} downloaded! Open the file and print to PDF using your browser.`);
+                    this.showSuccess(`✅ ${this.getReportDisplayName(reportType)} PDF downloaded successfully!`);
                 }
-            } else {
-                // Handle JSON response (error case)
+            } else if (contentType && contentType.includes('application/json')) {
+                // Error response
                 const result = await response.json();
                 if (result.error) {
                     throw new Error(result.error);
                 } else {
                     throw new Error('Unexpected response format');
                 }
+            } else {
+                // Try to read as JSON in case content-type header is missing
+                try {
+                    const text = await response.text();
+                    const result = JSON.parse(text);
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                } catch (e) {
+                    throw new Error('Unexpected content type received: ' + contentType);
+                }
             }
 
         } catch (error) {
             console.error('Export error:', error);
-            this.showError(`Export failed: ${error.message}`);
+            
+            // Special error message if PDF library is missing
+            if (error.message.includes('PDF library not found') || error.message.includes('TCPDF')) {
+                this.showError(`❌ PDF library not installed. Please install using:\ncomposer require tecnickcom/tcpdf`);
+            } else {
+                this.showError(`❌ Export failed: ${error.message}`);
+            }
         } finally {
             // Reset progress after delay
             setTimeout(() => {
@@ -478,6 +369,12 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
         if (loadingSpinner) {
             loadingSpinner.style.display = show ? 'block' : 'none';
         }
+
+        // Show/hide export progress modal if it exists
+        const exportProgress = document.getElementById('exportProgress');
+        if (exportProgress) {
+            exportProgress.style.display = show ? 'block' : 'none';
+        }
     }
 
     showSuccess(message) {
@@ -501,10 +398,10 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
         const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : 'ℹ️';
         alertDiv.innerHTML = `
             <div class="d-flex align-items-start">
-                <div class="me-2">${icon}</div>
+                <div class="me-2" style="font-size: 1.5rem;">${icon}</div>
                 <div class="flex-grow-1">
                     <strong>${type === 'success' ? 'Success!' : type === 'danger' ? 'Error!' : 'Info'}</strong><br>
-                    ${message}
+                    ${message.replace(/\n/g, '<br>')}
                 </div>
                 <button type="button" class="btn-close ms-2" onclick="this.parentElement.parentElement.remove()"></button>
             </div>
@@ -517,7 +414,7 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
         const autoRemoveDelay = type === 'success' ? 5000 : 8000;
         setTimeout(() => {
             if (alertDiv.parentNode) {
-                alertDiv.classList.add('fade');
+                alertDiv.classList.remove('show');
                 setTimeout(() => {
                     if (alertDiv.parentNode) {
                         alertDiv.parentNode.removeChild(alertDiv);
@@ -586,10 +483,6 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
         return this.exportSpecificReport('cash_flow');
     }
 
-    quickExportTrialBalance() {
-        return this.exportSpecificReport('trial_balance');
-    }
-
     quickExportBudgetPerformance() {
         return this.exportSpecificReport('budget_performance');
     }
@@ -628,57 +521,6 @@ async exportTrialBalanceWithPageData(data, startDate, endDate) {
         }
     }
 
-    // Advanced budget performance features
-    generateBudgetPerformanceSummary(data) {
-        if (!data || data.length === 0) return null;
-
-        const totalAllocated = data.reduce((sum, item) => sum + (item.amount_allocated || 0), 0);
-        const totalUsed = data.reduce((sum, item) => sum + (item.amount_used || 0), 0);
-        const overBudgetCount = data.filter(item => (item.utilization_percentage || 0) > 100).length;
-        
-        return {
-            totalAllocated,
-            totalUsed,
-            overallUtilization: totalAllocated > 0 ? (totalUsed / totalAllocated) * 100 : 0,
-            overBudgetCount,
-            totalCategories: data.length
-        };
-    }
-
-    showBudgetPerformanceInsights(summary) {
-        if (!summary) return;
-
-        let insights = [];
-        
-        if (summary.overallUtilization > 100) {
-            insights.push('⚠️ Overall budget exceeded - Review spending priorities');
-        } else if (summary.overallUtilization > 90) {
-            insights.push('⚡ High budget utilization - Monitor closely');
-        } else if (summary.overallUtilization < 70) {
-            insights.push('📈 Under budget - Consider reallocating funds');
-        }
-
-        if (summary.overBudgetCount > 0) {
-            insights.push(`🔴 ${summary.overBudgetCount} of ${summary.totalCategories} categories over budget`);
-        }
-
-        if (insights.length > 0) {
-            const insightHTML = `
-                <div class="alert alert-info mt-3">
-                    <h6>Budget Performance Insights:</h6>
-                    <ul class="mb-0">
-                        ${insights.map(insight => `<li>${insight}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-            
-            const previewContainer = document.getElementById('budgetPerformancePreview');
-            if (previewContainer) {
-                previewContainer.insertAdjacentHTML('beforeend', insightHTML);
-            }
-        }
-    }
-
     // Static initializer
     static initialize() {
         return new FinancialExportManager();
@@ -713,7 +555,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Debug info (can be removed in production)
-    console.log('Enhanced Financial Export System (with Budget Performance) initialized successfully');
+    console.log('✅ Financial Export System initialized - Direct PDF downloads enabled');
 });
 
 // Global export functions for backward compatibility and dropdown menus
@@ -755,7 +597,7 @@ window.exportAllFinancialReports = function() {
                 setTimeout(exportNext, 1000);
             });
         } else {
-            window.financialExportManager.showSuccess('All financial reports exported successfully!');
+            window.financialExportManager.showSuccess('✅ All financial reports exported successfully!');
         }
     }
 

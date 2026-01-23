@@ -78,6 +78,7 @@
   </div>
 </div>
 
+
 <!-- Budget Performance Modal -->
 <div class="modal fade" id="budgetPerformanceModal" tabindex="-1" aria-labelledby="budgetPerformanceModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -114,7 +115,6 @@ document.addEventListener('DOMContentLoaded', function() {
         { type: 'IncomeStatement', reportType: 'income_statement' },
         { type: 'BalanceSheet', reportType: 'balance_sheet' },
         { type: 'CashFlow', reportType: 'cash_flow' },
-        { type: 'TrialBalance', reportType: 'trial_balance' },
         { type: 'BudgetPerformance', reportType: 'budget_performance' }
     ];
     
@@ -231,12 +231,11 @@ document.addEventListener('DOMContentLoaded', function() {
         incomeStatement: { loaded: false, data: null },
         balanceSheet: { loaded: false, data: null },
         cashFlow: { loaded: false, data: null },
-        trialBalance: { loaded: false, data: null },
         budgetPerformance: { loaded: false, data: null }
     };
     
     // Enhanced modal show event handlers
-    ['incomeStatementModal', 'balanceSheetModal', 'cashFlowModal', 'trialBalanceModal', 'budgetPerformanceModal'].forEach(modalId => {
+    ['incomeStatementModal', 'balanceSheetModal', 'cashFlowModal','budgetPerformanceModal'].forEach(modalId => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener('show.bs.modal', function() {
@@ -463,5 +462,4 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('PDF-only export modals initialized successfully');
 });
-
 </script>

@@ -294,238 +294,175 @@ if (!function_exists('formatCurrency')) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="css/style.css" />
-    <style>
-        .report-card {
-            transition: transform 0.2s;
-            cursor: pointer;
-        }
-        .report-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .financial-summary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .loading-spinner {
-            display: none;
-        }
-        .currency {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        .filter-group {
-            max-width: 280px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #dee2e6;
-        }
-        .date-input, .filter-account {
-            border-radius: 6px;
-        }
-        .date-range-info {
-            border-left: 4px solid #0d6efd;
-            background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
-        }
-        .btn-xs {
-            font-size: 0.7rem;
-            padding: 0.25rem 0.5rem;
-        }
-        .date-presets button:hover {
-            transform: translateY(-1px);
-        }
-        @keyframes cardUpdate {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .card-animate {
-            animation: cardUpdate 0.3s ease;
-        }
-        .summary-loading {
-            opacity: 0.6;
-            position: relative;
-        }
-        .summary-loading::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.1) 50%, transparent 75%);
-            animation: shimmer 1.5s infinite;
-        }
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-        .export-section {
-            background: linear-gradient(45deg, #28a745, #20c997);
-            border-radius: 8px;
-            padding: 10px;
-        }
-        .export-section .btn {
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .export-progress {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            z-index: 9999;
-        }
-    </style>
+    <link rel="stylesheet" href="financial-compact-styles.css" />
 </head>
 <body>
 
 <?php include 'sidebar_navbar.php'; ?>
 
 <div class="main-content">
-    <div class="container-fluid mt-4 px-4">
-        <h2 class="fw-bold mb-4">Financial Reporting</h2>
+    <div class="container-fluid mt-2 px-2">
+        <h2 class="fw-bold mb-2">Financial Reporting</h2>
 
         <?php if (isset($financial_summary['error']) && $financial_summary['error']): ?>
-        <div class="alert alert-warning" role="alert">
-            <h6>⚠️ Data Loading Issue</h6>
-            <p><strong>Error:</strong> <?php echo htmlspecialchars($financial_summary['error']); ?></p>
-            <small>Some financial data may not be available. Please check your database tables.</small>
+        <div class="alert alert-warning py-2 px-2 mb-2" role="alert">
+            <h6 class="mb-1">⚠️ Data Issue</h6>
+            <p class="mb-0 small"><strong>Error:</strong> <?php echo htmlspecialchars($financial_summary['error']); ?></p>
         </div>
         <?php endif; ?>
 
-        <!-- Enhanced Date Filter Section -->
-        <div class="mb-4">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="filter-group">
-                        <h6 class="mb-3">📅 Filter by Date Range</h6>
-                        <div class="d-flex flex-column gap-2">
-                            <label for="startDate" class="form-label mb-1"><small>Start Date:</small></label>
-                            <input type="date" class="form-control form-control-sm date-input" id="startDate" value="<?php echo $default_start; ?>" />
-                            
-                            <label for="endDate" class="form-label mb-1 mt-2"><small>End Date:</small></label>
-                            <input type="date" class="form-control form-control-sm date-input" id="endDate" value="<?php echo $default_end; ?>" />
-                            
-                            <label for="reportType" class="form-label mb-1 mt-2"><small>Report Type:</small></label>
-                            <select class="form-select form-select-sm filter-account" id="reportType">
-                                <option value="" selected disabled>Select Report Type</option>
-                                <option value="income_statement">Income Statement</option>
-                                <option value="balance_sheet">Balance Sheet</option>
-                                <option value="cash_flow">Cash Flow Statement</option>
-                                <option value="budget_performance">Budget Performance</option>
-                            </select>
-                            
-                            <button class="btn btn-primary btn-sm mt-3" id="generateReport">
-                                Generate Report
+        <!-- ULTRA COMPACT Filter & Summary Section -->
+        <div class="row mb-1 g-2">
+            <!-- Compact Filter Column -->
+            <div class="col-md-3">
+                <div class="filter-group">
+                    <h6 class="mb-2">📅 Date & Report</h6>
+                    <label class="form-label">Start:</label>
+                    <input type="date" class="form-control form-control-sm" id="startDate" value="<?php echo $default_start; ?>" />
+                    
+                    <label class="form-label mt-1">End:</label>
+                    <input type="date" class="form-control form-control-sm" id="endDate" value="<?php echo $default_end; ?>" />
+                    
+                    <label class="form-label mt-1">Type:</label>
+                    <select class="form-select form-select-sm" id="reportType">
+                        <option value="" selected disabled>Select Report</option>
+                        <option value="income_statement">Income Statement</option>
+                        <option value="balance_sheet">Balance Sheet</option>
+                        <option value="cash_flow">Cash Flow</option>
+                        <option value="budget_performance">Budget Performance</option>
+                    </select>
+                    
+                    <button class="btn btn-primary btn-sm w-100 mt-2" id="generateReport">
+                        Generate Report
+                    </button>
+                    
+                    <!-- Quick Date Presets -->
+                    <div class="date-presets mt-2">
+                        <small class="text-muted d-block mb-1">Quick:</small>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button class="btn btn-outline-secondary btn-xs" onclick="window.financialReporting.setDateRangePreset('today')">Today</button>
+                            <button class="btn btn-outline-secondary btn-xs" onclick="window.financialReporting.setDateRangePreset('this_week')">Week</button>
+                            <button class="btn btn-outline-secondary btn-xs" onclick="window.financialReporting.setDateRangePreset('this_month')">Month</button>
+                            <button class="btn btn-outline-secondary btn-xs" onclick="window.financialReporting.setDateRangePreset('this_year')">Year</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Compact Summary Cards Column -->
+            <div class="col-md-9">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted">Summary</small>
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="toggleAllValues" title="Toggle values" style="font-size: 0.7rem;">
+                        <span id="toggleIcon">🙈</span> <span id="toggleText">Show</span>
+                    </button>
+                </div>
+                <div class="row g-1 mb-1">
+                    <div class="col-6 col-lg-3">
+                        <div class="card financial-summary" id="revenueCard">
+                            <button class="btn btn-sm toggle-visibility-btn text-white" onclick="toggleCardVisibility('totalRevenue')">
+                                <span class="toggle-icon">👁️</span>
                             </button>
+                            <div class="card-body text-center py-1">
+                                <h6 class="card-title mb-0" style="font-size: 0.7rem;">Revenue</h6>
+                                <h4 class="card-value hidden-value my-0" id="totalRevenue" style="font-size: 1.1rem;">
+                                    <span class="actual-value"><?php echo formatCurrency($financial_summary['total_revenue']); ?></span>
+                                    <span class="mask-value">* * * *</span>
+                                </h4>
+                                <small class="period-text" style="font-size: 0.65rem;">Period</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card bg-danger text-white" id="expenseCard">
+                            <button class="btn btn-sm toggle-visibility-btn text-white" onclick="toggleCardVisibility('totalExpenses')">
+                                <span class="toggle-icon">👁️</span>
+                            </button>
+                            <div class="card-body text-center py-1">
+                                <h6 class="card-title mb-0" style="font-size: 0.7rem;">Expenses</h6>
+                                <h4 class="card-value hidden-value my-0" id="totalExpenses" style="font-size: 1.1rem;">
+                                    <span class="actual-value"><?php echo formatCurrency($financial_summary['total_expenses']); ?></span>
+                                    <span class="mask-value">* * * *</span>
+                                </h4>
+                                <small class="period-text" style="font-size: 0.65rem;">Period</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card <?php echo $financial_summary['net_income'] >= 0 ? 'bg-success' : 'bg-warning'; ?> text-white" id="netIncomeCard">
+                            <button class="btn btn-sm toggle-visibility-btn text-white" onclick="toggleCardVisibility('netIncome')">
+                                <span class="toggle-icon">👁️</span>
+                            </button>
+                            <div class="card-body text-center py-1">
+                                <h6 class="card-title mb-0" style="font-size: 0.7rem;">Net Income</h6>
+                                <h4 class="card-value hidden-value my-0" id="netIncome" style="font-size: 1.1rem;">
+                                    <span class="actual-value"><?php echo formatCurrency($financial_summary['net_income']); ?></span>
+                                    <span class="mask-value">* * * *</span>
+                                </h4>
+                                <small class="period-text" style="font-size: 0.65rem;">Period</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card bg-info text-white" id="assetsCard">
+                            <button class="btn btn-sm toggle-visibility-btn text-white" onclick="toggleCardVisibility('totalAssets')">
+                                <span class="toggle-icon">👁️</span>
+                            </button>
+                            <div class="card-body text-center py-1">
+                                <h6 class="card-title mb-0" style="font-size: 0.7rem;">Assets</h6>
+                                <h4 class="card-value hidden-value my-0" id="totalAssets" style="font-size: 1.1rem;">
+                                    <span class="actual-value"><?php echo formatCurrency($financial_summary['total_assets']); ?></span>
+                                    <span class="mask-value">* * * *</span>
+                                </h4>
+                                <small class="period-text" style="font-size: 0.65rem;">Today</small>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="col-md-8">
-                    <!-- Financial Summary Cards with Enhanced Animation -->
-                    <div class="row">
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <div class="card financial-summary" id="revenueCard">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">Total Revenue</h6>
-                                    <h4 class="currency" id="totalRevenue"><?php echo formatCurrency($financial_summary['total_revenue']); ?></h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <div class="card bg-danger text-white" id="expenseCard">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">Total Expenses</h6>
-                                    <h4 class="currency" id="totalExpenses"><?php echo formatCurrency($financial_summary['total_expenses']); ?></h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <div class="card <?php echo $financial_summary['net_income'] >= 0 ? 'bg-success' : 'bg-warning'; ?> text-white" id="netIncomeCard">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">Net Income</h6>
-                                    <h4 class="currency" id="netIncome"><?php echo formatCurrency($financial_summary['net_income']); ?></h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-lg-3 mb-3">
-                            <div class="card bg-info text-white" id="assetsCard">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">Total Assets</h6>
-                                    <h4 class="currency" id="totalAssets"><?php echo formatCurrency($financial_summary['total_assets']); ?></h4>
-                                    <small class="period-text">As of Today</small>
-                                </div>
-                            </div>
+                <!-- Quick Report & Export Buttons on Same Line -->
+                <div class="d-flex gap-1 justify-content-between flex-wrap align-items-center">
+                    <!-- Report Type Buttons -->
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button class="btn btn-outline-primary btn-sm report-card py-1 px-2" data-report="income_statement" style="font-size: 0.75rem;">📈 Income</button>
+                        <button class="btn btn-outline-success btn-sm report-card py-1 px-2" data-report="balance_sheet" style="font-size: 0.75rem;">📊 Balance</button>
+                        <button class="btn btn-outline-info btn-sm report-card py-1 px-2" data-report="cash_flow" style="font-size: 0.75rem;">💵 Cash</button>
+                        <button class="btn btn-outline-secondary btn-sm report-card py-1 px-2" data-report="budget_performance" style="font-size: 0.75rem;">📊 Budget</button>
+                    </div>
+                    
+                    <!-- Export Buttons -->
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-success btn-sm py-1 px-2" id="exportPDF" style="font-size: 0.75rem;">📄 PDF</button>
+                        <div class="dropdown">
+                            <button class="btn btn-info btn-sm dropdown-toggle py-1 px-2" data-bs-toggle="dropdown" style="font-size: 0.75rem;">🚀</button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('income_statement')">📈 Income</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('balance_sheet')">📊 Balance</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('cash_flow')">💵 Cash</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('budget_performance')">📊 Budget</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="exportAllFinancialReports()">📑 All</a></li>
+                            </ul>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Quick Report Buttons -->
-        <div class="mb-4 d-flex gap-3 justify-content-center flex-wrap">
-            <button class="btn btn-outline-primary report-card" data-report="income_statement">
-                📈 Income Statement
-            </button>
-            <button class="btn btn-outline-success report-card" data-report="balance_sheet">
-                📊 Balance Sheet
-            </button>
-            <button class="btn btn-outline-info report-card" data-report="cash_flow">
-                💵 Cash Flow
-            </button>
-            <button class="btn btn-outline-secondary report-card" data-report="budget_performance">
-                📊 Budget Performance
-            </button>
-        </div>
-
-        <!-- Enhanced Export Buttons Section -->
-        <div class="d-flex justify-content-between mb-3">
-            <div></div>
-            <div class="export-section d-flex gap-2">
-                <button class="btn btn-success" id="exportPDF">
-                    📄 Export PDF
-                </button>
-                <button class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown">
-                    🚀 Quick Export
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('income_statement')">📈 Income Statement</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('balance_sheet')">📊 Balance Sheet</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('cash_flow')">💵 Cash Flow</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportFinancialReport('budget_performance')">📊 Budget Performance</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportAllFinancialReports()">📑 Export All Reports</a></li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Report Content -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 id="reportTitle">Financial Report</h5>
+                
+                <!-- Ultra Compact Report Content - Directly Below Buttons -->
+                <div class="card shadow-sm mt-1">
+                    <div class="card-header d-flex justify-content-between align-items-center py-1">
+                        <h5 class="mb-0" id="reportTitle" style="font-size: 0.85rem;">Financial Report</h5>
                         <div class="loading-spinner">
-                            <div class="spinner-border spinner-border-sm" role="status">
+                            <div class="spinner-border spinner-border-sm" role="status" style="width: 1rem; height: 1rem;">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body py-1">
                         <div id="reportContent">
-                            <p class="text-muted text-center py-5">
-                                <i class="fas fa-chart-bar fa-3x mb-3 d-block"></i>
-                                Select a date range and report type, then click "Generate Report" to view your filtered financial data.
-                                <br><small>💡 Tip: Change the dates above to see totals for specific months!</small>
+                            <p class="text-muted text-center py-2 mb-0">
+                                <i class="fas fa-chart-bar mb-1 d-block" style="font-size: 1.5rem;"></i>
+                                <span style="font-size: 0.85rem;">Select date range and report type, then click "Generate Report"</span>
+                                <br><small style="font-size: 0.7rem;">💡 Change dates to filter data</small>
                             </p>
                         </div>
                     </div>
@@ -533,35 +470,60 @@ if (!function_exists('formatCurrency')) {
             </div>
         </div>
 
-        <!-- Export Progress Modal -->
-        <div class="export-progress" id="exportProgress">
-            <div class="text-center">
-                <div class="spinner-border text-success mb-3" role="status">
-                    <span class="visually-hidden">Exporting...</span>
-                </div>
-                <h6>Generating PDF Export...</h6>
-                <p class="text-muted mb-0">Please wait while we prepare your financial report.</p>
-            </div>
-        </div>
-
     </div>
 </div>
 
-<!-- Include your existing modals -->
+<!-- Include modals -->
 <?php include 'financial_reporting_modals.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="reporting_script.js"></script>
 <script src="export.js"></script>
+<script src="financial-reporting-compact.js"></script>
 
 <script>
+// IMPORTANT: Define toggle function FIRST before anything else
+function toggleCardVisibility(elementId) {
+    const valueElement = document.getElementById(elementId);
+    if (!valueElement) {
+        console.error('Element not found:', elementId);
+        return;
+    }
+    
+    const card = valueElement.closest('.card');
+    const toggleIcon = card ? card.querySelector('.toggle-icon') : null;
+    const toggleBtn = card ? card.querySelector('.toggle-visibility-btn') : null;
+    
+    console.log('Before toggle:', elementId, 'has hidden-value:', valueElement.classList.contains('hidden-value'));
+    
+    // Simple toggle - just add/remove the hidden-value class
+    if (valueElement.classList.contains('hidden-value')) {
+        // Show the value
+        console.log('Showing value for', elementId);
+        valueElement.classList.remove('hidden-value');
+        if (toggleIcon) toggleIcon.textContent = '🙈';
+        if (toggleBtn) toggleBtn.setAttribute('title', 'Click to hide value');
+    } else {
+        // Hide the value
+        console.log('Hiding value for', elementId);
+        valueElement.classList.add('hidden-value');
+        if (toggleIcon) toggleIcon.textContent = '👁️';
+        if (toggleBtn) toggleBtn.setAttribute('title', 'Click to show value');
+    }
+    
+    console.log('After toggle:', elementId, 'has hidden-value:', valueElement.classList.contains('hidden-value'));
+    console.log('Classes:', valueElement.className);
+}
+
 // Enhanced Financial Reporting JavaScript with Date Filtering and Export - COMPLETE IMPLEMENTATION
 class FinancialReportingJS {
     constructor() {
         this.currentReportData = null;
         this.currentFinancialSummary = null;
+        this.valuesVisible = true; // Track visibility state
         this.initEventListeners();
         this.initDateFilterListeners();
+        this.initVisibilityToggle();
     }
     
     initEventListeners() {
@@ -699,40 +661,73 @@ class FinancialReportingJS {
         // Update Total Revenue card
         const revenueElement = document.getElementById('totalRevenue');
         if (revenueElement) {
-            revenueElement.textContent = this.formatCurrency(summary.total_revenue);
+            const wasHidden = revenueElement.classList.contains('hidden-value');
+            const actualValue = revenueElement.querySelector('.actual-value');
+            if (actualValue) {
+                actualValue.textContent = this.formatCurrency(summary.total_revenue);
+            }
             this.animateCardUpdate(revenueElement);
+            // Maintain hidden state after update
+            if (wasHidden) {
+                revenueElement.classList.add('hidden-value');
+            }
         }
         
         // Update Total Expenses card
         const expensesElement = document.getElementById('totalExpenses');
         if (expensesElement) {
-            expensesElement.textContent = this.formatCurrency(summary.total_expenses);
+            const wasHidden = expensesElement.classList.contains('hidden-value');
+            const actualValue = expensesElement.querySelector('.actual-value');
+            if (actualValue) {
+                actualValue.textContent = this.formatCurrency(summary.total_expenses);
+            }
             this.animateCardUpdate(expensesElement);
+            // Maintain hidden state after update
+            if (wasHidden) {
+                expensesElement.classList.add('hidden-value');
+            }
         }
         
         // Update Net Income card and color
         const netIncomeElement = document.getElementById('netIncome');
         const netIncomeCard = document.getElementById('netIncomeCard');
         if (netIncomeElement && netIncomeCard) {
-            netIncomeElement.textContent = this.formatCurrency(summary.net_income);
+            const wasHidden = netIncomeElement.classList.contains('hidden-value');
+            const actualValue = netIncomeElement.querySelector('.actual-value');
+            if (actualValue) {
+                actualValue.textContent = this.formatCurrency(summary.net_income);
+            }
             this.animateCardUpdate(netIncomeElement);
             
             // Update card color based on net income value
             netIncomeCard.className = netIncomeCard.className.replace(/bg-(success|warning|danger)/, '');
             netIncomeCard.classList.add(summary.net_income >= 0 ? 'bg-success' : 'bg-warning');
+            
+            // Maintain hidden state after update
+            if (wasHidden) {
+                netIncomeElement.classList.add('hidden-value');
+            }
         }
         
         // Update Total Assets card
         const assetsElement = document.getElementById('totalAssets');
         if (assetsElement) {
-            assetsElement.textContent = this.formatCurrency(summary.total_assets);
+            const wasHidden = assetsElement.classList.contains('hidden-value');
+            const actualValue = assetsElement.querySelector('.actual-value');
+            if (actualValue) {
+                actualValue.textContent = this.formatCurrency(summary.total_assets);
+            }
             this.animateCardUpdate(assetsElement);
+            // Maintain hidden state after update
+            if (wasHidden) {
+                assetsElement.classList.add('hidden-value');
+            }
         }
         
         // Update period text to show actual date range
         const periodTexts = document.querySelectorAll('.period-text');
         periodTexts.forEach(text => {
-            if (text.textContent.includes('Current Period')) {
+            if (text.textContent.includes('Current Period') || text.textContent.includes('Jan') || text.textContent.includes('Dec')) {
                 const dateRange = `${this.formatDateShort(summary.period_start)} - ${this.formatDateShort(summary.period_end)}`;
                 text.textContent = dateRange;
             }
@@ -815,10 +810,6 @@ class FinancialReportingJS {
                     formData.append('start_date', startDate);
                     formData.append('end_date', endDate);
                     break;
-                case 'trial_balance':
-                    formData.append('action', 'getTrialBalance');
-                    formData.append('as_of_date', endDate);
-                    break;
                 case 'budget_performance':
                     formData.append('action', 'getBudgetPerformance');
                     const period = document.getElementById('budgetPeriod') ? document.getElementById('budgetPeriod').value : null;
@@ -884,10 +875,6 @@ class FinancialReportingJS {
             case 'cash_flow':
                 reportTitle.textContent = 'Cash Flow Statement' + dateRangeText;
                 reportContent.innerHTML = this.generateCashFlowHTML(data);
-                break;
-            case 'trial_balance':
-                reportTitle.textContent = 'Trial Balance' + ` (As of ${this.formatDateShort(endDate)})`;
-                reportContent.innerHTML = this.generateTrialBalanceHTML(data);
                 break;
             case 'budget_performance':
                 reportTitle.textContent = 'Budget Performance' + dateRangeText;
@@ -1146,54 +1133,6 @@ class FinancialReportingJS {
             </div>`;
     }
     
-    generateTrialBalanceHTML(data) {
-        const asOfDate = document.getElementById('endDate').value;
-        
-        let html = `
-            <p><strong>As of:</strong> ${this.formatDate(asOfDate)}</p>
-            <div class="table-responsive">
-                <table class="table table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Account Code</th>
-                            <th>Account Name</th>
-                            <th>Type</th>
-                            <th class="text-end">Debit (₱)</th>
-                            <th class="text-end">Credit (₱)</th>
-                            <th class="text-end">Balance (₱)</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-        
-        if (data.accounts && data.accounts.length > 0) {
-            data.accounts.forEach(account => {
-                html += `
-                    <tr>
-                        <td>${account.account_code}</td>
-                        <td>${account.account_name}</td>
-                        <td>${account.account_type}</td>
-                        <td class="text-end currency">${this.formatCurrency(account.total_debit || 0)}</td>
-                        <td class="text-end currency">${this.formatCurrency(account.total_credit || 0)}</td>
-                        <td class="text-end currency ${(account.balance || 0) >= 0 ? 'text-success' : 'text-danger'}">
-                            ${this.formatCurrency(Math.abs(account.balance || 0))}
-                        </td>
-                    </tr>`;
-            });
-        }
-        
-        html += `
-                        <tr class="table-secondary fw-bold">
-                            <td colspan="3">TOTALS</td>
-                            <td class="text-end currency">${this.formatCurrency(data.total_debits || 0)}</td>
-                            <td class="text-end currency">${this.formatCurrency(data.total_credits || 0)}</td>
-                            <td class="text-end"></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>`;
-        
-        return html;
-    }
     
     generateBudgetPerformanceHTML(data) {
         let html = `
@@ -1362,6 +1301,67 @@ class FinancialReportingJS {
             if (alert) alert.remove();
         }, 3000);
     }
+    
+    // Visibility toggle functionality
+    initVisibilityToggle() {
+        const toggleAllBtn = document.getElementById('toggleAllValues');
+        if (toggleAllBtn) {
+            toggleAllBtn.addEventListener('click', () => {
+                this.toggleAllValues();
+            });
+        }
+        
+        // Default to hidden (values masked with dots)
+        this.valuesVisible = false;
+        // Values are already hidden by default via CSS class 'value-hidden'
+    }
+    
+    toggleAllValues() {
+        this.valuesVisible = !this.valuesVisible;
+        
+        if (this.valuesVisible) {
+            this.showAllValues();
+        } else {
+            this.hideAllValues();
+        }
+        
+        // Update button text and icon
+        const toggleText = document.getElementById('toggleText');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (toggleText) {
+            toggleText.textContent = this.valuesVisible ? 'Hide Values' : 'Show Values';
+        }
+        if (toggleIcon) {
+            toggleIcon.textContent = this.valuesVisible ? '👁️' : '🙈';
+        }
+    }
+    
+    hideAllValues(animate = true) {
+        const valueElements = ['totalRevenue', 'totalExpenses', 'netIncome', 'totalAssets'];
+        valueElements.forEach(elementId => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('hidden-value');
+                const card = element.closest('.card');
+                const toggleIcon = card.querySelector('.toggle-icon');
+                if (toggleIcon) toggleIcon.textContent = '👁️';
+            }
+        });
+    }
+    
+    showAllValues(animate = true) {
+        const valueElements = ['totalRevenue', 'totalExpenses', 'netIncome', 'totalAssets'];
+        valueElements.forEach(elementId => {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.remove('hidden-value');
+                const card = element.closest('.card');
+                const toggleIcon = card.querySelector('.toggle-icon');
+                if (toggleIcon) toggleIcon.textContent = '🙈';
+            }
+        });
+    }
 }
 
 // Global export functions for dropdown menu
@@ -1418,5 +1418,7 @@ function formatCurrency(amount) {
         maximumFractionDigits: 2
     });
 }
+</script>
 
-
+</body>
+</html>
