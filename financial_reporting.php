@@ -359,7 +359,7 @@ if (!function_exists('formatCurrency')) {
                 </div>
                 <div class="row g-1 mb-1">
                     <div class="col-6 col-lg-3">
-                        <div class="card financial-summary" id="revenueCard">
+    <div class="card bg-success text-white" id="revenueCard">
                             <button class="btn btn-sm toggle-visibility-btn text-white" onclick="toggleCardVisibility('totalRevenue')">
                                 <span class="toggle-icon">👁️</span>
                             </button>
