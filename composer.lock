@@ -74,6 +74,78 @@
                     "name": "Brent R. Matzelle"
                 }
             ],
+{
+    "name": "tecnickcom/tcpdf",
+    "version": "6.7.7",
+    "source": {
+        "type": "git",
+        "url": "https://github.com/tecnickcom/TCPDF.git",
+        "reference": "cfbc0028cc23f057f2e2e34c8e787936c404b5c3"
+    },
+    "dist": {
+        "type": "zip",
+        "url": "https://api.github.com/repos/tecnickcom/TCPDF/zipball/cfbc0028cc23f057f2e2e34c8e787936c404b5c3",
+        "reference": "cfbc0028cc23f057f2e2e34c8e787936c404b5c3",
+        "shasum": ""
+    },
+    "require": {
+        "php": ">=5.5.0"
+    },
+    "type": "library",
+    "autoload": {
+        "classmap": [
+            "config",
+            "include",
+            "tcpdf.php",
+            "tcpdf_parser.php",
+            "tcpdf_import.php",
+            "tcpdf_barcodes_1d.php",
+            "tcpdf_barcodes_2d.php",
+            "include/tcpdf_colors.php",
+            "include/tcpdf_filters.php",
+            "include/tcpdf_font_data.php",
+            "include/tcpdf_fonts.php",
+            "include/tcpdf_images.php",
+            "include/tcpdf_static.php",
+            "include/barcodes/datamatrix.php",
+            "include/barcodes/pdf417.php",
+            "include/barcodes/qrcode.php"
+        ]
+    },
+    "notification-url": "https://packagist.org/downloads/",
+    "license": [
+        "LGPL-3.0-only"
+    ],
+    "authors": [
+        {
+            "name": "Nicola Asuni",
+            "email": "info@tecnick.com",
+            "role": "lead"
+        }
+    ],
+    "description": "TCPDF is a PHP class for generating PDF documents and barcodes.",
+    "homepage": "http://www.tcpdf.org/",
+    "keywords": [
+        "LGPL",
+        "TCPDF",
+        "barcodes",
+        "datamatrix",
+        "pdf",
+        "pdf417",
+        "qrcode"
+    ],
+    "support": {
+        "issues": "https://github.com/tecnickcom/TCPDF/issues",
+        "source": "https://github.com/tecnickcom/TCPDF"
+    },
+    "funding": [
+        {
+            "url": "https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=info@tecnick.com&lc=US&item_name=donation&currency_code=EUR",
+            "type": "custom"
+        }
+    ],
+    "time": "2025-01-03T13:00:08+00:00"
+}
             "description": "PHPMailer is a full-featured email creation and transfer class for PHP",
             "support": {
                 "issues": "https://github.com/PHPMailer/PHPMailer/issues",
