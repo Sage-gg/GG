@@ -74,6 +74,17 @@ class FinancialPDFExporter {
             $this->pdf->SetAuthor('Financial Management System');
             $this->pdf->SetTitle($this->getReportTitle($reportType));
             
+            // *** PASSWORD PROTECTION - PIN: "2026" ***
+            // Set PDF protection with PIN "2026" required to open the document
+            // Parameters: permissions, user_password, owner_password, encryption_mode
+            $this->pdf->SetProtection(
+                array('print', 'copy'),  // Permissions: allow printing and copying after opening
+                '2026',                   // User password (PIN required to open the PDF)
+                null,                     // Owner password (null = same as user password)
+                2,                        // Encryption: 0=RC4 40bit, 1=RC4 128bit, 2=AES 128bit, 3=AES 256bit
+                null                      // Pubkeys (optional)
+            );
+            
             // Remove default header/footer
             $this->pdf->setPrintHeader(false);
             $this->pdf->setPrintFooter(false);
