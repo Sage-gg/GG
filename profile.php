@@ -252,7 +252,7 @@ $stmt->close();
               </div>
               <small class="text-muted">
                 <i class="me-1">ℹ️</i>
-                Sessions automatically expire after 10 minutes of inactivity. The highlighted row is your current session.
+                Sessions automatically expire after 2 minutes of inactivity. The highlighted row is your current session.
               </small>
             </div>
           </div>
