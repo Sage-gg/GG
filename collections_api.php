@@ -171,6 +171,54 @@ if ($action === 'get_status') {
     exit;
 }
 
+// Action: Update payment details
+if ($action === 'update_payment') {
+    $required = ['invoice_number', 'amount_paid', 'payment_method', 'payment_status'];
+    foreach ($required as $field) {
+        if (!isset($data[$field]) || empty($data[$field])) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => "Missing required field: $field"
+            ]);
+            exit;
+        }
+    }
+    
+    try {
+        $invoice_number = $conn->real_escape_string($data['invoice_number']);
+        $amount_paid = floatval($data['amount_paid']);
+        $payment_method = $conn->real_escape_string($data['payment_method']);
+        $payment_status = $conn->real_escape_string($data['payment_status']);
+        
+        // Update the collection record
+        $stmt = $conn->prepare("UPDATE collections 
+            SET amount_paid = ?, mode_of_payment = ?, payment_status = ?
+            WHERE invoice_no = ?");
+        
+        $stmt->bind_param("dsss", $amount_paid, $payment_method, $payment_status, $invoice_number);
+        
+        if ($stmt->execute()) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Payment details updated successfully',
+                'invoice_number' => $invoice_number
+            ]);
+        } else {
+            throw new Exception('Database update failed: ' . $conn->error);
+        }
+        
+    } catch (Exception $e) {
+        error_log("Update Payment Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Server error: ' . $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
 // Unknown action
 http_response_code(400);
 echo json_encode([
