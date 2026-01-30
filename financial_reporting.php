@@ -2,7 +2,20 @@
 require_once 'db.php';
 
 // CRITICAL: Check authentication and session timeout BEFORE any output
-requireLogin();
+requireModuleAccess('reporting');  // ← ADD THIS LINE (replaces requireLogin)
+
+// Get permissions for this module
+$perms = getModulePermission('reporting');
+
+// For managers, show only department reports
+if (isManager()) {
+    $userDepartment = getUserDepartment();
+}
+
+// For staff, show only personal reports
+if (isStaff()) {
+    $currentUserId = $_SESSION['user_id'];
+}
 
 // Enhanced getFinancialSummary function with proper date filtering
 function getFinancialSummary($conn, $start_date = null, $end_date = null) {
@@ -1422,3 +1435,4 @@ function formatCurrency(amount) {
 
 </body>
 </html>
+
