@@ -2,7 +2,8 @@
 require_once 'db.php';
 // index.php
 // Require login to access dashboard
-requireLogin();
+requireModuleAccess('dashboard');  // ← ADD THIS LINE (replaces requireLogin)
+
 
 // ORIGINAL FUNCTIONS - Keep for backward compatibility
 function getCollectionsSummary() {
@@ -352,6 +353,7 @@ function formatCurrency($amount) {
       font-size: 1.5rem;
       font-weight: 700;
       line-height: 1.2;
+      min-height: 2rem;
     }
     .text-collected { color: #198754; }
     .text-pending { color: #fd7e14; }
@@ -382,10 +384,10 @@ function formatCurrency($amount) {
       font-size: 0.875rem;
     }
     
-    /* Hidden value style */
-    .value-hidden {
-      letter-spacing: 0.2rem;
-      font-size: 1.8rem;
+    /* Hidden value style - keep same size as visible */
+    .summary-value.value-hidden {
+      letter-spacing: 0.1rem;
+      /* Don't change font-size to keep uniform appearance */
     }
     
     /* Breakdown Modal Styles */
@@ -648,9 +650,9 @@ function formatCurrency($amount) {
       clearTimeout(warningTimeout);
       lastActivity = Date.now();
       
-      // Show warning 5 minutes before logout
+      // Show warning 1 minute before logout
       warningTimeout = setTimeout(function() {
-        if (confirm('Your session will expire in 5 minutes due to inactivity. Click OK to continue your session.')) {
+        if (confirm('Your session will expire in 1 minute due to inactivity. Click OK to continue your session.')) {
           // User clicked OK, send activity ping
           fetch(window.location.href, {
             method: 'HEAD',
@@ -658,13 +660,13 @@ function formatCurrency($amount) {
           });
           resetSessionTimer();
         }
-      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>); // 5 minutes before 10-minute timeout
+      }, <?php echo (SESSION_TIMEOUT - 60) * 1000; ?>); // 1 minute before 2-minute timeout
       
       // Auto logout after full timeout
       sessionTimeout = setTimeout(function() {
         alert('Your session has expired due to inactivity. You will be redirected to the login page.');
         window.location.href = 'login.php?timeout=1';
-      }, <?php echo SESSION_TIMEOUT * 1000; ?>); // 10 minutes
+      }, <?php echo SESSION_TIMEOUT * 1000; ?>); // 2 minutes
     }
 
     // Track user activity
