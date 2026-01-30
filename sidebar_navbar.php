@@ -1,7 +1,7 @@
 <?php
 require_once 'db.php';
 
-// Make sure user is logged in to access this navbar
+// sidebar_navbar.php
 if (!isLoggedIn()) {
     header("Location: login.php");
     exit();
@@ -11,12 +11,14 @@ if (!isLoggedIn()) {
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
+$department = $_SESSION['department'] ?? null;
+$cost_center = $_SESSION['cost_center'] ?? null;
 
 // Get first letter of username for avatar
 $profile_initial = strtoupper(substr($username, 0, 1));
 
 // Determine role display
-$role_display = $role === 'admin' ? 'Administrator' : 'User';
+$role_display = getRoleDisplayName($role);
 ?>
 
 <!-- Top Navbar -->
@@ -84,49 +86,80 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
       <div class="profile-info ms-3">
         <div class="profile-name text-light fw-bold"><?php echo htmlspecialchars($username); ?></div>
         <div class="profile-role text-muted"><?php echo $role_display; ?></div>
+        <?php if ($department): ?>
+          <div class="profile-dept text-muted" style="font-size: 11px;"><?php echo htmlspecialchars($department); ?></div>
+        <?php endif; ?>
       </div>
     </div>
   </div>
   
-  <!-- Main Navigation Menu -->
+  <!-- Main Navigation Menu - ROLE-BASED -->
   <div class="sidebar-menu">
     <ul class="nav flex-column px-3 py-2">
+      
+      <?php if (canView('dashboard')): ?>
       <li class="nav-item">
-        <a class="nav-link sidebar-nav-link active" href="index.php">
+        <a class="nav-link sidebar-nav-link" href="index.php">
           <span class="nav-icon">📊</span>
           <span class="nav-text">Dashboard</span>
         </a>
       </li>
+      <?php endif; ?>
+      
+      <?php if (canView('collections')): ?>
       <li class="nav-item">
         <a class="nav-link sidebar-nav-link" href="financial_collections.php">
           <span class="nav-icon">💰</span>
           <span class="nav-text">Collections Management</span>
         </a>
       </li>
+      <?php endif; ?>
+      
+      <?php if (canView('budgeting')): ?>
       <li class="nav-item">
         <a class="nav-link sidebar-nav-link" href="financial_budgeting.php">
           <span class="nav-icon">📋</span>
-          <span class="nav-text">Budgeting and Cost Allocation Management</span>
+          <span class="nav-text">Budgeting and Cost Allocation</span>
         </a>
       </li>
+      <?php endif; ?>
+      
+      <?php if (canView('reimbursement')): ?>
+      <li class="nav-item">
+        <a class="nav-link sidebar-nav-link" href="financial_reimbursement.php">
+          <span class="nav-icon">🧾</span>
+          <span class="nav-text">Reimbursement Management</span>
+        </a>
+      </li>
+      <?php endif; ?>
+      
+      <?php if (canView('expenses')): ?>
       <li class="nav-item">
         <a class="nav-link sidebar-nav-link" href="financial_expense.php">
           <span class="nav-icon">💳</span>
           <span class="nav-text">Expense Tracking and Tax Management</span>
         </a>
       </li>
+      <?php endif; ?>
+      
+      <?php if (canView('ledger')): ?>
       <li class="nav-item">
         <a class="nav-link sidebar-nav-link" href="financial_ledger.php">
           <span class="nav-icon">📖</span>
           <span class="nav-text">General Ledger Module</span>
         </a>
       </li>
+      <?php endif; ?>
+      
+      <?php if (canView('reporting')): ?>
       <li class="nav-item">
         <a class="nav-link sidebar-nav-link" href="financial_reporting.php">
           <span class="nav-icon">📈</span>
           <span class="nav-text">Financial Reporting Module</span>
         </a>
       </li>
+      <?php endif; ?>
+      
     </ul>
   </div>
 
@@ -134,7 +167,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
   <div class="sidebar-profile-menu">
     <div class="profile-divider"></div>
     <ul class="nav flex-column px-3 py-2">
-      <?php if (isAdmin()): ?>
+      <?php if (isSuperAdmin()): ?>
       <li class="nav-item">
         <a class="nav-link sidebar-nav-link" href="user_management.php">
           <span class="nav-icon">👥</span>
@@ -202,7 +235,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     width: calc(100% - 250px);
     z-index: 999;
     transition: left 0.3s ease, width 0.3s ease;
-    /*added function to make 65px navbar size work*/
     height: 65px !important;
     min-height: 65px !important;
     padding: 0 1rem !important;
@@ -276,7 +308,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     border-color: rgba(255, 255, 255, 0.3);
   }
 
-  /* Fix hamburger icon - remove Bootstrap's generated lines */
   .sidebar-toggle .navbar-toggler-icon {
     background-image: none !important;
     border: none;
@@ -375,13 +406,13 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     line-height: 1;
   }
 
-/* Profile Section in Sidebar Header */
+  /* Profile Section in Sidebar Header */
   .sidebar-header {
     border-bottom: 1px solid var(--border-color);
     background: rgba(0, 0, 0, 0.2);
     padding: 0.8rem 1.2rem !important;
     flex-shrink: 0;
-    height: 65px;
+    min-height: 65px;
     display: flex;
     align-items: center;
   }
@@ -411,7 +442,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     display: flex;
     flex-direction: column;
     justify-content: center;
-    margin-top: 8px;
   }
 
   .profile-name {
@@ -427,6 +457,13 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     line-height: 1.3;
     margin: 0;
     font-weight: 500 !important;
+  }
+
+  .profile-dept {
+    font-size: 11px !important;
+    color: #888 !important;
+    line-height: 1.2;
+    margin: 0;
   }
 
   /* Main Sidebar Menu */
@@ -636,7 +673,7 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
     }
 
     .sidebar-header {
-      height: 64px;
+      min-height: 64px;
       padding: 0.75rem 1.25rem !important;
     }
 
@@ -697,8 +734,6 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
 </style>
 
 <script>
-  // FIXED JavaScript for sidebar - UI functionality only (No session management)
-  
   // Financial System button click handler
   document.getElementById('financialBtn').addEventListener('click', function() {
     window.location.href = 'index.php';
@@ -767,7 +802,4 @@ $role_display = $role === 'admin' ? 'Administrator' : 'User';
       document.body.classList.remove('sidebar-mobile-open');
     }
   });
-
-  // Session timeout management is now handled by PHP server-side checks
-  // This prevents JavaScript conflicts and loops
 </script>
