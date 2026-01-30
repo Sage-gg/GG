@@ -5,8 +5,8 @@
     'use strict';
     
     // Configuration - these values are set by PHP
-    const SESSION_TIMEOUT = window.SESSION_TIMEOUT || 600000; // 10 minutes in milliseconds
-    const WARNING_TIME = SESSION_TIMEOUT - 300000; // 5 minutes before expiry
+    const SESSION_TIMEOUT = window.SESSION_TIMEOUT || 120000; // 2 minutes in milliseconds
+    const WARNING_TIME = SESSION_TIMEOUT - 60000; // 1 minute before expiry
     
     let sessionTimeout;
     let warningTimeout;
@@ -24,7 +24,7 @@
         warningTimeout = setTimeout(function() {
             if (!warningShown) {
                 warningShown = true;
-                if (confirm('Your session will expire in 5 minutes due to inactivity. Click OK to continue your session.')) {
+                if (confirm('Your session will expire in 1 minute due to inactivity. Click OK to continue your session.')) {
                     // User clicked OK, send activity ping
                     fetch(window.location.href, {
                         method: 'HEAD',
