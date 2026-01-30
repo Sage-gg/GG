@@ -1,3 +1,20 @@
+<?php
+require_once 'db.php';
+requireModuleAccess('expenses');
+
+// Get permissions for this module
+$perms = getModulePermission('expenses');
+$canCreate = $perms['can_create'];
+$canEdit = $perms['can_edit'];
+$canDelete = $perms['can_delete'];
+$canApprove = $perms['can_approve'];
+
+// For staff, filter by user ID
+if (isStaff()) {
+    $currentUserId = $_SESSION['user_id'];
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -96,4 +113,5 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="expense_script.js"></script>
 </body>
+
 </html>
