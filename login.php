@@ -1,7 +1,6 @@
 <?php
 require_once 'db.php';
 // login.php
-// Redirect if already logged in
 if (isLoggedIn()) {
     header("Location: index.php");
     exit();
@@ -67,8 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = "Account is locked. Please wait {$minutes} minutes and {$seconds} seconds before trying again.";
             $is_locked_out = true;
         } else {
-            // Attempt login
-            $stmt = $conn->prepare("SELECT id, username, password, role, email, is_active FROM users WHERE username = ? OR email = ?");
+            // Attempt login - UPDATED TO INCLUDE DEPARTMENT AND COST_CENTER
+            $stmt = $conn->prepare("SELECT id, username, password, role, email, department, cost_center, is_active FROM users WHERE username = ? OR email = ?");
             $stmt->bind_param("ss", $username, $username);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -86,61 +85,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Password is correct - Log successful password verification FIRST
                         logLoginAttempt($username, true);
                         
-                        // Check if user has valid 10-day access token
-                        if (hasValidAccessToken($user['id'])) {
-                            // User has valid access token - complete login immediately without email verification
-                            
-                            // Clean up old sessions for this user and IP
-                            cleanupUserSession($user['id']);
-                            
-                            $cleanup_stmt = $conn->prepare("DELETE FROM user_sessions WHERE ip_address = ? AND expires_at < NOW()");
-                            $cleanup_stmt->bind_param("s", $_SERVER['REMOTE_ADDR']);
-                            $cleanup_stmt->execute();
-                            $cleanup_stmt->close();
-                            
-                            // Set session variables
-                            $_SESSION['user_id'] = $user['id'];
-                            $_SESSION['username'] = $user['username'];
-                            $_SESSION['email'] = $user['email'];
-                            $_SESSION['role'] = $user['role'];
-                            $_SESSION['last_activity'] = time();
-                            $_SESSION['last_regeneration'] = time();
-                            
-                            // Generate session ID for database tracking
-                            session_regenerate_id(true);
-                            $session_id = session_id();
-                            
-                            // Store session in database
-                            $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-                            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-                            $expires_at = date('Y-m-d H:i:s', time() + SESSION_TIMEOUT);
-                            
-                            $session_stmt = $conn->prepare("INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?)");
-                            $session_stmt->bind_param("issss", $user['id'], $session_id, $ip_address, $user_agent, $expires_at);
-                            $session_stmt->execute();
-                            $session_stmt->close();
-                            
-                            // Redirect to dashboard
-                            header("Location: index.php");
+                        // ALWAYS require email verification on every login for maximum security
+                        if (sendVerificationCode($user['id'], $user['email'], $user['username'])) {
+                            // Store temporary user data in session - INCLUDING ROLE, DEPARTMENT, COST_CENTER
+                            $_SESSION['pending_verification'] = true;
+                            $_SESSION['temp_user_id'] = $user['id'];
+                            $_SESSION['temp_username'] = $user['username'];
+                            $_SESSION['temp_email'] = $user['email'];
+                            $_SESSION['temp_role'] = $user['role'];
+                            $_SESSION['temp_department'] = $user['department'];
+                            $_SESSION['temp_cost_center'] = $user['cost_center'];
+
+                            // Redirect to verification page
+                            header("Location: verify_email.php");
                             exit();
-                            
                         } else {
-                            // User needs email verification - send code
-                            if (sendVerificationCode($user['id'], $user['email'], $user['username'])) {
-                                // Store temporary user data in session
-                                $_SESSION['pending_verification'] = true;
-                                $_SESSION['temp_user_id'] = $user['id'];
-                                $_SESSION['temp_username'] = $user['username'];
-                                $_SESSION['temp_email'] = $user['email'];
-                                
-                                // Redirect to verification page
-                                header("Location: verify_email.php");
-                                exit();
-                            } else {
-                                $error_message = "Failed to send verification code. Please try again or contact an administrator.";
-                            }
+                            $error_message = "Failed to send verification code. Please try again or contact an administrator.";
                         }
-                        
+
                     } else {
                         $error_message = "Invalid username or password.";
                         logLoginAttempt($username, false);
@@ -530,7 +492,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <script>
-    // FIXED JavaScript for login page - prevents session timeout loops
     let countdownInterval;
     let lockoutRemaining = <?php echo $lockout_remaining; ?>;
     let serverSyncInterval;
@@ -664,10 +625,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return false;
         }
     });
-
-    // Simple activity tracking - no session timeout management on login page
-    // (Session timeout only applies to logged-in users)
-    
   </script>
 
 </body>
