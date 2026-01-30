@@ -1,11 +1,14 @@
 <?php
 require_once 'db.php';
 
-// Require admin privileges to access user management
-requireAdmin();
+// user_management.php
+requireSuperAdmin();
 
 $success_message = '';
 $error_message = '';
+
+// Get all departments for dropdown (you can modify this based on your needs)
+$departments = ['Operations', 'Finance', 'Accounting', 'Management', 'Administration', 'Sales', 'IT'];
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -16,15 +19,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim($_POST['email'] ?? '');
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
-            $role = $_POST['role'] ?? 'user';
+            $role = $_POST['role'] ?? ROLE_STAFF;
+            $department = trim($_POST['department'] ?? '');
+            $cost_center = trim($_POST['cost_center'] ?? '');
             
             // Validation
             if (empty($email) || empty($username) || empty($password)) {
-                $error_message = "All fields are required.";
+                $error_message = "Email, username, and password are required.";
             } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $error_message = "Please enter a valid email address.";
             } elseif (strlen($password) < 6) {
                 $error_message = "Password must be at least 6 characters long.";
+            } elseif (in_array($role, [ROLE_MANAGER]) && empty($department)) {
+                $error_message = "Department is required for Manager role.";
             } else {
                 // Check if email or username already exists
                 $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
@@ -37,11 +44,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Hash password and insert user
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $conn->prepare("INSERT INTO users (email, username, password, role) VALUES (?, ?, ?, ?)");
-                    $stmt->bind_param("ssss", $email, $username, $hashed_password, $role);
+                    
+                    // Set department and cost_center to NULL if empty
+                    $dept_value = !empty($department) ? $department : null;
+                    $cc_value = !empty($cost_center) ? $cost_center : null;
+                    
+                    $stmt = $conn->prepare("INSERT INTO users (email, username, password, role, department, cost_center) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("ssssss", $email, $username, $hashed_password, $role, $dept_value, $cc_value);
                     
                     if ($stmt->execute()) {
-                        $success_message = "User '{$username}' has been created successfully.";
+                        $new_user_id = $conn->insert_id;
+                        
+                        // Log the role assignment
+                        logRoleChange($new_user_id, null, $role, null, $dept_value, "User created by " . $_SESSION['username']);
+                        
+                        $role_display = getRoleDisplayName($role);
+                        $success_message = "User '{$username}' has been created successfully as {$role_display}.";
                     } else {
                         $error_message = "Error creating user. Please try again.";
                     }
@@ -54,14 +72,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user_id = intval($_POST['user_id'] ?? 0);
             $email = trim($_POST['email'] ?? '');
             $username = trim($_POST['username'] ?? '');
-            $role = $_POST['role'] ?? 'user';
+            $role = $_POST['role'] ?? ROLE_STAFF;
+            $department = trim($_POST['department'] ?? '');
+            $cost_center = trim($_POST['cost_center'] ?? '');
             $password = $_POST['password'] ?? '';
             
             if (empty($email) || empty($username)) {
                 $error_message = "Email and username are required.";
             } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $error_message = "Please enter a valid email address.";
+            } elseif (in_array($role, [ROLE_MANAGER]) && empty($department)) {
+                $error_message = "Department is required for Manager role.";
             } else {
+                // Get old user data for audit log
+                $old_stmt = $conn->prepare("SELECT role, department FROM users WHERE id = ?");
+                $old_stmt->bind_param("i", $user_id);
+                $old_stmt->execute();
+                $old_data = $old_stmt->get_result()->fetch_assoc();
+                $old_stmt->close();
+                
                 // Check if email or username exists for other users
                 $stmt = $conn->prepare("SELECT id FROM users WHERE (email = ? OR username = ?) AND id != ?");
                 $stmt->bind_param("ssi", $email, $username, $user_id);
@@ -71,17 +100,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($result->num_rows > 0) {
                     $error_message = "Email or username already exists for another user.";
                 } else {
+                    // Set department and cost_center to NULL if empty
+                    $dept_value = !empty($department) ? $department : null;
+                    $cc_value = !empty($cost_center) ? $cost_center : null;
+                    
                     // Update user
                     if (!empty($password)) {
                         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                        $stmt = $conn->prepare("UPDATE users SET email = ?, username = ?, password = ?, role = ? WHERE id = ?");
-                        $stmt->bind_param("ssssi", $email, $username, $hashed_password, $role, $user_id);
+                        $stmt = $conn->prepare("UPDATE users SET email = ?, username = ?, password = ?, role = ?, department = ?, cost_center = ? WHERE id = ?");
+                        $stmt->bind_param("ssssssi", $email, $username, $hashed_password, $role, $dept_value, $cc_value, $user_id);
                     } else {
-                        $stmt = $conn->prepare("UPDATE users SET email = ?, username = ?, role = ? WHERE id = ?");
-                        $stmt->bind_param("sssi", $email, $username, $role, $user_id);
+                        $stmt = $conn->prepare("UPDATE users SET email = ?, username = ?, role = ?, department = ?, cost_center = ? WHERE id = ?");
+                        $stmt->bind_param("sssssi", $email, $username, $role, $dept_value, $cc_value, $user_id);
                     }
                     
                     if ($stmt->execute()) {
+                        // Log role/department change if changed
+                        if ($old_data['role'] != $role || $old_data['department'] != $dept_value) {
+                            logRoleChange($user_id, $old_data['role'], $role, $old_data['department'], $dept_value, "Updated by " . $_SESSION['username']);
+                        }
+                        
                         $success_message = "User has been updated successfully.";
                     } else {
                         $error_message = "Error updating user. Please try again.";
@@ -135,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get all users for display
-$users_result = $conn->query("SELECT id, email, username, role, is_active, created_at FROM users ORDER BY created_at DESC");
+$users_result = $conn->query("SELECT id, email, username, role, department, cost_center, is_active, created_at FROM users ORDER BY created_at DESC");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -145,6 +183,16 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
   <title>User Management - Financial System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .role-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+    }
+    .department-info {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+  </style>
 </head>
 <body>
 
@@ -189,6 +237,7 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
                   <th>Username</th>
                   <th>Email</th>
                   <th>Role</th>
+                  <th>Department</th>
                   <th>Status</th>
                   <th>Created</th>
                   <th>Actions</th>
@@ -206,9 +255,29 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
                   </td>
                   <td><?php echo htmlspecialchars($user['email']); ?></td>
                   <td>
-                    <span class="badge <?php echo $user['role'] === 'admin' ? 'bg-warning text-dark' : 'bg-secondary'; ?>">
-                      <?php echo ucfirst($user['role']); ?>
+                    <?php
+                    $badge_class = 'bg-secondary';
+                    if ($user['role'] === ROLE_SUPER_ADMIN) $badge_class = 'bg-danger';
+                    elseif ($user['role'] === ROLE_ADMIN) $badge_class = 'bg-warning text-dark';
+                    elseif ($user['role'] === ROLE_FINANCE_MANAGER) $badge_class = 'bg-info';
+                    elseif ($user['role'] === ROLE_MANAGER) $badge_class = 'bg-primary';
+                    ?>
+                    <span class="badge role-badge <?php echo $badge_class; ?>">
+                      <?php echo getRoleDisplayName($user['role']); ?>
                     </span>
+                  </td>
+                  <td>
+                    <div class="department-info">
+                      <?php if (!empty($user['department'])): ?>
+                        <div><strong><?php echo htmlspecialchars($user['department']); ?></strong></div>
+                      <?php endif; ?>
+                      <?php if (!empty($user['cost_center'])): ?>
+                        <div><small>CC: <?php echo htmlspecialchars($user['cost_center']); ?></small></div>
+                      <?php endif; ?>
+                      <?php if (empty($user['department']) && empty($user['cost_center'])): ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </div>
                   </td>
                   <td>
                     <span class="badge <?php echo $user['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
@@ -218,7 +287,7 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
                   <td><?php echo date('M j, Y', strtotime($user['created_at'])); ?></td>
                   <td>
                     <div class="btn-group btn-group-sm" role="group">
-                      <button class="btn btn-outline-primary" onclick="editUser(<?php echo htmlspecialchars(json_encode($user)); ?>)">
+                      <button class="btn btn-outline-primary" onclick='editUser(<?php echo json_encode($user); ?>)' title="Edit User">
                         ✏️
                       </button>
                       <?php if ($user['id'] != $_SESSION['user_id']): ?>
@@ -227,7 +296,8 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
                         <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                         <input type="hidden" name="current_status" value="<?php echo $user['is_active']; ?>">
                         <button type="submit" class="btn <?php echo $user['is_active'] ? 'btn-outline-warning' : 'btn-outline-success'; ?>" 
-                                onclick="return confirm('Are you sure you want to <?php echo $user['is_active'] ? 'deactivate' : 'activate'; ?> this user?')">
+                                onclick="return confirm('Are you sure you want to <?php echo $user['is_active'] ? 'deactivate' : 'activate'; ?> this user?')"
+                                title="<?php echo $user['is_active'] ? 'Deactivate' : 'Activate'; ?> User">
                           <?php echo $user['is_active'] ? '⏸️' : '▶️'; ?>
                         </button>
                       </form>
@@ -235,7 +305,8 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
                         <input type="hidden" name="action" value="delete_user">
                         <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                         <button type="submit" class="btn btn-outline-danger" 
-                                onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
+                                onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')"
+                                title="Delete User">
                           🗑️
                         </button>
                       </form>
@@ -246,6 +317,28 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
                 <?php endwhile; ?>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role Legend -->
+      <div class="card mt-3">
+        <div class="card-body">
+          <h6 class="card-title">Role Descriptions</h6>
+          <div class="row">
+            <div class="col-md-6">
+              <ul class="list-unstyled">
+                <li><span class="badge bg-danger role-badge">Super Administrator</span> - Full system access including user management</li>
+                <li><span class="badge bg-warning text-dark role-badge">Administrator</span> - Full financial operations (Controller/CFO level)</li>
+                <li><span class="badge bg-info role-badge">Finance Manager</span> - Manages financial operations and approvals</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <ul class="list-unstyled">
+                <li><span class="badge bg-primary role-badge">Manager</span> - Department-level budget and expense management</li>
+                <li><span class="badge bg-secondary role-badge">Staff</span> - Basic expense submission only</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -265,27 +358,46 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
             <input type="hidden" name="action" value="add_user">
             
             <div class="mb-3">
-              <label for="add_email" class="form-label">Email Address</label>
+              <label for="add_email" class="form-label">Email Address *</label>
               <input type="email" class="form-control" id="add_email" name="email" required>
             </div>
             
             <div class="mb-3">
-              <label for="add_username" class="form-label">Username</label>
+              <label for="add_username" class="form-label">Username *</label>
               <input type="text" class="form-control" id="add_username" name="username" required>
             </div>
             
             <div class="mb-3">
-              <label for="add_password" class="form-label">Password</label>
+              <label for="add_password" class="form-label">Password *</label>
               <input type="password" class="form-control" id="add_password" name="password" required>
               <small class="form-text text-muted">Minimum 6 characters</small>
             </div>
             
             <div class="mb-3">
-              <label for="add_role" class="form-label">Role</label>
-              <select class="form-select" id="add_role" name="role" required>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+              <label for="add_role" class="form-label">Role *</label>
+              <select class="form-select" id="add_role" name="role" required onchange="toggleDepartmentField('add')">
+                <?php foreach (getAvailableRoles() as $roleKey => $roleName): ?>
+                  <option value="<?php echo $roleKey; ?>" <?php echo $roleKey === ROLE_STAFF ? 'selected' : ''; ?>>
+                    <?php echo $roleName; ?>
+                  </option>
+                <?php endforeach; ?>
               </select>
+            </div>
+            
+            <div class="mb-3" id="add_department_group">
+              <label for="add_department" class="form-label">Department</label>
+              <select class="form-select" id="add_department" name="department">
+                <option value="">-- Select Department --</option>
+                <?php foreach ($departments as $dept): ?>
+                  <option value="<?php echo $dept; ?>"><?php echo $dept; ?></option>
+                <?php endforeach; ?>
+              </select>
+              <small class="form-text text-muted">Required for Manager role</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="add_cost_center" class="form-label">Cost Center</label>
+              <input type="text" class="form-control" id="add_cost_center" name="cost_center" placeholder="e.g., CC-001">
             </div>
           </div>
           <div class="modal-footer">
@@ -311,12 +423,12 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
             <input type="hidden" name="user_id" id="edit_user_id">
             
             <div class="mb-3">
-              <label for="edit_email" class="form-label">Email Address</label>
+              <label for="edit_email" class="form-label">Email Address *</label>
               <input type="email" class="form-control" id="edit_email" name="email" required>
             </div>
             
             <div class="mb-3">
-              <label for="edit_username" class="form-label">Username</label>
+              <label for="edit_username" class="form-label">Username *</label>
               <input type="text" class="form-control" id="edit_username" name="username" required>
             </div>
             
@@ -327,11 +439,30 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
             </div>
             
             <div class="mb-3">
-              <label for="edit_role" class="form-label">Role</label>
-              <select class="form-select" id="edit_role" name="role" required>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+              <label for="edit_role" class="form-label">Role *</label>
+              <select class="form-select" id="edit_role" name="role" required onchange="toggleDepartmentField('edit')">
+                <?php foreach (getAvailableRoles() as $roleKey => $roleName): ?>
+                  <option value="<?php echo $roleKey; ?>">
+                    <?php echo $roleName; ?>
+                  </option>
+                <?php endforeach; ?>
               </select>
+            </div>
+            
+            <div class="mb-3" id="edit_department_group">
+              <label for="edit_department" class="form-label">Department</label>
+              <select class="form-select" id="edit_department" name="department">
+                <option value="">-- Select Department --</option>
+                <?php foreach ($departments as $dept): ?>
+                  <option value="<?php echo $dept; ?>"><?php echo $dept; ?></option>
+                <?php endforeach; ?>
+              </select>
+              <small class="form-text text-muted">Required for Manager role</small>
+            </div>
+            
+            <div class="mb-3">
+              <label for="edit_cost_center" class="form-label">Cost Center</label>
+              <input type="text" class="form-control" id="edit_cost_center" name="cost_center" placeholder="e.g., CC-001">
             </div>
           </div>
           <div class="modal-footer">
@@ -343,42 +474,28 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
     </div>
   </div>
 
-  <!-- Session timeout handling -->
   <script>
-    let sessionTimeout;
-    let warningTimeout;
-    let lastActivity = Date.now();
+    // Session timeout configuration
+    window.SESSION_TIMEOUT = <?php echo SESSION_TIMEOUT * 1000; ?>;
+  </script>
+  <script src="session_check.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    function resetSessionTimer() {
-      clearTimeout(sessionTimeout);
-      clearTimeout(warningTimeout);
-      lastActivity = Date.now();
+  <script>
+    // Toggle department field based on role selection
+    function toggleDepartmentField(prefix) {
+      const roleSelect = document.getElementById(prefix + '_role');
+      const departmentGroup = document.getElementById(prefix + '_department_group');
+      const departmentSelect = document.getElementById(prefix + '_department');
       
-      warningTimeout = setTimeout(function() {
-        if (confirm('Your session will expire in 5 minutes due to inactivity. Click OK to continue your session.')) {
-          fetch(window.location.href, {
-            method: 'HEAD',
-            credentials: 'same-origin'
-          });
-          resetSessionTimer();
-        }
-      }, <?php echo (SESSION_TIMEOUT - 300) * 1000; ?>); // 5 minutes before 10-minute timeout
-      
-      sessionTimeout = setTimeout(function() {
-        alert('Your session has expired due to inactivity. You will be redirected to the login page.');
-        window.location.href = 'login.php?timeout=1';
-      }, <?php echo SESSION_TIMEOUT * 1000; ?>); // 10 minutes
+      if (roleSelect.value === '<?php echo ROLE_MANAGER; ?>') {
+        departmentGroup.style.display = 'block';
+        departmentSelect.required = true;
+      } else {
+        departmentGroup.style.display = 'block'; // Still show but not required
+        departmentSelect.required = false;
+      }
     }
-
-    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
-      document.addEventListener(event, function() {
-        if (Date.now() - lastActivity > 60000) {
-          resetSessionTimer();
-        }
-      }, { capture: true, passive: true });
-    });
-
-    resetSessionTimer();
 
     // Edit user function
     function editUser(user) {
@@ -386,14 +503,21 @@ $users_result = $conn->query("SELECT id, email, username, role, is_active, creat
       document.getElementById('edit_email').value = user.email;
       document.getElementById('edit_username').value = user.username;
       document.getElementById('edit_role').value = user.role;
+      document.getElementById('edit_department').value = user.department || '';
+      document.getElementById('edit_cost_center').value = user.cost_center || '';
       document.getElementById('edit_password').value = '';
+      
+      toggleDepartmentField('edit');
       
       var editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
       editModal.show();
     }
-  </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    // Initialize department field visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      toggleDepartmentField('add');
+    });
+  </script>
 
 </body>
 </html>
