@@ -2,7 +2,13 @@
 require_once 'db.php';
 
 // CRITICAL: Check authentication and session timeout BEFORE any output
-requireLogin();
+requireModuleAccess('ledger');  // ← ADD THIS LINE (replaces requireLogin)
+
+// Get permissions for this module
+$perms = getModulePermission('ledger');
+$canCreate = $perms['can_create'];
+$canEdit = $perms['can_edit'];
+$canDelete = $perms['can_delete'];
 
 // Now include your ledger functions after authentication
 require_once 'ledger_functions.php';
@@ -252,4 +258,5 @@ $liquidations = getLiquidationRecords();
 
 </body>
 </html>
+
 
