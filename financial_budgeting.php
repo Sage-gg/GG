@@ -2,7 +2,19 @@
 require_once 'db.php';
 // this is financial_budgeting.php
 // CRITICAL: Check authentication and session timeout BEFORE any output
-requireLogin();
+requireModuleAccess('budgeting');  // ← ADD THIS LINE (replaces requireLogin)
+
+// Get permissions for this module
+$perms = getModulePermission('budgeting');
+$canCreate = $perms['can_create'];
+$canEdit = $perms['can_edit'];
+$canDelete = $perms['can_delete'];
+$canApprove = $perms['can_approve'];
+
+// For managers, filter by department
+if (isManager()) {
+    $userDepartment = getUserDepartment();
+}
 
 // Include pagination after authentication
 require_once 'financial_budgeting_pagination.php';
@@ -27,7 +39,7 @@ function getBudgetStatus($allocated, $used) {
     
     if ($diff < 0) {
         return 'overspent';
-    } elseif ($percentage < 0.05) { // Less than 5% remaining
+    } elseif ($percentage < 0.05) {
         return 'tight';
     } else {
         return 'on_track';
@@ -50,7 +62,7 @@ if (!empty($whereConditions)) {
     $countSql .= " WHERE " . implode(" AND ", $whereConditions);
 }
 
-// Get total count (we'll filter by status later if needed since it's calculated)
+// Get total count
 try {
     $countStmt = $conn->prepare($countSql);
     if (!$countStmt) {
@@ -101,14 +113,14 @@ try {
     die("Database query failed: " . $e->getMessage());
 }
 
-// Filter by status if specified (since status is calculated)
+// Filter by status if specified
 $filteredRows = $allRows;
 if ($filterStatus !== '') {
     $filteredRows = array_filter($allRows, function($row) use ($filterStatus) {
         $status = getBudgetStatus($row['amount_allocated'], $row['amount_used']);
         return $status === $filterStatus;
     });
-    $filteredRows = array_values($filteredRows); // Re-index array
+    $filteredRows = array_values($filteredRows);
 }
 
 // Calculate pagination based on filtered results
@@ -118,8 +130,7 @@ $pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
 // Apply pagination to filtered results
 $rows = array_slice($filteredRows, $pagination['offset'], $recordsPerPage);
 
-// ========== FIX: Load ALL budget data for AI analysis ==========
-// Get all budget records for AI forecasting (not just current page)
+// Load ALL budget data for AI analysis
 $allBudgetSql = "SELECT id, period, department, cost_center, amount_allocated, amount_used, approved_by, approval_status, description, created_at
                  FROM budgets ORDER BY created_at DESC";
 
@@ -135,9 +146,8 @@ try {
     $allBudgetStmt->close();
 } catch (Exception $e) {
     error_log("All budget query error: " . $e->getMessage());
-    $allBudgetData = $allRows; // Fallback to filtered data
+    $allBudgetData = $allRows;
 }
-// ================================================================
 
 // --- Summary cards ---
 try {
@@ -147,7 +157,6 @@ try {
                 COALESCE(SUM(amount_allocated - amount_used),0) AS total_remaining
                FROM budgets";
     
-    // Apply same filters to summary
     $sumParams = [];
     $sumTypes = '';
     if (!empty($whereConditions)) {
@@ -170,7 +179,6 @@ try {
     $summaryData = $summaryResult->fetch_assoc();
     $sumStmt->close();
     
-    // If status filter is applied, recalculate summary from filtered rows
     if ($filterStatus !== '') {
         $summary = [
             'total_budget' => array_sum(array_column($filteredRows, 'amount_allocated')),
@@ -183,7 +191,6 @@ try {
     }
     
 } catch (Exception $e) {
-    // Set default values if query fails
     $summary = [
         'total_budget' => 0,
         'total_used' => 0,
@@ -196,7 +203,6 @@ function peso($n) {
   return '₱' . number_format((float)$n, 2);
 }
 
-// Get pagination info for display
 $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage, $totalRecords, count($rows));
 ?>
 
@@ -207,6 +213,7 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
   <title>Budgeting & Cost Allocation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="css/style.css" />
   <style>
     .table thead th { white-space: nowrap; }
@@ -242,6 +249,81 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
       padding: 1rem;
       margin-bottom: 1.5rem;
     }
+    
+    /* Enhanced table styles for expandable rows */
+    .main-row {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .main-row:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .main-row.expanded {
+      background-color: #e7f3ff;
+    }
+    
+    .detail-row {
+      display: none;
+      background-color: #f8f9fa;
+    }
+    
+    .detail-row.show {
+      display: table-row;
+    }
+    
+    .detail-content {
+      padding: 20px;
+      border-left: 4px solid #0d6efd;
+    }
+    
+    .detail-section {
+      margin-bottom: 15px;
+    }
+    
+    .detail-section h6 {
+      color: #0d6efd;
+      font-weight: 600;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 5px;
+    }
+    
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 10px;
+    }
+    
+    .detail-item {
+      display: flex;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+    
+    .detail-label {
+      font-weight: 600;
+      color: #495057;
+      min-width: 140px;
+      margin-right: 10px;
+    }
+    
+    .detail-value {
+      color: #212529;
+      flex: 1;
+    }
+    
+    .expand-icon {
+      transition: transform 0.3s;
+      display: inline-block;
+    }
+    
+    .expand-icon.rotated {
+      transform: rotate(90deg);
+    }
   </style>
 </head>
 <body>
@@ -263,9 +345,10 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
 
     <!-- Filter Section -->
     <div class="filter-section">
+      <h6 class="mb-3 text-muted">Filter Budgets</h6>
       <form class="row g-3 align-items-end" method="get">
         <div class="col-md-3">
-          <label for="filter_period" class="form-label fw-semibold">Filter by Period</label>
+          <label for="filter_period" class="form-label small">Filter by Period</label>
           <select class="form-select" id="filter_period" name="filter_period">
             <option value="">All Periods</option>
             <option value="Daily" <?= $filterPeriod === 'Daily' ? 'selected' : '' ?>>Daily</option>
@@ -274,7 +357,7 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
           </select>
         </div>
         <div class="col-md-3">
-          <label for="filter_status" class="form-label fw-semibold">Filter by Status</label>
+          <label for="filter_status" class="form-label small">Filter by Status</label>
           <select class="form-select" id="filter_status" name="filter_status">
             <option value="">All Status</option>
             <option value="on_track" <?= $filterStatus === 'on_track' ? 'selected' : '' ?>>On Track</option>
@@ -293,9 +376,8 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
       </form>
     </div>
 
-    <!-- Actions and Summary Cards in one row - SWAPPED POSITIONS -->
+    <!-- Actions and Summary Cards -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
-      <!-- Left side: Summary Cards (moved from right) -->
       <div class="d-flex gap-2">
         <div class="summary-card">
           <div class="summary-label">Total Budget</div>
@@ -311,14 +393,17 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
         </div>
       </div>
 
-      <!-- Right side: Action buttons (moved from left) -->
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-info" type="button" data-bs-toggle="modal" data-bs-target="#budgetForecastModal">Budget Forecast</button>
         <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addBudgetModal">+ Add Budget</button>
-        <!-- Optional export placeholder
-        <a class="btn btn-outline-primary" href="budgets_actions.php?action=export">Export CSV</a>
-        -->
       </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+      <i class="bi bi-info-circle-fill me-2"></i>
+      <strong>Click on any row</strong> to expand and view complete budget details including financial breakdown and approval information.
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
     <!-- Pagination Info -->
@@ -336,24 +421,24 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
     </div>
     <?php endif; ?>
 
-    <!-- Budget Table -->
+    <!-- Enhanced Budget Table with Expandable Rows -->
     <div class="table-responsive shadow-sm rounded">
       <table class="table table-bordered table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
+            <th style="width: 30px;"></th>
             <th>#</th>
             <th>Period</th>
             <th>Department</th>
             <th>Cost Center</th>
-            <th>Allocated Amount</th>
-            <th>Used</th>
-            <th>Difference</th>
+            <th class="text-end">Allocated</th>
+            <th class="text-end">Used</th>
+            <th class="text-end">Difference</th>
             <th>Status</th>
-            <th>Approved By</th>
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="budgets_tbody">
         <?php if(empty($rows)): ?>
           <tr><td colspan="10" class="text-center text-muted py-4">
             <?php if ($filterPeriod !== '' || $filterStatus !== ''): ?>
@@ -364,10 +449,9 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
           </td></tr>
         <?php else: ?>
           <?php foreach($rows as $index => $r):
-              $globalIndex = $pagination['offset'] + $index + 1; // Calculate global row number
+              $globalIndex = $pagination['offset'] + $index + 1;
               $diff = (float)$r['amount_allocated'] - (float)$r['amount_used'];
               
-              // Determine status badge
               $status = getBudgetStatus($r['amount_allocated'], $r['amount_used']);
               if ($status === 'overspent') {
                 $statusBadge = '<span class="badge bg-danger">Overspent</span>';
@@ -377,28 +461,144 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
                 $statusBadge = '<span class="badge bg-success">On Track</span>';
               }
               
-              // pack data attributes for JS
               $dataAttrs = htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8');
           ?>
-            <tr>
-              <td><?= $globalIndex ?></td>
-              <td><?= htmlspecialchars($r['period']) ?></td>
-              <td><?= htmlspecialchars($r['department']) ?></td>
-              <td><?= htmlspecialchars($r['cost_center']) ?></td>
-              <td><?= peso($r['amount_allocated']) ?></td>
-              <td><?= peso($r['amount_used']) ?></td>
-              <td><?= ($diff<0?'-':'') . peso(abs($diff)) ?></td>
-              <td><?= $statusBadge ?></td>
-              <td><?= htmlspecialchars($r['approved_by']) ?></td>
+            <!-- Main Row -->
+            <tr class="main-row" data-id="<?=$r['id']?>">
+              <td class="text-center" onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;">
+                <i class="bi bi-chevron-right expand-icon"></i>
+              </td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;"><?= $globalIndex ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;"><?= htmlspecialchars($r['period']) ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;"><?= htmlspecialchars($r['department']) ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;"><?= htmlspecialchars($r['cost_center']) ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;" class="text-end"><?= peso($r['amount_allocated']) ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;" class="text-end"><?= peso($r['amount_used']) ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;" class="text-end"><?= ($diff<0?'-':'') . peso(abs($diff)) ?></td>
+              <td onclick="toggleBudgetRow(<?=$r['id']?>)" style="cursor: pointer;"><?= $statusBadge ?></td>
               <td>
                 <div class="btn-group">
                   <button type="button" class="btn btn-sm btn-primary btn-view" 
-                          data-record="<?=$dataAttrs?>" data-bs-toggle="modal" data-bs-target="#viewBudgetModal">View</button>
+                          data-record='<?=$dataAttrs?>' 
+                          data-bs-toggle="modal" 
+                          data-bs-target="#viewBudgetModal"
+                          onclick="viewBudget(this); event.stopPropagation();">View</button>
                   <button type="button" class="btn btn-sm btn-warning btn-edit" 
-                          data-record="<?=$dataAttrs?>" data-bs-toggle="modal" data-bs-target="#editBudgetModal">Edit</button>
+                          data-record='<?=$dataAttrs?>' 
+                          data-bs-toggle="modal" 
+                          data-bs-target="#editBudgetModal"
+                          onclick="editBudget(this); event.stopPropagation();">Edit</button>
                   <button type="button" class="btn btn-sm btn-danger btn-delete" 
-                          data-id="<?=$r['id']?>" data-name="<?=htmlspecialchars($r['department'].' - '.$r['cost_center'])?>" 
-                          data-bs-toggle="modal" data-bs-target="#deleteBudgetModal">Delete</button>
+                          data-id="<?=$r['id']?>" 
+                          data-name="<?=htmlspecialchars($r['department'].' - '.$r['cost_center'])?>" 
+                          data-bs-toggle="modal" 
+                          data-bs-target="#deleteBudgetModal"
+                          onclick="deleteBudget(this); event.stopPropagation();">Delete</button>
+                </div>
+              </td>
+            </tr>
+            
+            <!-- Detail Row -->
+            <tr class="detail-row" id="detail-<?=$r['id']?>">
+              <td colspan="10">
+                <div class="detail-content">
+                  <div class="row">
+                    <!-- Left Column: Basic & Financial Info -->
+                    <div class="col-md-6">
+                      <div class="detail-section">
+                        <h6><i class="bi bi-building"></i> Budget Information</h6>
+                        <div class="detail-grid">
+                          <div class="detail-item">
+                            <div class="detail-label">Budget Period:</div>
+                            <div class="detail-value"><?= htmlspecialchars($r['period']) ?></div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Department:</div>
+                            <div class="detail-value"><?= htmlspecialchars($r['department']) ?></div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Cost Center:</div>
+                            <div class="detail-value"><?= htmlspecialchars($r['cost_center']) ?></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="detail-section">
+                        <h6><i class="bi bi-calculator"></i> Financial Breakdown</h6>
+                        <div class="detail-grid">
+                          <div class="detail-item">
+                            <div class="detail-label"><strong>Allocated Amount:</strong></div>
+                            <div class="detail-value"><strong><?= peso($r['amount_allocated']) ?></strong></div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Amount Used:</div>
+                            <div class="detail-value text-danger"><?= peso($r['amount_used']) ?></div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Remaining Balance:</div>
+                            <div class="detail-value <?= $diff < 0 ? 'text-danger' : 'text-success' ?>">
+                              <?= ($diff<0?'-':'') . peso(abs($diff)) ?>
+                            </div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Utilization Rate:</div>
+                            <div class="detail-value">
+                              <?php 
+                                $utilization = $r['amount_allocated'] > 0 
+                                  ? ($r['amount_used'] / $r['amount_allocated'] * 100) 
+                                  : 0;
+                                $utilClass = $utilization > 100 ? 'text-danger' : ($utilization > 95 ? 'text-warning' : 'text-success');
+                              ?>
+                              <span class="<?= $utilClass ?>"><?= number_format($utilization, 1) ?>%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Right Column: Approval & Additional Info -->
+                    <div class="col-md-6">
+                      <div class="detail-section">
+                        <h6><i class="bi bi-check-circle"></i> Approval Information</h6>
+                        <div class="detail-grid">
+                          <div class="detail-item">
+                            <div class="detail-label">Approved By:</div>
+                            <div class="detail-value"><?= htmlspecialchars($r['approved_by'] ?: 'N/A') ?></div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Approval Status:</div>
+                            <div class="detail-value">
+                              <?php
+                                $approvalBadge = match($r['approval_status']) {
+                                  'Approved' => '<span class="badge bg-success">Approved</span>',
+                                  'Rejected' => '<span class="badge bg-danger">Rejected</span>',
+                                  default => '<span class="badge bg-warning text-dark">Pending</span>'
+                                };
+                                echo $approvalBadge;
+                              ?>
+                            </div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Budget Status:</div>
+                            <div class="detail-value"><?= $statusBadge ?></div>
+                          </div>
+                          <div class="detail-item">
+                            <div class="detail-label">Created Date:</div>
+                            <div class="detail-value"><?= date('M d, Y', strtotime($r['created_at'])) ?></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="detail-section">
+                        <h6><i class="bi bi-file-text"></i> Description / Justification</h6>
+                        <div class="detail-item">
+                          <div class="detail-value">
+                            <?= nl2br(htmlspecialchars($r['description'] ?: 'No description provided')) ?>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -430,29 +630,18 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="budget_forecast_modal.js"></script>
 <script>
-// Enhanced JavaScript for financial_budgeting.php
-// Complete integration with AI Budget Forecasting System
-
-// Department to Cost Center mapping (UPDATED)
+// Department to Cost Center mapping
 const departmentCostCenters = {
   'HR': ['Training Budget', 'Reimbursement Budget', 'Benefits Budget'],
   'Core': ['Log Maintenance Costs', 'Depreciation Charges', 'Insurance Fees', 'Vehicle Operational Budget']
 };
 
-// Legacy department mapping for existing records
 const legacyDepartmentMapping = {
-  'HR2': 'HR',
-  'HR4': 'HR',
-  'Core 2': 'Core',
-  'Core 4': 'Core',
-  'Logistics': 'Core',
-  'Operations': 'Core', 
-  'Maintenance': 'Core',
-  'Accounting': 'HR',
-  'Administration': 'HR'
+  'HR2': 'HR', 'HR4': 'HR', 'Core 2': 'Core', 'Core 4': 'Core',
+  'Logistics': 'Core', 'Operations': 'Core', 'Maintenance': 'Core',
+  'Accounting': 'HR', 'Administration': 'HR'
 };
 
-// Legacy cost center mapping for existing records
 const legacyCostCenterMapping = {
   'Fuel': 'Vehicle Operational Budget',
   'RFID': 'Training Budget',
@@ -462,50 +651,49 @@ const legacyCostCenterMapping = {
   'Truck Lease': 'Vehicle Operational Budget'
 };
 
-// ========== FIX: Load ALL budget data for AI analysis ==========
-// Make ALL budget data globally available for AI system (not just current page)
+// Make budget data globally available
 window.budgetData = <?php echo json_encode($allBudgetData); ?>;
 window.summaryData = <?php echo json_encode($summary); ?>;
-
-// Display data for current page
 window.currentPageData = <?php echo json_encode($rows); ?>;
-
-console.log('FIX APPLIED: ALL Budget Data Loaded for AI:', window.budgetData.length, 'total records');
-console.log('Current Page Data:', window.currentPageData.length, 'records');
-console.log('Summary Data:', window.summaryData);
-
-// Debug department distribution
-const departmentCounts = {};
-window.budgetData.forEach(record => {
-    const dept = record.department || 'Unknown';
-    departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
-});
-console.log('Department Distribution in AI Data:', departmentCounts);
-// ================================================================
 
 function peso(n){
   n = parseFloat(n || 0);
   return '₱' + n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-// Function to update cost center options based on selected department
+// Toggle row expansion
+function toggleBudgetRow(id) {
+  const mainRow = document.querySelector(`tr.main-row[data-id="${id}"]`);
+  const detailRow = document.querySelector(`#detail-${id}`);
+  const icon = mainRow.querySelector('.expand-icon');
+  
+  if (detailRow.classList.contains('show')) {
+    detailRow.classList.remove('show');
+    mainRow.classList.remove('expanded');
+    icon.classList.remove('rotated');
+  } else {
+    // Close all other expanded rows
+    document.querySelectorAll('.detail-row.show').forEach(row => row.classList.remove('show'));
+    document.querySelectorAll('.main-row.expanded').forEach(row => row.classList.remove('expanded'));
+    document.querySelectorAll('.expand-icon.rotated').forEach(ic => ic.classList.remove('rotated'));
+    
+    // Open clicked row
+    detailRow.classList.add('show');
+    mainRow.classList.add('expanded');
+    icon.classList.add('rotated');
+  }
+}
+
 function updateCostCenter(prefix) {
   const departmentSelect = document.getElementById(prefix + '_department');
   const costCenterSelect = document.getElementById(prefix + '_cost_center');
   
-  if (!departmentSelect || !costCenterSelect) {
-    console.warn('Department or cost center select element not found for prefix:', prefix);
-    return;
-  }
+  if (!departmentSelect || !costCenterSelect) return;
   
   const selectedDepartment = departmentSelect.value;
-  console.log('Updating cost center for department:', selectedDepartment);
-  
-  // Clear existing options
   costCenterSelect.innerHTML = '';
   
   if (selectedDepartment && departmentCostCenters[selectedDepartment]) {
-    // Add cost center options for selected department
     departmentCostCenters[selectedDepartment].forEach(costCenter => {
       const option = document.createElement('option');
       option.value = costCenter;
@@ -513,7 +701,6 @@ function updateCostCenter(prefix) {
       costCenterSelect.appendChild(option);
     });
   } else {
-    // Add placeholder option
     const option = document.createElement('option');
     option.value = '';
     option.textContent = 'Select Department First';
@@ -523,11 +710,9 @@ function updateCostCenter(prefix) {
   }
 }
 
-// Function to add legacy options to dropdown if needed
 function ensureLegacyOption(selectElement, value, label) {
   if (!value || !selectElement) return;
   
-  // Check if option already exists
   const existingOption = Array.from(selectElement.options).find(option => option.value === value);
   if (!existingOption) {
     const legacyOption = document.createElement('option');
@@ -537,108 +722,179 @@ function ensureLegacyOption(selectElement, value, label) {
     legacyOption.style.backgroundColor = '#fff3cd';
     legacyOption.style.color = '#856404';
     selectElement.appendChild(legacyOption);
-    console.log('Added legacy option:', value);
   }
 }
 
-// Populate VIEW modal from row data
-document.addEventListener('click', function(e){
+// View modal - Direct function
+function viewBudget(btn) {
+  try {
+    const rec = JSON.parse(btn.dataset.record);
+    console.log('View budget:', rec);
+    
+    const diff = (parseFloat(rec.amount_allocated || 0) - parseFloat(rec.amount_used || 0));
+    const displayDepartment = legacyDepartmentMapping[rec.department] || rec.department;
+    
+    document.getElementById('v_period').textContent = rec.period || '';
+    document.getElementById('v_department').textContent = displayDepartment;
+    document.getElementById('v_cost_center').textContent = rec.cost_center || '';
+    document.getElementById('v_alloc').textContent = peso(rec.amount_allocated);
+    document.getElementById('v_used').textContent = peso(rec.amount_used);
+    document.getElementById('v_diff').textContent = (diff<0?'-':'') + peso(Math.abs(diff));
+    document.getElementById('v_approved_by').textContent = rec.approved_by || 'N/A';
+    document.getElementById('v_approval_status').textContent = rec.approval_status || 'Pending';
+    document.getElementById('v_description').textContent = rec.description || 'No description provided';
+    
+  } catch (error) {
+    console.error('Error in viewBudget:', error);
+    alert('Error loading record data: ' + error.message);
+  }
+}
+
+// Edit modal - Direct function
+function editBudget(btn) {
+  try {
+    const rec = JSON.parse(btn.dataset.record);
+    console.log('Edit budget:', rec);
+    
+    document.getElementById('edit_id').value = rec.id || '';
+    document.getElementById('edit_period').value = rec.period || '';
+    document.getElementById('edit_amount_allocated').value = rec.amount_allocated || '';
+    document.getElementById('edit_amount_used').value = rec.amount_used || '';
+    document.getElementById('edit_approved_by').value = rec.approved_by || '';
+    document.getElementById('edit_approval_status').value = rec.approval_status || '';
+    document.getElementById('edit_description').value = rec.description || '';
+    
+    let mappedDepartment = legacyDepartmentMapping[rec.department] || rec.department;
+    document.getElementById('edit_department').value = mappedDepartment;
+    
+    updateCostCenter('edit');
+    
+    setTimeout(() => {
+      let mappedCostCenter = legacyCostCenterMapping[rec.cost_center] || rec.cost_center;
+      const costCenterSelect = document.getElementById('edit_cost_center');
+      
+      const costCenterExists = Array.from(costCenterSelect.options).some(
+        option => option.value === mappedCostCenter
+      );
+      
+      if (costCenterExists) {
+        costCenterSelect.value = mappedCostCenter;
+      } else {
+        ensureLegacyOption(costCenterSelect, rec.cost_center, rec.cost_center + ' (Legacy - Please Update)');
+        costCenterSelect.value = rec.cost_center;
+      }
+    }, 100);
+    
+  } catch (error) {
+    console.error('Error in editBudget:', error);
+    alert('Error loading record data: ' + error.message);
+  }
+}
+
+// Delete modal - Direct function
+function deleteBudget(btn) {
+  try {
+    console.log('Delete budget, id:', btn.dataset.id);
+    
+    document.getElementById('delete_id').value = btn.dataset.id || '';
+    document.getElementById('delete_name').textContent = btn.dataset.name || 'this record';
+    
+  } catch (error) {
+    console.error('Error in deleteBudget:', error);
+    alert('Error: ' + error.message);
+  }
+}
+
+// Remove old event listeners - they're now replaced by direct onclick functions
+// View modal - Using event delegation on document
+document.body.addEventListener('click', function(e){
   const btn = e.target.closest('.btn-view');
   if (!btn) return;
   
+  e.preventDefault();
+  e.stopPropagation();
+  
   try {
     const rec = JSON.parse(btn.dataset.record);
-    const diff = (parseFloat(rec.amount_allocated || 0) - parseFloat(rec.amount_used || 0));
+    console.log('View button clicked, record:', rec);
     
-    // Map legacy department to new structure for display
+    const diff = (parseFloat(rec.amount_allocated || 0) - parseFloat(rec.amount_used || 0));
     const displayDepartment = legacyDepartmentMapping[rec.department] || rec.department;
     
-    const elements = {
-      v_period: document.getElementById('v_period'),
-      v_department: document.getElementById('v_department'),
-      v_cost_center: document.getElementById('v_cost_center'),
-      v_alloc: document.getElementById('v_alloc'),
-      v_used: document.getElementById('v_used'),
-      v_diff: document.getElementById('v_diff'),
-      v_approved_by: document.getElementById('v_approved_by'),
-      v_approval_status: document.getElementById('v_approval_status'),
-      v_description: document.getElementById('v_description')
-    };
+    const v_period = document.getElementById('v_period');
+    const v_department = document.getElementById('v_department');
+    const v_cost_center = document.getElementById('v_cost_center');
+    const v_alloc = document.getElementById('v_alloc');
+    const v_used = document.getElementById('v_used');
+    const v_diff = document.getElementById('v_diff');
+    const v_approved_by = document.getElementById('v_approved_by');
+    const v_approval_status = document.getElementById('v_approval_status');
+    const v_description = document.getElementById('v_description');
     
-    if (elements.v_period) elements.v_period.textContent = rec.period || '';
-    if (elements.v_department) elements.v_department.textContent = displayDepartment;
-    if (elements.v_cost_center) elements.v_cost_center.textContent = rec.cost_center || '';
-    if (elements.v_alloc) elements.v_alloc.textContent = peso(rec.amount_allocated);
-    if (elements.v_used) elements.v_used.textContent = peso(rec.amount_used);
-    if (elements.v_diff) elements.v_diff.textContent = (diff<0?'-':'') + peso(Math.abs(diff));
-    if (elements.v_approved_by) elements.v_approved_by.textContent = rec.approved_by || '';
-    if (elements.v_approval_status) elements.v_approval_status.textContent = rec.approval_status || '';
-    if (elements.v_description) elements.v_description.textContent = rec.description || '';
+    if (v_period) v_period.textContent = rec.period || '';
+    if (v_department) v_department.textContent = displayDepartment;
+    if (v_cost_center) v_cost_center.textContent = rec.cost_center || '';
+    if (v_alloc) v_alloc.textContent = peso(rec.amount_allocated);
+    if (v_used) v_used.textContent = peso(rec.amount_used);
+    if (v_diff) v_diff.textContent = (diff<0?'-':'') + peso(Math.abs(diff));
+    if (v_approved_by) v_approved_by.textContent = rec.approved_by || 'N/A';
+    if (v_approval_status) v_approval_status.textContent = rec.approval_status || 'Pending';
+    if (v_description) v_description.textContent = rec.description || 'No description provided';
     
   } catch (error) {
     console.error('Error parsing record data:', error);
     alert('Error loading record data. Please try again.');
   }
-}, false);
+});
 
-// Enhanced populate EDIT modal with legacy data handling
-document.addEventListener('click', function(e){
+// Edit modal - Using event delegation on document
+document.body.addEventListener('click', function(e){
   const btn = e.target.closest('.btn-edit');
   if (!btn) return;
   
+  e.preventDefault();
+  e.stopPropagation();
+  
   try {
     const rec = JSON.parse(btn.dataset.record);
-    console.log('Editing record:', rec);
+    console.log('Edit button clicked, record:', rec);
     
-    // Fill basic form fields
-    const elements = {
-      edit_id: document.getElementById('edit_id'),
-      edit_period: document.getElementById('edit_period'),
-      edit_amount_allocated: document.getElementById('edit_amount_allocated'),
-      edit_amount_used: document.getElementById('edit_amount_used'),
-      edit_approved_by: document.getElementById('edit_approved_by'),
-      edit_approval_status: document.getElementById('edit_approval_status'),
-      edit_description: document.getElementById('edit_description'),
-      edit_department: document.getElementById('edit_department'),
-      edit_cost_center: document.getElementById('edit_cost_center')
-    };
+    const edit_id = document.getElementById('edit_id');
+    const edit_period = document.getElementById('edit_period');
+    const edit_amount_allocated = document.getElementById('edit_amount_allocated');
+    const edit_amount_used = document.getElementById('edit_amount_used');
+    const edit_approved_by = document.getElementById('edit_approved_by');
+    const edit_approval_status = document.getElementById('edit_approval_status');
+    const edit_description = document.getElementById('edit_description');
+    const edit_department = document.getElementById('edit_department');
+    const edit_cost_center = document.getElementById('edit_cost_center');
     
-    if (elements.edit_id) elements.edit_id.value = rec.id || '';
-    if (elements.edit_period) elements.edit_period.value = rec.period || '';
-    if (elements.edit_amount_allocated) elements.edit_amount_allocated.value = rec.amount_allocated || '';
-    if (elements.edit_amount_used) elements.edit_amount_used.value = rec.amount_used || '';
-    if (elements.edit_approved_by) elements.edit_approved_by.value = rec.approved_by || '';
-    if (elements.edit_approval_status) elements.edit_approval_status.value = rec.approval_status || '';
-    if (elements.edit_description) elements.edit_description.value = rec.description || '';
+    if (edit_id) edit_id.value = rec.id || '';
+    if (edit_period) edit_period.value = rec.period || '';
+    if (edit_amount_allocated) edit_amount_allocated.value = rec.amount_allocated || '';
+    if (edit_amount_used) edit_amount_used.value = rec.amount_used || '';
+    if (edit_approved_by) edit_approved_by.value = rec.approved_by || '';
+    if (edit_approval_status) edit_approval_status.value = rec.approval_status || '';
+    if (edit_description) edit_description.value = rec.description || '';
     
-    // Handle department - map legacy to new structure
     let mappedDepartment = legacyDepartmentMapping[rec.department] || rec.department;
-    console.log(`Department "${rec.department}" mapped to "${mappedDepartment}"`);
+    if (edit_department) edit_department.value = mappedDepartment;
     
-    if (elements.edit_department) {
-      elements.edit_department.value = mappedDepartment;
-    }
-    
-    // Update cost center options based on mapped department
     updateCostCenter('edit');
     
-    // Handle cost center - ensure it exists in new structure
     setTimeout(() => {
       let mappedCostCenter = legacyCostCenterMapping[rec.cost_center] || rec.cost_center;
-      console.log(`Cost center "${rec.cost_center}" mapped to "${mappedCostCenter}"`);
       
-      if (elements.edit_cost_center) {
-        // Check if the mapped cost center exists in the new department's options
-        const costCenterExists = Array.from(elements.edit_cost_center.options).some(
+      if (edit_cost_center) {
+        const costCenterExists = Array.from(edit_cost_center.options).some(
           option => option.value === mappedCostCenter
         );
         
         if (costCenterExists) {
-          elements.edit_cost_center.value = mappedCostCenter;
+          edit_cost_center.value = mappedCostCenter;
         } else {
-          // Add legacy option if it doesn't exist
-          ensureLegacyOption(elements.edit_cost_center, rec.cost_center, rec.cost_center + ' (Legacy - Please Update)');
-          elements.edit_cost_center.value = rec.cost_center;
+          ensureLegacyOption(edit_cost_center, rec.cost_center, rec.cost_center + ' (Legacy - Please Update)');
+          edit_cost_center.value = rec.cost_center;
         }
       }
     }, 100);
@@ -647,31 +903,30 @@ document.addEventListener('click', function(e){
     console.error('Error parsing record data for edit:', error);
     alert('Error loading record data for editing. Please try again.');
   }
-}, false);
+});
 
-// Populate DELETE modal
-document.addEventListener('click', function(e){
+// Delete modal - Using event delegation on document
+document.body.addEventListener('click', function(e){
   const btn = e.target.closest('.btn-delete');
   if (!btn) return;
   
-  const deleteId = document.getElementById('delete_id');
-  const deleteName = document.getElementById('delete_name');
+  e.preventDefault();
+  e.stopPropagation();
   
-  if (deleteId) deleteId.value = btn.dataset.id || '';
-  if (deleteName) deleteName.textContent = btn.dataset.name || 'this record';
-}, false);
+  console.log('Delete button clicked, id:', btn.dataset.id);
+  
+  const delete_id = document.getElementById('delete_id');
+  const delete_name = document.getElementById('delete_name');
+  
+  if (delete_id) delete_id.value = btn.dataset.id || '';
+  if (delete_name) delete_name.textContent = btn.dataset.name || 'this record';
+});
 
-// Enhanced notification functions with better integration
 function notifyDepartment(formType) {
-  const departmentElement = document.getElementById(formType + '_department');
-  const costCenterElement = document.getElementById(formType + '_cost_center');
-  const amountElement = document.getElementById(formType + '_amount_allocated');
-  const periodElement = document.getElementById(formType + '_period');
-  
-  const department = departmentElement?.value;
-  const costCenter = costCenterElement?.value;
-  const amount = amountElement?.value;
-  const period = periodElement?.value;
+  const department = document.getElementById(formType + '_department')?.value;
+  const costCenter = document.getElementById(formType + '_cost_center')?.value;
+  const amount = document.getElementById(formType + '_amount_allocated')?.value;
+  const period = document.getElementById(formType + '_period')?.value;
   
   if (!department) {
     alert('Please select a department first.');
@@ -684,33 +939,17 @@ function notifyDepartment(formType) {
         `• Amount: ₱${amount ? parseFloat(amount).toLocaleString() : 'Not specified'}\n` +
         `• Budget Period: ${period || 'Not specified'}\n\n` +
         `Notification Message:\n` +
-        `"Your budget allocation has been processed. The AI forecasting system has analyzed this allocation and will include it in future predictions. Please monitor your spending against the allocated amount."\n\n` +
-        `AI Integration: This data will be used for future budget forecasting\n` +
-        `System Integration: financial_budgeting_departments_v2.1`;
+        `"Your budget allocation has been processed. Please monitor your spending against the allocated amount."`;
   
   alert(message);
-  console.log('Enhanced Department Notification:', {
-    department: department,
-    costCenter: costCenter,
-    amount: amount,
-    period: period,
-    timestamp: new Date().toISOString(),
-    aiIntegration: true
-  });
 }
 
 function forwardToAdmin(formType) {
-  const departmentElement = document.getElementById(formType + '_department');
-  const costCenterElement = document.getElementById(formType + '_cost_center');
-  const amountElement = document.getElementById(formType + '_amount_allocated');
-  const descriptionElement = document.getElementById(formType + '_description');
-  const periodElement = document.getElementById(formType + '_period');
-  
-  const department = departmentElement?.value;
-  const costCenter = costCenterElement?.value;
-  const amount = amountElement?.value;
-  const description = descriptionElement?.value;
-  const period = periodElement?.value;
+  const department = document.getElementById(formType + '_department')?.value;
+  const costCenter = document.getElementById(formType + '_cost_center')?.value;
+  const amount = document.getElementById(formType + '_amount_allocated')?.value;
+  const description = document.getElementById(formType + '_description')?.value;
+  const period = document.getElementById(formType + '_period')?.value;
   
   if (!department) {
     alert('Please select a department first.');
@@ -723,66 +962,26 @@ function forwardToAdmin(formType) {
         `• Cost Center: ${costCenter || 'Not specified'}\n` +
         `• Requested Amount: ₱${amount ? parseFloat(amount).toLocaleString() : 'Not specified'}\n` +
         `• Budget Period: ${period || 'Not specified'}\n` +
-        `• Description: ${description || 'No description provided'}\n\n` +
-        `AI Recommendation:\n` +
-        `• Historical data shows this department typically utilizes 85% of allocated budget\n` +
-        `• Seasonal factors suggest ${period === 'Monthly' ? 'standard approval' : 'detailed review'} recommended\n` +
-        `• Risk assessment: LOW based on department spending patterns\n\n` +
-        `Admin Actions Available:\n` +
-        `• Review with AI forecast insights\n` +
-        `• Compare against historical spending\n` +
-        `• Auto-approve based on AI confidence score\n` +
-        `• Request additional justification\n\n` +
-        `Enhanced Integration: financial_budgeting_admin_v2.1`;
+        `• Description: ${description || 'No description provided'}`;
   
   alert(message);
-  console.log('Enhanced Admin Forward:', {
-    department: department,
-    costCenter: costCenter,
-    amount: amount,
-    description: description,
-    period: period,
-    timestamp: new Date().toISOString(),
-    aiEnhanced: true,
-    recommendationLevel: 'automated_with_ai_insights'
-  });
 }
 
-// Initialize system when page loads
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
-  // Clear any existing cost center options on page load
   const addCostCenter = document.getElementById('add_cost_center');
   if (addCostCenter) {
     addCostCenter.innerHTML = '<option disabled selected value="">Select Department First</option>';
   }
   
-  // Verify AI system initialization
-  if (window.budgetAI) {
-    console.log('AI Budget Forecasting System: READY');
-  } else {
-    console.warn('AI Budget Forecasting System: Loading...');
-    // Retry after a short delay
-    setTimeout(() => {
-      if (window.budgetAI) {
-        console.log('AI Budget Forecasting System: READY (Delayed)');
-      } else {
-        console.error('AI Budget Forecasting System: Failed to initialize');
-      }
-    }, 1000);
-  }
-  
   console.log('Enhanced Financial Budgeting System Initialized');
-  console.log('Department-Cost Center Mapping:', departmentCostCenters);
-  console.log('Legacy Mapping Support:', Object.keys(legacyDepartmentMapping).length, 'departments');
-  console.log('Budget Data Available for AI:', window.budgetData ? window.budgetData.length : 0, 'records');
-  console.log('System Status: FULLY OPERATIONAL');
+  console.log('Budget Data Available:', window.budgetData ? window.budgetData.length : 0, 'records');
 });
 
-// Add error handling for form submissions
+// Form validation
 document.addEventListener('submit', function(e) {
   const form = e.target;
   if (form.action && form.action.includes('budgets_actions.php')) {
-    // Basic validation
     const department = form.querySelector('[name="department"]');
     const costCenter = form.querySelector('[name="cost_center"]');
     
@@ -800,7 +999,7 @@ document.addEventListener('submit', function(e) {
   }
 });
 
-// Add keyboard shortcuts for power users
+// Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
   // Ctrl+Shift+F for forecast modal
   if (e.ctrlKey && e.shiftKey && e.key === 'F') {
@@ -816,6 +1015,25 @@ document.addEventListener('keydown', function(e) {
     addModal.show();
   }
 });
+
+// Helper function for status badge
+function statusBadge(status) {
+  if (status === 'on_track') return '<span class="badge bg-success">On Track</span>';
+  if (status === 'tight') return '<span class="badge bg-warning text-dark">Tight</span>';
+  return '<span class="badge bg-danger">Overspent</span>';
+}
+
+// Helper function for approval status badge
+function approvalBadge(status) {
+  if (status === 'Approved') return '<span class="badge bg-success">Approved</span>';
+  if (status === 'Rejected') return '<span class="badge bg-danger">Rejected</span>';
+  return '<span class="badge bg-warning text-dark">Pending</span>';
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(str='') {
+  return (str+'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
 
 console.log('System Ready - Press Ctrl+Shift+F for AI Forecast, Ctrl+Shift+A for Add Budget');
 </script>
