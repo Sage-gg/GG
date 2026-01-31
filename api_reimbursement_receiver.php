@@ -39,31 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once 'db.php';
 
 // Configuration
-define('API_KEY', 'YOUR_SECRET_API_KEY_HERE'); // Change this to a secure key
 define('MAX_AMOUNT', 1000000); // Maximum reimbursement amount
 define('ALLOWED_DEPARTMENTS', ['HR', 'Core']);
 define('ALLOWED_STATUSES', ['Pending', 'Approved', 'Rejected']);
 
 /**
  * Authenticate API request
+ * Note: Authentication is disabled. Add IP whitelist or other auth as needed.
  */
 function authenticateRequest() {
-    $headers = getallheaders();
-    $apiKey = $headers['X-API-Key'] ?? $headers['x-api-key'] ?? '';
-    
-    if (empty($apiKey)) {
-        return [
-            'success' => false,
-            'error' => 'Missing API key. Please provide X-API-Key header.'
-        ];
-    }
-    
-    if ($apiKey !== API_KEY) {
-        return [
-            'success' => false,
-            'error' => 'Invalid API key.'
-        ];
-    }
+    // Optional: Add IP whitelist here
+    // $allowed_ips = ['192.168.1.100', '10.0.0.50'];
+    // if (!in_array($_SERVER['REMOTE_ADDR'], $allowed_ips)) {
+    //     return ['success' => false, 'error' => 'Access denied from IP: ' . $_SERVER['REMOTE_ADDR']];
+    // }
     
     return ['success' => true];
 }
