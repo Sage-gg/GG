@@ -1,16 +1,4 @@
 <?php
-/**
- * Expense API Receiver Endpoint
- * Handles incoming API requests for expense management
- * 
- * Usage:
- * POST /expense_api_receiver.php
- * Headers: 
- *   - Content-Type: application/json
- *   - X-API-Key: your_api_key_here
- * 
- * Body: JSON data depending on action
- */
 
 header('Content-Type: application/json');
 require_once 'expense_functions.php';
