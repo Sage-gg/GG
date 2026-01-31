@@ -305,20 +305,6 @@
             <input id="add_liq_amount" name="total_amount" type="number" class="form-control" step="0.01" min="0.01" placeholder="0.00" required>
           </div>
           <div class="col-md-6">
-            <label class="form-label">Expense Account <span class="text-danger">*</span></label>
-            <select id="add_liq_expense_account" name="expense_account" class="form-select" required>
-              <option value="">Select Expense Account</option>
-              <?php 
-              $expenseAccounts = getAccountsByType('Expense');
-              foreach ($expenseAccounts as $account): ?>
-                <option value="<?= $account['account_code'] ?>" <?= $account['account_code'] === '5300' ? 'selected' : '' ?>>
-                  <?= $account['account_code'] ?> - <?= htmlspecialchars($account['account_name']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <small class="text-muted">This account will be debited for this expense</small>
-          </div>
-          <div class="col-md-6">
             <label class="form-label">Status</label>
             <select id="add_liq_status" name="status" class="form-select" required>
               <option value="Pending" selected>Pending</option>
@@ -379,20 +365,6 @@
             <input id="edit_liq_amount" name="total_amount" type="number" class="form-control" step="0.01" min="0.01" required>
           </div>
           <div class="col-md-6">
-            <label class="form-label">Expense Account <span class="text-danger">*</span></label>
-            <select id="edit_liq_expense_account" name="expense_account" class="form-select" required>
-              <option value="">Select Expense Account</option>
-              <?php 
-              $expenseAccounts = getAccountsByType('Expense');
-              foreach ($expenseAccounts as $account): ?>
-                <option value="<?= $account['account_code'] ?>">
-                  <?= $account['account_code'] ?> - <?= htmlspecialchars($account['account_name']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <small class="text-muted">This account will be debited for this expense</small>
-          </div>
-          <div class="col-md-6">
             <label class="form-label">Status</label>
             <select id="edit_liq_status" name="status" class="form-select" required>
               <option value="Pending">Pending</option>
@@ -433,7 +405,6 @@
             <tr><th>Employee</th><td id="view_liq_employee">-</td></tr>
             <tr><th>Purpose</th><td id="view_liq_purpose">-</td></tr>
             <tr><th>Total Amount</th><td id="view_liq_amount">-</td></tr>
-            <tr><th>Expense Account</th><td id="view_liq_expense_account">-</td></tr>
             <tr><th>Status</th><td id="view_liq_status">-</td></tr>
             <tr><th>Receipt</th><td id="view_liq_receipt">-</td></tr>
           </tbody>
