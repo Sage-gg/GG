@@ -41,6 +41,8 @@ function viewReimbursement(btn) {
         
         document.getElementById('v_employee_name').textContent = rec.employee_name || '-';
         document.getElementById('v_employee_id').textContent = rec.employee_id || '-';
+        document.getElementById('v_address').textContent = rec.address || '-';
+        document.getElementById('v_contact_no').textContent = rec.contact_no || '-';
         document.getElementById('v_department').textContent = rec.department || '-';
         document.getElementById('v_cost_center').textContent = rec.cost_center || '-';
         document.getElementById('v_type').textContent = rec.reimbursement_type || '-';
@@ -49,27 +51,23 @@ function viewReimbursement(btn) {
         document.getElementById('v_submission_date').textContent = formatDate(rec.submission_date);
         document.getElementById('v_description').textContent = rec.description || '-';
         
-        // Status badge
+        // Display receipt file info
+        const receiptFileEl = document.getElementById('v_receipt_file');
+        if (rec.receipt_file && rec.receipt_folder) {
+            const filePath = rec.receipt_folder + rec.receipt_file;
+            receiptFileEl.innerHTML = `<a href="${filePath}" target="_blank" class="text-primary"><i class="bi bi-file-earmark-text"></i> ${rec.receipt_file}</a>`;
+        } else {
+            receiptFileEl.textContent = 'No receipt uploaded';
+        }
+        
+        // Status badge (removed 'Paid' option)
         const statusEl = document.getElementById('v_status');
         statusEl.innerHTML = getStatusBadge(rec.status);
         
         document.getElementById('v_approved_by').textContent = rec.approved_by || 'Pending';
         
-        // Show/hide sections based on status
-        const paymentSection = document.getElementById('payment_section');
-        const paymentMethodSection = document.getElementById('payment_method_section');
+        // Show/hide remarks section
         const remarksSection = document.getElementById('remarks_section');
-        
-        if (rec.status === 'Paid' && rec.payment_date) {
-            paymentSection.style.display = 'block';
-            paymentMethodSection.style.display = 'block';
-            document.getElementById('v_payment_date').textContent = formatDate(rec.payment_date);
-            document.getElementById('v_payment_method').textContent = rec.payment_method || '-';
-        } else {
-            paymentSection.style.display = 'none';
-            paymentMethodSection.style.display = 'none';
-        }
-        
         if (rec.remarks) {
             remarksSection.style.display = 'block';
             document.getElementById('v_remarks').textContent = rec.remarks;
@@ -101,6 +99,8 @@ function editReimbursement(btn) {
         document.getElementById('edit_id').value = rec.id;
         document.getElementById('edit_employee_name').value = rec.employee_name || '';
         document.getElementById('edit_employee_id').value = rec.employee_id || '';
+        document.getElementById('edit_address').value = rec.address || '';
+        document.getElementById('edit_contact_no').value = rec.contact_no || '';
         document.getElementById('edit_dept').value = rec.department || '';
         
         updateReimbursementCostCenter('edit');
@@ -183,11 +183,11 @@ function rejectReimbursement() {
 }
 
 function getStatusBadge(status) {
+    // Removed 'Paid' status
     const badges = {
         'Pending': '<span class="badge bg-warning">Pending</span>',
-        'Approved': '<span class="badge bg-info">Approved</span>',
-        'Rejected': '<span class="badge bg-danger">Rejected</span>',
-        'Paid': '<span class="badge bg-success">Paid</span>'
+        'Approved': '<span class="badge bg-success">Approved</span>',
+        'Rejected': '<span class="badge bg-danger">Rejected</span>'
     };
     return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
 }
