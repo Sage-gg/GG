@@ -75,9 +75,6 @@ $liquidations = getLiquidationRecords();
             <div class="text-primary fw-bold">₱<?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
           </div>
         </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary btn-sm">Export Ledger</button>
-        </div>
       </div>
     </div>
 
@@ -268,3 +265,4 @@ $liquidations = getLiquidationRecords();
 
 </body>
 </html>
+
