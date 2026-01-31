@@ -628,6 +628,8 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
 <!-- Modals -->
 <?php include 'financial_budgeting_modals.php'; ?>
 
+<?php include 'send_to_core2_modal.php'; ?>
+    
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="budget_forecast_modal.js"></script>
 <script>
@@ -904,3 +906,4 @@ console.log('System Ready - Press Ctrl+Shift+F for AI Forecast, Ctrl+Shift+A for
 </script>
 </body>
 </html>
+
