@@ -175,10 +175,10 @@ class ExpenseAPIClient {
 
 // Uncomment the examples below to test the API
 
-/*
+
 // Initialize the API client
-$apiUrl = 'http://yourdomain.com/expense_api_receiver.php';
-$apiKey = 'your_secret_api_key_here';
+$apiUrl = 'https://financials.cranecali-ms.com/expense_api_receiver.php';
+$apiKey = '02012026';
 $api = new ExpenseAPIClient($apiUrl, $apiKey);
 
 // Example 1: Add a new expense
@@ -244,6 +244,5 @@ echo "\n=== Example 7: Delete Expense ===\n";
 $expenseId = 1;
 $result = $api->deleteExpense($expenseId);
 print_r($result);
-*/
 
 ?>
