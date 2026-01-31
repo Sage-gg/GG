@@ -1,8 +1,8 @@
 <?php
 require_once 'db.php';
-// this is financial_budgeting.php
+// financial_budgeting.php - UPDATED WITH BI-WEEKLY SUPPORT
 // CRITICAL: Check authentication and session timeout BEFORE any output
-requireModuleAccess('budgeting');  // ← ADD THIS LINE (replaces requireLogin)
+requireModuleAccess('budgeting');
 
 // Get permissions for this module
 $perms = getModulePermission('budgeting');
@@ -352,6 +352,7 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
           <select class="form-select" id="filter_period" name="filter_period">
             <option value="">All Periods</option>
             <option value="Daily" <?= $filterPeriod === 'Daily' ? 'selected' : '' ?>>Daily</option>
+            <option value="Bi-weekly" <?= $filterPeriod === 'Bi-weekly' ? 'selected' : '' ?>>Bi-weekly</option>
             <option value="Monthly" <?= $filterPeriod === 'Monthly' ? 'selected' : '' ?>>Monthly</option>
             <option value="Annually" <?= $filterPeriod === 'Annually' ? 'selected' : '' ?>>Annually</option>
           </select>
@@ -630,9 +631,9 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="budget_forecast_modal.js"></script>
 <script>
-// Department to Cost Center mapping
+// Department to Cost Center mapping - UPDATED WITH PAYROLL BUDGET
 const departmentCostCenters = {
-  'HR': ['Training Budget', 'Reimbursement Budget', 'Benefits Budget'],
+  'HR': ['Training Budget', 'Reimbursement Budget', 'Benefits Budget', 'Payroll Budget'],
   'Core': ['Log Maintenance Costs', 'Depreciation Charges', 'Insurance Fees', 'Vehicle Operational Budget']
 };
 
@@ -805,123 +806,6 @@ function deleteBudget(btn) {
   }
 }
 
-// Remove old event listeners - they're now replaced by direct onclick functions
-// View modal - Using event delegation on document
-document.body.addEventListener('click', function(e){
-  const btn = e.target.closest('.btn-view');
-  if (!btn) return;
-  
-  e.preventDefault();
-  e.stopPropagation();
-  
-  try {
-    const rec = JSON.parse(btn.dataset.record);
-    console.log('View button clicked, record:', rec);
-    
-    const diff = (parseFloat(rec.amount_allocated || 0) - parseFloat(rec.amount_used || 0));
-    const displayDepartment = legacyDepartmentMapping[rec.department] || rec.department;
-    
-    const v_period = document.getElementById('v_period');
-    const v_department = document.getElementById('v_department');
-    const v_cost_center = document.getElementById('v_cost_center');
-    const v_alloc = document.getElementById('v_alloc');
-    const v_used = document.getElementById('v_used');
-    const v_diff = document.getElementById('v_diff');
-    const v_approved_by = document.getElementById('v_approved_by');
-    const v_approval_status = document.getElementById('v_approval_status');
-    const v_description = document.getElementById('v_description');
-    
-    if (v_period) v_period.textContent = rec.period || '';
-    if (v_department) v_department.textContent = displayDepartment;
-    if (v_cost_center) v_cost_center.textContent = rec.cost_center || '';
-    if (v_alloc) v_alloc.textContent = peso(rec.amount_allocated);
-    if (v_used) v_used.textContent = peso(rec.amount_used);
-    if (v_diff) v_diff.textContent = (diff<0?'-':'') + peso(Math.abs(diff));
-    if (v_approved_by) v_approved_by.textContent = rec.approved_by || 'N/A';
-    if (v_approval_status) v_approval_status.textContent = rec.approval_status || 'Pending';
-    if (v_description) v_description.textContent = rec.description || 'No description provided';
-    
-  } catch (error) {
-    console.error('Error parsing record data:', error);
-    alert('Error loading record data. Please try again.');
-  }
-});
-
-// Edit modal - Using event delegation on document
-document.body.addEventListener('click', function(e){
-  const btn = e.target.closest('.btn-edit');
-  if (!btn) return;
-  
-  e.preventDefault();
-  e.stopPropagation();
-  
-  try {
-    const rec = JSON.parse(btn.dataset.record);
-    console.log('Edit button clicked, record:', rec);
-    
-    const edit_id = document.getElementById('edit_id');
-    const edit_period = document.getElementById('edit_period');
-    const edit_amount_allocated = document.getElementById('edit_amount_allocated');
-    const edit_amount_used = document.getElementById('edit_amount_used');
-    const edit_approved_by = document.getElementById('edit_approved_by');
-    const edit_approval_status = document.getElementById('edit_approval_status');
-    const edit_description = document.getElementById('edit_description');
-    const edit_department = document.getElementById('edit_department');
-    const edit_cost_center = document.getElementById('edit_cost_center');
-    
-    if (edit_id) edit_id.value = rec.id || '';
-    if (edit_period) edit_period.value = rec.period || '';
-    if (edit_amount_allocated) edit_amount_allocated.value = rec.amount_allocated || '';
-    if (edit_amount_used) edit_amount_used.value = rec.amount_used || '';
-    if (edit_approved_by) edit_approved_by.value = rec.approved_by || '';
-    if (edit_approval_status) edit_approval_status.value = rec.approval_status || '';
-    if (edit_description) edit_description.value = rec.description || '';
-    
-    let mappedDepartment = legacyDepartmentMapping[rec.department] || rec.department;
-    if (edit_department) edit_department.value = mappedDepartment;
-    
-    updateCostCenter('edit');
-    
-    setTimeout(() => {
-      let mappedCostCenter = legacyCostCenterMapping[rec.cost_center] || rec.cost_center;
-      
-      if (edit_cost_center) {
-        const costCenterExists = Array.from(edit_cost_center.options).some(
-          option => option.value === mappedCostCenter
-        );
-        
-        if (costCenterExists) {
-          edit_cost_center.value = mappedCostCenter;
-        } else {
-          ensureLegacyOption(edit_cost_center, rec.cost_center, rec.cost_center + ' (Legacy - Please Update)');
-          edit_cost_center.value = rec.cost_center;
-        }
-      }
-    }, 100);
-    
-  } catch (error) {
-    console.error('Error parsing record data for edit:', error);
-    alert('Error loading record data for editing. Please try again.');
-  }
-});
-
-// Delete modal - Using event delegation on document
-document.body.addEventListener('click', function(e){
-  const btn = e.target.closest('.btn-delete');
-  if (!btn) return;
-  
-  e.preventDefault();
-  e.stopPropagation();
-  
-  console.log('Delete button clicked, id:', btn.dataset.id);
-  
-  const delete_id = document.getElementById('delete_id');
-  const delete_name = document.getElementById('delete_name');
-  
-  if (delete_id) delete_id.value = btn.dataset.id || '';
-  if (delete_name) delete_name.textContent = btn.dataset.name || 'this record';
-});
-
 function notifyDepartment(formType) {
   const department = document.getElementById(formType + '_department')?.value;
   const costCenter = document.getElementById(formType + '_cost_center')?.value;
@@ -974,7 +858,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addCostCenter.innerHTML = '<option disabled selected value="">Select Department First</option>';
   }
   
-  console.log('Enhanced Financial Budgeting System Initialized');
+  console.log('Enhanced Financial Budgeting System Initialized - with Bi-weekly Support and Payroll Budget');
   console.log('Budget Data Available:', window.budgetData ? window.budgetData.length : 0, 'records');
 });
 
@@ -1016,26 +900,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// Helper function for status badge
-function statusBadge(status) {
-  if (status === 'on_track') return '<span class="badge bg-success">On Track</span>';
-  if (status === 'tight') return '<span class="badge bg-warning text-dark">Tight</span>';
-  return '<span class="badge bg-danger">Overspent</span>';
-}
-
-// Helper function for approval status badge
-function approvalBadge(status) {
-  if (status === 'Approved') return '<span class="badge bg-success">Approved</span>';
-  if (status === 'Rejected') return '<span class="badge bg-danger">Rejected</span>';
-  return '<span class="badge bg-warning text-dark">Pending</span>';
-}
-
-// Escape HTML to prevent XSS
-function escapeHtml(str='') {
-  return (str+'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-}
-
 console.log('System Ready - Press Ctrl+Shift+F for AI Forecast, Ctrl+Shift+A for Add Budget');
 </script>
-</bpdy>
+</body>
 </html>
