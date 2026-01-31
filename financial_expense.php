@@ -60,6 +60,14 @@ if (isStaff()) {
   </div>
 </div>
 
+            <!-- Action Buttons (below summary) -->
+        <div class="d-flex gap-2">
+          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addExpenseModal">+ Add Expense</button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Expense Table -->
     <div class="table-responsive shadow-sm rounded">
       <table class="table table-bordered table-hover align-middle">
