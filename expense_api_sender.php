@@ -1,7 +1,7 @@
 <?php
 
 define('EXPENSE_API_URL', 'https://financials.cranecali-ms.com/expense_api_receiver.php');
-define('EXPENSE_API_KEY', 'c8f2e1a5b9d3f7e2a6c1b8d4f0e3a7c2b5d9f1e4a8c3b6d2f5e0a9c4b7d1f6e3a2');
+define('EXPENSE_API_KEY', '02012026');
 
 class ExpenseAPIClient {
     private $apiUrl;
