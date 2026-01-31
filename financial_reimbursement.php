@@ -94,6 +94,29 @@ $reimbursements = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 // Calculate summary statistics (removed Paid status)
+// We need to rebuild the WHERE conditions without the LIMIT/OFFSET params
+$summaryWhereConditions = [];
+$summaryParams = [];
+$summaryTypes = '';
+
+if ($filterStatus !== '') {
+    $summaryWhereConditions[] = "r.status = ?";
+    $summaryParams[] = $filterStatus;
+    $summaryTypes .= 's';
+}
+
+if ($filterDepartment !== '') {
+    $summaryWhereConditions[] = "r.department = ?";
+    $summaryParams[] = $filterDepartment;
+    $summaryTypes .= 's';
+}
+
+if ($filterEmployee !== '') {
+    $summaryWhereConditions[] = "r.employee_name LIKE ?";
+    $summaryParams[] = "%$filterEmployee%";
+    $summaryTypes .= 's';
+}
+
 $summarySql = "SELECT 
     COUNT(*) as total_count,
     COALESCE(SUM(r.amount), 0) as total_amount,
@@ -102,17 +125,13 @@ $summarySql = "SELECT
     COALESCE(SUM(CASE WHEN r.status = 'Rejected' THEN r.amount ELSE 0 END), 0) as rejected_amount
     FROM reimbursements r";
 
-if (!empty($whereConditions)) {
-    $summarySql .= " WHERE " . implode(" AND ", array_slice($whereConditions, 0, -2));
-    $summaryParams = array_slice($params, 0, -2);
-    $summaryTypes = substr($types, 0, -2);
-    
-    $summaryStmt = $conn->prepare($summarySql);
-    if (!empty($summaryParams)) {
-        $summaryStmt->bind_param($summaryTypes, ...$summaryParams);
-    }
-} else {
-    $summaryStmt = $conn->prepare($summarySql);
+if (!empty($summaryWhereConditions)) {
+    $summarySql .= " WHERE " . implode(" AND ", $summaryWhereConditions);
+}
+
+$summaryStmt = $conn->prepare($summarySql);
+if (!empty($summaryParams)) {
+    $summaryStmt->bind_param($summaryTypes, ...$summaryParams);
 }
 
 $summaryStmt->execute();
