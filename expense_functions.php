@@ -1,6 +1,30 @@
 <?php
 require_once 'db.php';
 
+// Calculate tax amount based on tax type and amount
+function calculateTaxAmount($taxType, $amount) {
+    switch ($taxType) {
+        case 'VAT 12%':
+            return $amount * 0.12;
+        case 'Withholding Tax 1%':
+            return $amount * 0.01;
+        case 'Withholding Tax 2%':
+            return $amount * 0.02;
+        case 'Withholding Tax 5%':
+            return $amount * 0.05;
+        case 'Withholding Tax 10%':
+            return $amount * 0.10;
+        case 'None':
+        default:
+            return 0;
+    }
+}
+
+// Format currency for display
+function formatCurrency($amount) {
+    return '₱' . number_format($amount, 2);
+}
+
 // Add new expense
 function addExpense($data, $receiptFile = null) {
     $conn = getDBConnection();
