@@ -106,6 +106,14 @@ $stmt->close();
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Profile - Financial System</title>
+  
+  <!-- ADD THIS BLOCK -->
+  <script>
+    // Pass PHP session configuration to JavaScript
+    window.SESSION_TIMEOUT = <?php echo SESSION_TIMEOUT * 1000; ?>; // Convert to milliseconds
+  </script>
+  <!-- END OF ADDED BLOCK -->
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -268,6 +276,9 @@ $stmt->close();
   </script>
   <script src="session_check.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  
+
 
 </body>
 </html>
