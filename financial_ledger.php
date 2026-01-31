@@ -31,6 +31,14 @@ $liquidations = getLiquidationRecords();
   <meta charset="UTF-8" />
   <title>General Ledger</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
+  <!-- ADD THIS BLOCK -->
+  <script>
+    // Pass PHP session configuration to JavaScript
+    window.SESSION_TIMEOUT = <?php echo SESSION_TIMEOUT * 1000; ?>; // Convert to milliseconds
+  </script>
+  <!-- END OF ADDED BLOCK -->
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -261,6 +269,11 @@ $liquidations = getLiquidationRecords();
 <?php include 'financial_ledger_modals.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- ADD THIS LINE -->
+<script src="session_check.js"></script>
+<!-- END OF ADDED LINE -->
+
 <script src="js/ledger_scripts.js"></script>
 
 </body>
