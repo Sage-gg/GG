@@ -35,25 +35,25 @@ $params = [];
 $types = '';
 
 if ($filterStatus !== '') {
-    $whereConditions[] = "status = ?";
+    $whereConditions[] = "r.status = ?";
     $params[] = $filterStatus;
     $types .= 's';
 }
 
 if ($filterDepartment !== '') {
-    $whereConditions[] = "department = ?";
+    $whereConditions[] = "r.department = ?";
     $params[] = $filterDepartment;
     $types .= 's';
 }
 
 if ($filterEmployee !== '') {
-    $whereConditions[] = "employee_name LIKE ?";
+    $whereConditions[] = "r.employee_name LIKE ?";
     $params[] = "%$filterEmployee%";
     $types .= 's';
 }
 
 // Count total records
-$countSql = "SELECT COUNT(*) as total FROM reimbursements";
+$countSql = "SELECT COUNT(*) as total FROM reimbursements r";
 if (!empty($whereConditions)) {
     $countSql .= " WHERE " . implode(" AND ", $whereConditions);
 }
@@ -96,11 +96,11 @@ $stmt->close();
 // Calculate summary statistics (removed Paid status)
 $summarySql = "SELECT 
     COUNT(*) as total_count,
-    COALESCE(SUM(amount), 0) as total_amount,
-    COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) as pending_amount,
-    COALESCE(SUM(CASE WHEN status = 'Approved' THEN amount ELSE 0 END), 0) as approved_amount,
-    COALESCE(SUM(CASE WHEN status = 'Rejected' THEN amount ELSE 0 END), 0) as rejected_amount
-    FROM reimbursements";
+    COALESCE(SUM(r.amount), 0) as total_amount,
+    COALESCE(SUM(CASE WHEN r.status = 'Pending' THEN r.amount ELSE 0 END), 0) as pending_amount,
+    COALESCE(SUM(CASE WHEN r.status = 'Approved' THEN r.amount ELSE 0 END), 0) as approved_amount,
+    COALESCE(SUM(CASE WHEN r.status = 'Rejected' THEN r.amount ELSE 0 END), 0) as rejected_amount
+    FROM reimbursements r";
 
 if (!empty($whereConditions)) {
     $summarySql .= " WHERE " . implode(" AND ", array_slice($whereConditions, 0, -2));
