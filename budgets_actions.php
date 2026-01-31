@@ -2,6 +2,8 @@
 // budgets_actions.php - UPDATED WITH AUTO-SYNC TO CORE 2
 session_start();
 include 'db.php';
+require_once 'core2_api_config.php';
+require_once 'core2_api_sender.php';
 
 function back($type, $msg){
   $_SESSION['flash'] = ['type'=>$type, 'msg'=>$msg];
@@ -196,4 +198,5 @@ function syncBudgetToCore2($budget_id) {
     'message' => 'Failed after ' . $max_attempts . ' attempts'
   ];
 }
+
 
