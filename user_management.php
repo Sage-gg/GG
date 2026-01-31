@@ -181,6 +181,14 @@ $users_result = $conn->query("SELECT id, email, username, role, department, cost
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User Management - Financial System</title>
+  
+  <!-- ADD THIS BLOCK -->
+  <script>
+    // Pass PHP session configuration to JavaScript
+    window.SESSION_TIMEOUT = <?php echo SESSION_TIMEOUT * 1000; ?>; // Convert to milliseconds
+  </script>
+  <!-- END OF ADDED BLOCK -->
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
   <style>
