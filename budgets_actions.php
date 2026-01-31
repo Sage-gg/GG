@@ -68,23 +68,6 @@ try {
     if ($ok) back('success','Budget allocation deleted.');
     back('danger','Failed to delete budget allocation.');
 
-  /* Optional: quick CSV export (hook up the button if you want)
-  } elseif ($action === 'export') {
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=budgets_export_' . date('Ymd_His') . '.csv');
-    $out = fopen('php://output', 'w');
-    fputcsv($out, ['ID','Period','Department','Cost Center','Allocated','Used','Difference','Approved By','Approval Status','Description','Created At']);
-    $res = $conn->query("SELECT * FROM budgets ORDER BY created_at DESC");
-    while($r = $res->fetch_assoc()){
-      $diff = (float)$r['amount_allocated'] - (float)$r['amount_used'];
-      fputcsv($out, [
-        $r['id'],$r['period'],$r['department'],$r['cost_center'],
-        $r['amount_allocated'],$r['amount_used'],$diff,$r['approved_by'],$r['approval_status'],$r['description'],$r['created_at']
-      ]);
-    }
-    fclose($out);
-    exit;
-  */
   } else {
     back('warning','Unknown action.');
   }
