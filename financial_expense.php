@@ -88,7 +88,6 @@ if (isStaff()) {
             <th>Payment Method</th>
             <th>Vehicle/Crane</th>
             <th>Job Linked</th>
-            <th>Remarks</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -115,3 +114,4 @@ if (isStaff()) {
 </body>
 
 </html>
+
