@@ -5,7 +5,6 @@ require_once 'db.php';
 // JOURNAL ENTRIES FUNCTIONS
 // ===================
 
-// Get all journal entries with optional filters
 function getJournalEntries($fromDate = null, $toDate = null, $accountCode = null, $limit = 50, $offset = 0) {
     global $conn;
     
@@ -51,11 +50,9 @@ function getJournalEntries($fromDate = null, $toDate = null, $accountCode = null
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// Add new journal entry
-function addJournalEntry($date, $reference, $accountCode, $amount, $type, $description) {
+function addJournalEntry($date, $reference, $accountCode, $amount, $type, $description, $sourceModule = 'Manual Entry') {
     global $conn;
     
-    // Generate entry ID if not provided
     if (empty($reference)) {
         $reference = generateEntryId();
     }
@@ -63,11 +60,11 @@ function addJournalEntry($date, $reference, $accountCode, $amount, $type, $descr
     $debit = ($type === 'debit') ? $amount : 0.00;
     $credit = ($type === 'credit') ? $amount : 0.00;
     
-    $sql = "INSERT INTO journal_entries (entry_id, date, account_code, debit, credit, description, approved_by, status) 
-            VALUES (?, ?, ?, ?, ?, ?, 'Admin', 'Posted')";
+    $sql = "INSERT INTO journal_entries (entry_id, date, reference, account_code, debit, credit, description, source_module, approved_by, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Admin', 'Posted')";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssdds", $reference, $date, $accountCode, $debit, $credit, $description);
+    $stmt->bind_param("ssssddss", $reference, $date, $reference, $accountCode, $debit, $credit, $description, $sourceModule);
     
     if ($stmt->execute()) {
         return [
@@ -84,7 +81,6 @@ function addJournalEntry($date, $reference, $accountCode, $amount, $type, $descr
     }
 }
 
-// Get single journal entry
 function getJournalEntry($id) {
     global $conn;
     
@@ -101,7 +97,6 @@ function getJournalEntry($id) {
     return $result->fetch_assoc();
 }
 
-// Update journal entry
 function updateJournalEntry($id, $date, $reference, $accountCode, $amount, $type, $description) {
     global $conn;
     
@@ -118,7 +113,6 @@ function updateJournalEntry($id, $date, $reference, $accountCode, $amount, $type
     return $stmt->execute();
 }
 
-// Delete journal entry
 function deleteJournalEntry($id) {
     global $conn;
     
@@ -129,7 +123,6 @@ function deleteJournalEntry($id) {
     return $stmt->execute();
 }
 
-// Generate unique entry ID
 function generateEntryId() {
     global $conn;
     
@@ -142,10 +135,9 @@ function generateEntryId() {
 }
 
 // ===================
-// CHART OF ACCOUNTS FUNCTIONS - FIXED
+// CHART OF ACCOUNTS FUNCTIONS
 // ===================
 
-// Get all accounts - FIXED to show only active accounts
 function getChartOfAccounts() {
     global $conn;
     
@@ -155,7 +147,6 @@ function getChartOfAccounts() {
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// Get single account
 function getAccount($accountCode) {
     global $conn;
     
@@ -168,18 +159,16 @@ function getAccount($accountCode) {
     return $result->fetch_assoc();
 }
 
-// Add new account
 function addAccount($accountCode, $accountName, $accountType, $description) {
     global $conn;
     
-    // Check if account code already exists
     $checkSql = "SELECT account_code FROM chart_of_accounts WHERE account_code = ?";
     $checkStmt = $conn->prepare($checkSql);
     $checkStmt->bind_param("s", $accountCode);
     $checkStmt->execute();
     
     if ($checkStmt->get_result()->num_rows > 0) {
-        return false; // Account code already exists
+        return false;
     }
     
     $sql = "INSERT INTO chart_of_accounts (account_code, account_name, account_type, description, status) 
@@ -191,7 +180,6 @@ function addAccount($accountCode, $accountName, $accountType, $description) {
     return $stmt->execute();
 }
 
-// Update account
 function updateAccount($originalCode, $newCode, $accountName, $accountType, $description) {
     global $conn;
     
@@ -205,14 +193,12 @@ function updateAccount($originalCode, $newCode, $accountName, $accountType, $des
     return $stmt->execute();
 }
 
-// FIXED Delete account function - Always delete permanently
 function deleteAccount($accountCode) {
     global $conn;
     
     try {
-        $conn->autocommit(false); // Start transaction
+        $conn->autocommit(false);
         
-        // First, delete all associated journal entries
         $deleteJournalSql = "DELETE FROM journal_entries WHERE account_code = ?";
         $deleteJournalStmt = $conn->prepare($deleteJournalSql);
         
@@ -227,7 +213,6 @@ function deleteAccount($accountCode) {
         $deleteJournalStmt->bind_param("s", $accountCode);
         $deleteJournalStmt->execute();
         
-        // Then delete the account itself
         $deleteAccountSql = "DELETE FROM chart_of_accounts WHERE account_code = ?";
         $deleteAccountStmt = $conn->prepare($deleteAccountSql);
         
@@ -243,7 +228,7 @@ function deleteAccount($accountCode) {
         
         if ($deleteAccountStmt->execute()) {
             if ($deleteAccountStmt->affected_rows > 0) {
-                $conn->commit(); // Commit transaction
+                $conn->commit();
                 $conn->autocommit(true);
                 return [
                     'success' => true,
@@ -277,10 +262,9 @@ function deleteAccount($accountCode) {
 }
 
 // ===================
-// LIQUIDATION RECORDS FUNCTIONS
+// LIQUIDATION RECORDS FUNCTIONS WITH AUTO JOURNAL ENTRY
 // ===================
 
-// Get all liquidation records
 function getLiquidationRecords($limit = 50, $offset = 0) {
     global $conn;
     
@@ -293,37 +277,6 @@ function getLiquidationRecords($limit = 50, $offset = 0) {
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// Add liquidation record
-function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $totalAmount, $status = 'Pending') {
-    global $conn;
-    
-    // Generate liquidation ID if not provided
-    if (empty($liquidationId)) {
-        $liquidationId = generateLiquidationId();
-    }
-    
-    $sql = "INSERT INTO liquidation_records (liquidation_id, date, employee, purpose, total_amount, status) 
-            VALUES (?, ?, ?, ?, ?, ?)";
-    
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssds", $liquidationId, $date, $employee, $purpose, $totalAmount, $status);
-    
-    if ($stmt->execute()) {
-        return [
-            'success' => true,
-            'id' => $conn->insert_id,
-            'liquidation_id' => $liquidationId,
-            'message' => 'Liquidation record added successfully'
-        ];
-    } else {
-        return [
-            'success' => false,
-            'message' => 'Database error: ' . $stmt->error
-        ];
-    }
-}
-
-// Get single liquidation record
 function getLiquidationRecord($id) {
     global $conn;
     
@@ -336,32 +289,243 @@ function getLiquidationRecord($id) {
     return $result->fetch_assoc();
 }
 
-// Update liquidation record
+function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $totalAmount, $status = 'Pending') {
+    global $conn;
+    
+    // Generate liquidation ID if not provided
+    if (empty($liquidationId)) {
+        $liquidationId = generateLiquidationId();
+    }
+    
+    // Handle receipt upload
+    $receiptFilename = null;
+    $receiptPath = null;
+    $uploadedAt = null;
+    
+    if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
+        $uploadResult = handleReceiptUpload($_FILES['receipt'], $liquidationId);
+        
+        if ($uploadResult['success']) {
+            $receiptFilename = $uploadResult['filename'];
+            $receiptPath = $uploadResult['path'];
+            $uploadedAt = date('Y-m-d H:i:s');
+        } else {
+            return [
+                'success' => false,
+                'message' => 'File upload failed: ' . $uploadResult['message']
+            ];
+        }
+    }
+    
+    // Start transaction
+    $conn->begin_transaction();
+    
+    try {
+        // Insert liquidation record
+        $sql = "INSERT INTO liquidation_records (liquidation_id, date, employee, purpose, total_amount, status, receipt_filename, receipt_path, uploaded_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ssssdssss", $liquidationId, $date, $employee, $purpose, $totalAmount, $status, $receiptFilename, $receiptPath, $uploadedAt);
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to insert liquidation record: ' . $stmt->error);
+        }
+        
+        $liquidationRecordId = $conn->insert_id;
+        
+        // Find or use default expense account
+        $expenseAccountCode = '5300'; // Default expense account code
+        
+        $accountCheck = getAccount($expenseAccountCode);
+        if (!$accountCheck) {
+            // If default doesn't exist, find any active expense account
+            $accountSql = "SELECT account_code FROM chart_of_accounts WHERE account_type = 'Expense' AND status = 'Active' LIMIT 1";
+            $accountResult = $conn->query($accountSql);
+            if ($accountResult && $accountResult->num_rows > 0) {
+                $expenseAccountCode = $accountResult->fetch_assoc()['account_code'];
+            } else {
+                throw new Exception('No expense account found. Please create an expense account first.');
+            }
+        }
+        
+        // Generate unique journal entry reference
+        $journalReference = generateEntryId();
+        
+        // UPDATED: Create journal entry description using only the PURPOSE field
+        $journalDescription = $purpose;
+        
+        // Insert journal entry as DEBIT (expense increases with debit)
+        $journalSql = "INSERT INTO journal_entries (entry_id, date, reference, account_code, debit, credit, description, source_module, approved_by, status) 
+                       VALUES (?, ?, ?, ?, ?, 0.00, ?, 'Liquidation', 'System', ?)";
+        
+        $journalStmt = $conn->prepare($journalSql);
+        $journalStmt->bind_param("ssssdss", $journalReference, $date, $liquidationId, $expenseAccountCode, $totalAmount, $journalDescription, $status);
+        
+        if (!$journalStmt->execute()) {
+            throw new Exception('Failed to create journal entry: ' . $journalStmt->error);
+        }
+        
+        // Commit transaction
+        $conn->commit();
+        
+        return [
+            'success' => true,
+            'id' => $liquidationRecordId,
+            'liquidation_id' => $liquidationId,
+            'journal_entry_id' => $journalReference,
+            'message' => 'Liquidation record and journal entry created successfully'
+        ];
+        
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        
+        // Delete uploaded file if exists
+        if ($receiptPath && file_exists($receiptPath)) {
+            unlink($receiptPath);
+        }
+        
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
+}
+
 function updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose, $totalAmount, $status) {
     global $conn;
     
-    $sql = "UPDATE liquidation_records 
-            SET date = ?, liquidation_id = ?, employee = ?, purpose = ?, total_amount = ?, status = ? 
-            WHERE id = ?";
+    $existingRecord = getLiquidationRecord($id);
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssdsi", $date, $liquidationId, $employee, $purpose, $totalAmount, $status, $id);
+    if (!$existingRecord) {
+        return [
+            'success' => false,
+            'message' => 'Liquidation record not found'
+        ];
+    }
     
-    return $stmt->execute();
+    // Store old liquidation_id to find the journal entry
+    $oldLiquidationId = $existingRecord['liquidation_id'];
+    
+    // Handle receipt upload
+    $receiptFilename = $existingRecord['receipt_filename'];
+    $receiptPath = $existingRecord['receipt_path'];
+    $uploadedAt = $existingRecord['uploaded_at'];
+    
+    if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
+        // Delete old receipt if exists
+        if ($existingRecord['receipt_path'] && file_exists($existingRecord['receipt_path'])) {
+            unlink($existingRecord['receipt_path']);
+        }
+        
+        $uploadResult = handleReceiptUpload($_FILES['receipt'], $liquidationId);
+        
+        if ($uploadResult['success']) {
+            $receiptFilename = $uploadResult['filename'];
+            $receiptPath = $uploadResult['path'];
+            $uploadedAt = date('Y-m-d H:i:s');
+        } else {
+            return [
+                'success' => false,
+                'message' => 'File upload failed: ' . $uploadResult['message']
+            ];
+        }
+    }
+    
+    // Start transaction
+    $conn->begin_transaction();
+    
+    try {
+        // Update liquidation record
+        $sql = "UPDATE liquidation_records 
+                SET date = ?, liquidation_id = ?, employee = ?, purpose = ?, total_amount = ?, status = ?, 
+                    receipt_filename = ?, receipt_path = ?, uploaded_at = ?
+                WHERE id = ?";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ssssdssssi", $date, $liquidationId, $employee, $purpose, $totalAmount, $status, 
+                          $receiptFilename, $receiptPath, $uploadedAt, $id);
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to update liquidation record: ' . $stmt->error);
+        }
+        
+        // UPDATED: Update corresponding journal entry using only the PURPOSE field
+        $journalDescription = $purpose;
+        
+        $journalSql = "UPDATE journal_entries 
+                       SET date = ?, reference = ?, description = ?, debit = ?, status = ?
+                       WHERE reference = ? AND source_module = 'Liquidation'";
+        
+        $journalStmt = $conn->prepare($journalSql);
+        $journalStmt->bind_param("sssdss", $date, $liquidationId, $journalDescription, $totalAmount, $status, $oldLiquidationId);
+        
+        if (!$journalStmt->execute()) {
+            throw new Exception('Failed to update journal entry: ' . $journalStmt->error);
+        }
+        
+        // Commit transaction
+        $conn->commit();
+        
+        return [
+            'success' => true,
+            'message' => 'Liquidation record and journal entry updated successfully'
+        ];
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        
+        return [
+            'success' => false,
+            'message' => $e->getMessage()
+        ];
+    }
 }
 
-// Delete liquidation record
 function deleteLiquidationRecord($id) {
     global $conn;
     
-    $sql = "DELETE FROM liquidation_records WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $id);
+    $record = getLiquidationRecord($id);
     
-    return $stmt->execute();
+    if (!$record) {
+        return ['success' => false, 'message' => 'Liquidation record not found'];
+    }
+    
+    $conn->begin_transaction();
+    
+    try {
+        // Delete corresponding journal entry
+        $deleteJournalSql = "DELETE FROM journal_entries WHERE reference = ? AND source_module = 'Liquidation'";
+        $deleteJournalStmt = $conn->prepare($deleteJournalSql);
+        $deleteJournalStmt->bind_param("s", $record['liquidation_id']);
+        $deleteJournalStmt->execute();
+        
+        // Delete liquidation record
+        $sql = "DELETE FROM liquidation_records WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Failed to delete liquidation record');
+        }
+        
+        // Delete receipt file if exists
+        if (isset($record['receipt_path']) && !empty($record['receipt_path']) && file_exists($record['receipt_path'])) {
+            unlink($record['receipt_path']);
+        }
+        
+        $conn->commit();
+        
+        return ['success' => true, 'message' => 'Liquidation record, journal entry, and receipt deleted successfully'];
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        
+        return ['success' => false, 'message' => 'Failed to delete: ' . $e->getMessage()];
+    }
 }
 
-// Generate unique liquidation ID
 function generateLiquidationId() {
     global $conn;
     
@@ -377,11 +541,88 @@ function generateLiquidationId() {
     return "LQ-" . $year . "-" . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
 }
 
+function handleReceiptUpload($file, $liquidationId) {
+    $uploadDir = 'uploads/receipts/';
+    
+    // Create directory if it doesn't exist
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    // Validate file type
+    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    $fileType = $file['type'];
+    
+    if (!in_array($fileType, $allowedTypes)) {
+        return [
+            'success' => false,
+            'message' => 'Invalid file type. Only JPG, PNG, GIF, and PDF files are allowed.'
+        ];
+    }
+    
+    // Validate file size (5MB max)
+    $maxSize = 5 * 1024 * 1024;
+    if ($file['size'] > $maxSize) {
+        return [
+            'success' => false,
+            'message' => 'File size exceeds 5MB limit.'
+        ];
+    }
+    
+    // Generate unique filename
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = $liquidationId . '_' . time() . '_' . uniqid() . '.' . $extension;
+    $filepath = $uploadDir . $filename;
+    
+    // Move uploaded file
+    if (move_uploaded_file($file['tmp_name'], $filepath)) {
+        return [
+            'success' => true,
+            'filename' => $filename,
+            'path' => $filepath
+        ];
+    } else {
+        return [
+            'success' => false,
+            'message' => 'Failed to move uploaded file.'
+        ];
+    }
+}
+
+function deleteReceipt($id) {
+    global $conn;
+    
+    $record = getLiquidationRecord($id);
+    
+    if ($record && $record['receipt_path']) {
+        if (file_exists($record['receipt_path'])) {
+            unlink($record['receipt_path']);
+        }
+        
+        $sql = "UPDATE liquidation_records 
+                SET receipt_filename = NULL, receipt_path = NULL, uploaded_at = NULL 
+                WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+        
+        if ($stmt->execute()) {
+            return [
+                'success' => true,
+                'message' => 'Receipt deleted successfully'
+            ];
+        }
+    }
+    
+    return [
+        'success' => false,
+        'message' => 'Receipt not found or already deleted'
+    ];
+}
+
 // ===================
 // REPORTING FUNCTIONS
 // ===================
 
-// Get ledger summary
 function getLedgerSummary($fromDate = null, $toDate = null) {
     global $conn;
     
@@ -418,33 +659,6 @@ function getLedgerSummary($fromDate = null, $toDate = null) {
     return $result->fetch_assoc();
 }
 
-// Get trial balance
-function getTrialBalance($asOfDate = null) {
-    global $conn;
-    
-    $sql = "SELECT 
-                coa.account_code,
-                coa.account_name,
-                coa.account_type,
-                COALESCE(SUM(je.debit), 0) as total_debit,
-                COALESCE(SUM(je.credit), 0) as total_credit,
-                (COALESCE(SUM(je.credit), 0) - COALESCE(SUM(je.debit), 0)) as balance
-            FROM chart_of_accounts coa
-            LEFT JOIN journal_entries je ON coa.account_code = je.account_code";
-    
-    if ($asOfDate) {
-        $sql .= " AND je.date <= '$asOfDate'";
-    }
-    
-    $sql .= " WHERE coa.status = 'Active'
-              GROUP BY coa.account_code, coa.account_name, coa.account_type
-              ORDER BY coa.account_code";
-    
-    $result = $conn->query($sql);
-    return $result->fetch_all(MYSQLI_ASSOC);
-}
-
-// Get account ledger
 function getAccountLedger($accountCode, $fromDate = null, $toDate = null) {
     global $conn;
     
@@ -477,11 +691,9 @@ function getAccountLedger($accountCode, $fromDate = null, $toDate = null) {
     $result = $stmt->get_result();
     $entries = $result->fetch_all(MYSQLI_ASSOC);
     
-    // Calculate running balance
     return calculateRunningBalance($entries);
 }
 
-// Calculate running balance for ledger entries
 function calculateRunningBalance($entries) {
     $runningBalance = 0;
     
@@ -497,25 +709,21 @@ function calculateRunningBalance($entries) {
 // UTILITY FUNCTIONS
 // ===================
 
-// Format currency - Protected against redeclaration
 if (!function_exists('formatCurrency')) {
     function formatCurrency($amount) {
         return number_format($amount, 2);
     }
 }
 
-// Validate date format
 function validateDate($date, $format = 'Y-m-d') {
     $d = DateTime::createFromFormat($format, $date);
     return $d && $d->format($format) === $date;
 }
 
-// Sanitize input
 function sanitizeInput($input) {
     return htmlspecialchars(strip_tags(trim($input)));
 }
 
-// Get account balance
 function getAccountBalance($accountCode, $asOfDate = null) {
     global $conn;
     
@@ -547,7 +755,6 @@ function getAccountBalance($accountCode, $asOfDate = null) {
     ];
 }
 
-// Get transaction count
 function getTransactionCount($accountCode = null, $fromDate = null, $toDate = null) {
     global $conn;
     
@@ -584,7 +791,6 @@ function getTransactionCount($accountCode = null, $fromDate = null, $toDate = nu
     return $result['count'];
 }
 
-// Validate journal entry data
 function validateJournalEntry($date, $accountCode, $amount, $type, $description) {
     $errors = [];
     
@@ -611,7 +817,6 @@ function validateJournalEntry($date, $accountCode, $amount, $type, $description)
     return $errors;
 }
 
-// Get accounts by type
 function getAccountsByType($accountType) {
     global $conn;
     
@@ -624,23 +829,19 @@ function getAccountsByType($accountType) {
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// Get dashboard statistics
 function getDashboardStats() {
     global $conn;
     
     $stats = [];
     
-    // Total accounts
     $sql = "SELECT COUNT(*) as count FROM chart_of_accounts WHERE status = 'Active'";
     $result = $conn->query($sql);
     $stats['total_accounts'] = $result->fetch_assoc()['count'];
     
-    // Total transactions this month
     $sql = "SELECT COUNT(*) as count FROM journal_entries WHERE MONTH(date) = MONTH(CURDATE()) AND YEAR(date) = YEAR(CURDATE())";
     $result = $conn->query($sql);
     $stats['monthly_transactions'] = $result->fetch_assoc()['count'];
     
-    // Total debits and credits this month
     $sql = "SELECT SUM(debit) as total_debit, SUM(credit) as total_credit 
             FROM journal_entries 
             WHERE MONTH(date) = MONTH(CURDATE()) AND YEAR(date) = YEAR(CURDATE())";
@@ -649,7 +850,6 @@ function getDashboardStats() {
     $stats['monthly_debits'] = $row['total_debit'] ?? 0;
     $stats['monthly_credits'] = $row['total_credit'] ?? 0;
     
-    // Pending liquidations
     $sql = "SELECT COUNT(*) as count FROM liquidation_records WHERE status = 'Pending'";
     $result = $conn->query($sql);
     $stats['pending_liquidations'] = $result->fetch_assoc()['count'];
