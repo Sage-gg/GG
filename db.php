@@ -728,9 +728,14 @@ function cleanupVerificationData() {
 // =============================================================================
 // SESSION MANAGEMENT FUNCTIONS (UPDATED WITH ROLE SUPPORT)
 // =============================================================================
-
 function checkSessionTimeout() {
     if (!isLoggedIn()) {
+        return;
+    }
+    
+    // Skip timeout check during email verification
+    if (isset($_SESSION['verifying_email']) && $_SESSION['verifying_email'] === true) {
+        $_SESSION['last_activity'] = time();
         return;
     }
     
@@ -743,11 +748,6 @@ function checkSessionTimeout() {
     }
     
     $inactive_time = $current_time - $_SESSION['last_activity'];
-    
-    if ($inactive_time < 30) {
-        $_SESSION['last_activity'] = $current_time;
-        return;
-    }
     
     if ($inactive_time > SESSION_TIMEOUT) {
         $user_id = $_SESSION['user_id'] ?? null;
@@ -778,8 +778,10 @@ function checkSessionTimeout() {
         }
     }
     
+    // Update last activity on every request
     $_SESSION['last_activity'] = $current_time;
     
+    // Regenerate session ID periodically for security
     if (!isset($_SESSION['last_regeneration'])) {
         $_SESSION['last_regeneration'] = $current_time;
     } else if ($current_time - $_SESSION['last_regeneration'] > 600) {
@@ -787,6 +789,7 @@ function checkSessionTimeout() {
         $_SESSION['last_regeneration'] = $current_time;
     }
 }
+
 
 function cleanupUserSession($user_id, $session_id = null) {
     $conn = getDBConnection();
