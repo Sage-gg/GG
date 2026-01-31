@@ -299,8 +299,11 @@ function handleAddExpense(e) {
         console.log('Add response:', data);
         
         if (data.success) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addExpenseModal'));
-            if (modal) modal.hide();
+            const modalElement = document.getElementById('addExpenseModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+            }
             
             document.getElementById('addExpenseForm').reset();
             loadExpenses(currentPage, currentSearch);
@@ -354,8 +357,11 @@ function handleEditExpense(e) {
         console.log('Edit response:', data);
         
         if (data.success) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editExpenseModal'));
-            if (modal) modal.hide();
+            const modalElement = document.getElementById('editExpenseModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+            }
             
             loadExpenses(currentPage, currentSearch);
             showAlert(data.message || 'Expense updated successfully', 'success');
@@ -401,8 +407,11 @@ function handleDeleteExpense() {
         console.log('Delete response:', data);
         
         if (data.success) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteExpenseModal'));
-            if (modal) modal.hide();
+            const modalElement = document.getElementById('deleteExpenseModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+            }
             
             loadExpenses(currentPage, currentSearch);
             showAlert(data.message || 'Expense deleted successfully', 'success');
@@ -476,8 +485,15 @@ function viewExpense(id) {
                 }
             });
             
-            const modal = new bootstrap.Modal(document.getElementById('viewExpenseModal'));
-            modal.show();
+            // Get modal element first, then create instance
+            const modalElement = document.getElementById('viewExpenseModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            } else {
+                console.error('Modal element not found or Bootstrap not loaded');
+                showAlert('Unable to open modal', 'danger');
+            }
         })
         .catch(error => {
             console.error('Error loading expense details:', error);
@@ -531,8 +547,15 @@ function editExpense(id) {
                 }
             });
             
-            const modal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
-            modal.show();
+            // Get modal element first, then create instance
+            const modalElement = document.getElementById('editExpenseModal');
+            if (modalElement && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            } else {
+                console.error('Modal element not found or Bootstrap not loaded');
+                showAlert('Unable to open modal', 'danger');
+            }
         })
         .catch(error => {
             console.error('Error loading expense for edit:', error);
@@ -545,8 +568,14 @@ function deleteExpense(id) {
     console.log('Preparing to delete expense ID:', id);
     currentDeleteId = id;
     
-    const modal = new bootstrap.Modal(document.getElementById('deleteExpenseModal'));
-    modal.show();
+    const modalElement = document.getElementById('deleteExpenseModal');
+    if (modalElement && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        console.error('Modal element not found or Bootstrap not loaded');
+        showAlert('Unable to open modal', 'danger');
+    }
 }
 
 // Calculate tax for add form
