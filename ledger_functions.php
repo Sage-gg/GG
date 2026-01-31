@@ -720,8 +720,11 @@ function validateDate($date, $format = 'Y-m-d') {
     return $d && $d->format($format) === $date;
 }
 
+// FIX: Removed htmlspecialchars() from here.
+// Encoding must only happen at OUTPUT (in the HTML template via <?= htmlspecialchars(...) ?>).
+// Having it here caused double-encoding: & -> &amp; (on save) -> &amp;amp; (on display).
 function sanitizeInput($input) {
-    return htmlspecialchars(strip_tags(trim($input)));
+    return strip_tags(trim($input));
 }
 
 function getAccountBalance($accountCode, $asOfDate = null) {
