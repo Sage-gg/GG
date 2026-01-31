@@ -60,7 +60,7 @@ if (isStaff()) {
   </div>
 </div>
 
-   <!-- Action Buttons (below summary) -->
+        <!-- Action Buttons (below summary) -->
         <div class="d-flex gap-2">
           <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addExpenseModal">+ Add Expense</button>
           <button class="btn btn-outline-primary" id="generateTaxReportBtn">Generate Tax Report</button>
@@ -93,7 +93,7 @@ if (isStaff()) {
         </thead>
         <tbody id="expenseTableBody">
           <!-- Rows to be dynamically loaded from database -->
-          <tr><td colspan="16" class="text-center">Loading expenses...</td></tr>
+          <tr><td colspan="15" class="text-center">Loading expenses...</td></tr>
         </tbody>
       </table>
     </div>
@@ -114,6 +114,3 @@ if (isStaff()) {
 </body>
 
 </html>
-
-
-
