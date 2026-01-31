@@ -15,6 +15,8 @@ try {
     if ($action === 'create') {
         $employee_name = $_POST['employee_name'] ?? '';
         $employee_id = $_POST['employee_id'] ?? '';
+        $address = $_POST['address'] ?? '';
+        $contact_no = $_POST['contact_no'] ?? '';
         $department = $_POST['department'] ?? '';
         $cost_center = $_POST['cost_center'] ?? '';
         $reimbursement_type = $_POST['reimbursement_type'] ?? '';
@@ -24,8 +26,14 @@ try {
         
         // Handle file upload (optional)
         $receipt_file = null;
+        $receipt_folder = null;
+        
         if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = 'uploads/receipts/';
+            // Create folder structure: uploads/receipts/YYYY/MM/
+            $year = date('Y');
+            $month = date('m');
+            $upload_dir = "uploads/receipts/$year/$month/";
+            
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
@@ -34,7 +42,9 @@ try {
             $receipt_file = uniqid('receipt_') . '.' . $file_extension;
             $upload_path = $upload_dir . $receipt_file;
             
-            if (!move_uploaded_file($_FILES['receipt_file']['tmp_name'], $upload_path)) {
+            if (move_uploaded_file($_FILES['receipt_file']['tmp_name'], $upload_path)) {
+                $receipt_folder = $upload_dir;
+            } else {
                 $receipt_file = null;
             }
         }
@@ -50,13 +60,15 @@ try {
         }
         $budget_stmt->close();
         
-        $sql = "INSERT INTO reimbursements (budget_id, employee_name, employee_id, department, cost_center, 
-                reimbursement_type, amount, expense_date, description, receipt_file, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')";
+        $sql = "INSERT INTO reimbursements (budget_id, employee_name, employee_id, address, contact_no, 
+                department, cost_center, reimbursement_type, amount, expense_date, description, 
+                receipt_file, receipt_folder, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending')";
         
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param('isssssdsss', $budget_id, $employee_name, $employee_id, $department, 
-                         $cost_center, $reimbursement_type, $amount, $expense_date, $description, $receipt_file);
+        $stmt->bind_param('isssssssdssss', $budget_id, $employee_name, $employee_id, $address, $contact_no,
+                         $department, $cost_center, $reimbursement_type, $amount, $expense_date, 
+                         $description, $receipt_file, $receipt_folder);
         
         if ($stmt->execute()) {
             back('success', 'Reimbursement request submitted successfully. Awaiting approval.');
@@ -69,6 +81,8 @@ try {
         $id = (int)($_POST['id'] ?? 0);
         $employee_name = $_POST['employee_name'] ?? '';
         $employee_id = $_POST['employee_id'] ?? '';
+        $address = $_POST['address'] ?? '';
+        $contact_no = $_POST['contact_no'] ?? '';
         $department = $_POST['department'] ?? '';
         $cost_center = $_POST['cost_center'] ?? '';
         $reimbursement_type = $_POST['reimbursement_type'] ?? '';
@@ -90,14 +104,44 @@ try {
             back('warning', 'Only pending reimbursements can be edited.');
         }
         
-        $sql = "UPDATE reimbursements 
-                SET employee_name = ?, employee_id = ?, department = ?, cost_center = ?, 
-                    reimbursement_type = ?, amount = ?, expense_date = ?, description = ?
-                WHERE id = ?";
-        
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('sssssdssi', $employee_name, $employee_id, $department, $cost_center, 
-                         $reimbursement_type, $amount, $expense_date, $description, $id);
+        // Handle file upload if new file provided
+        if (isset($_FILES['receipt_file']) && $_FILES['receipt_file']['error'] === UPLOAD_ERR_OK) {
+            $year = date('Y');
+            $month = date('m');
+            $upload_dir = "uploads/receipts/$year/$month/";
+            
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            
+            $file_extension = pathinfo($_FILES['receipt_file']['name'], PATHINFO_EXTENSION);
+            $receipt_file = uniqid('receipt_') . '.' . $file_extension;
+            $upload_path = $upload_dir . $receipt_file;
+            
+            if (move_uploaded_file($_FILES['receipt_file']['tmp_name'], $upload_path)) {
+                $sql = "UPDATE reimbursements 
+                        SET employee_name = ?, employee_id = ?, address = ?, contact_no = ?,
+                            department = ?, cost_center = ?, reimbursement_type = ?, amount = ?, 
+                            expense_date = ?, description = ?, receipt_file = ?, receipt_folder = ?
+                        WHERE id = ?";
+                
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('sssssssdssssi', $employee_name, $employee_id, $address, $contact_no,
+                                 $department, $cost_center, $reimbursement_type, $amount, 
+                                 $expense_date, $description, $receipt_file, $upload_dir, $id);
+            }
+        } else {
+            $sql = "UPDATE reimbursements 
+                    SET employee_name = ?, employee_id = ?, address = ?, contact_no = ?,
+                        department = ?, cost_center = ?, reimbursement_type = ?, amount = ?, 
+                        expense_date = ?, description = ?
+                    WHERE id = ?";
+            
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('sssssssdssi', $employee_name, $employee_id, $address, $contact_no,
+                             $department, $cost_center, $reimbursement_type, $amount, 
+                             $expense_date, $description, $id);
+        }
         
         if ($stmt->execute()) {
             back('success', 'Reimbursement request updated successfully.');
