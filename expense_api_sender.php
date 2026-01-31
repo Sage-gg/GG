@@ -1,10 +1,7 @@
 <?php
-/**
- * Expense API Sender/Client
- * Send expense data to the API endpoint
- * 
- * Usage examples at the bottom of this file
- */
+
+define('EXPENSE_API_URL', 'https://financials.cranecali-ms.com/expense_api_receiver.php');
+define('EXPENSE_API_KEY', 'c8f2e1a5b9d3f7e2a6c1b8d4f0e3a7c2b5d9f1e4a8c3b6d2f5e0a9c4b7d1f6e3a2');
 
 class ExpenseAPIClient {
     private $apiUrl;
@@ -168,81 +165,5 @@ class ExpenseAPIClient {
         ];
     }
 }
-
-// ============================================================================
-// USAGE EXAMPLES
-// ============================================================================
-
-// Uncomment the examples below to test the API
-
-
-// Initialize the API client
-$apiUrl = 'https://financials.cranecali-ms.com/expense_api_receiver.php';
-$apiKey = '02012026';
-$api = new ExpenseAPIClient($apiUrl, $apiKey);
-
-// Example 1: Add a new expense
-echo "=== Example 1: Add New Expense ===\n";
-$newExpense = [
-    'expense_date' => '2026-01-31',
-    'category' => 'Fuel',
-    'vendor' => 'Shell Gas Station',
-    'amount' => 1500.00,
-    'remarks' => 'Diesel for crane truck',
-    'tax_type' => 'VAT',
-    'payment_method' => 'Cash',
-    'vehicle' => 'Crane Truck 001',
-    'job_linked' => 'Project Alpha',
-    'approved_by' => 'Manager John',
-    'status' => 'Approved'
-];
-
-// Optional: Add receipt file
-$receiptPath = 'path/to/receipt.jpg';
-if (file_exists($receiptPath)) {
-    $receiptData = ExpenseAPIClient::fileToBase64($receiptPath);
-    $newExpense = array_merge($newExpense, $receiptData);
-}
-
-$result = $api->addExpense($newExpense);
-print_r($result);
-
-// Example 2: Update an expense
-echo "\n=== Example 2: Update Expense ===\n";
-$expenseId = 1; // Replace with actual expense ID
-$updateData = [
-    'amount' => 1650.00,
-    'remarks' => 'Diesel for crane truck - Updated amount',
-    'status' => 'Approved'
-];
-$result = $api->updateExpense($expenseId, $updateData);
-print_r($result);
-
-// Example 3: Get single expense
-echo "\n=== Example 3: Get Single Expense ===\n";
-$expenseId = 1;
-$result = $api->getExpense($expenseId);
-print_r($result);
-
-// Example 4: List expenses with pagination
-echo "\n=== Example 4: List Expenses ===\n";
-$result = $api->listExpenses($page = 1, $limit = 10, $search = '');
-print_r($result);
-
-// Example 5: Search expenses
-echo "\n=== Example 5: Search Expenses ===\n";
-$result = $api->listExpenses($page = 1, $limit = 10, $search = 'fuel');
-print_r($result);
-
-// Example 6: Get summary
-echo "\n=== Example 6: Get Summary ===\n";
-$result = $api->getSummary();
-print_r($result);
-
-// Example 7: Delete an expense
-echo "\n=== Example 7: Delete Expense ===\n";
-$expenseId = 1;
-$result = $api->deleteExpense($expenseId);
-print_r($result);
 
 ?>
