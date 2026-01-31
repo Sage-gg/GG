@@ -69,12 +69,6 @@ function setupEventListeners() {
     if (addTaxType) addTaxType.addEventListener('change', calculateAddTax);
     if (editAmount) editAmount.addEventListener('input', calculateEditTax);
     if (editTaxType) editTaxType.addEventListener('change', calculateEditTax);
-    
-    // Generate Tax Report Button
-    const taxReportBtn = document.getElementById('generateTaxReportBtn');
-    if (taxReportBtn) {
-        taxReportBtn.addEventListener('click', generateTaxReport);
-    }
 }
 
 // Load expenses from database with comprehensive error handling
@@ -87,7 +81,7 @@ function loadExpenses(page = 1, search = '') {
     // Show loading state
     const tbody = document.getElementById('expenseTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center">Loading expenses...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center">Loading expenses...</td></tr>';
     }
     
     const params = new URLSearchParams({
@@ -147,7 +141,7 @@ function loadExpenses(page = 1, search = '') {
             if (tbody) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="16" class="text-center text-danger">
+                        <td colspan="15" class="text-center text-danger">
                             <div class="alert alert-danger">
                                 <strong>Error loading expenses:</strong><br>
                                 ${error.message}
@@ -176,7 +170,7 @@ function renderExpenseTable(expenses) {
     tbody.innerHTML = '';
     
     if (!expenses || expenses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center">No expenses found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center">No expenses found</td></tr>';
         return;
     }
     
@@ -202,7 +196,6 @@ function renderExpenseTable(expenses) {
             <td>${escapeHtml(expense.payment_method || '')}</td>
             <td>${escapeHtml(expense.vehicle || '-')}</td>
             <td>${escapeHtml(expense.job_linked || '-')}</td>
-            <td>${truncateText(expense.remarks || '', 20)}</td>
             <td>
                 <div class="btn-group btn-group-sm" role="group">
                     <button class="btn btn-outline-primary" onclick="viewExpense(${expense.id})" title="View">
@@ -447,8 +440,11 @@ function viewExpense(id) {
             }
             return response.json();
         })
-        .then(expense => {
-            console.log('Expense details:', expense);
+        .then(data => {
+            console.log('Expense details:', data);
+            
+            // Check if response has expense data
+            const expense = data.expense || data;
             
             if (!expense) {
                 throw new Error('Expense not found');
@@ -501,8 +497,11 @@ function editExpense(id) {
             }
             return response.json();
         })
-        .then(expense => {
-            console.log('Expense for edit:', expense);
+        .then(data => {
+            console.log('Expense for edit:', data);
+            
+            // Check if response has expense data
+            const expense = data.expense || data;
             
             if (!expense) {
                 throw new Error('Expense not found');
@@ -564,84 +563,6 @@ function calculateEditTax() {
     const taxType = document.getElementById('editTaxType')?.value;
     console.log('Calculating edit tax:', amount, taxType);
     // Tax calculation is handled server-side
-}
-
-// Generate tax report
-function generateTaxReport() {
-    console.log('Generating tax report...');
-    
-    const tbody = document.getElementById('expenseTableBody');
-    if (!tbody) {
-        showAlert('No expense table found', 'danger');
-        return;
-    }
-    
-    const rows = tbody.querySelectorAll('tr');
-    
-    if (rows.length === 0 || (rows.length === 1 && rows[0].textContent.includes('No expenses'))) {
-        showAlert('No expense records to generate report.', 'warning');
-        return;
-    }
-
-    // Initialize totals
-    let totalVat = 0;
-    let totalWithholding = 0;
-    let totalTax = 0;
-    let totalExpenses = 0;
-
-    // Collect details per tax type
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length < 8) return; // Skip if not enough cells
-        
-        const amountCell = cells[5]; // Amount column
-        const taxTypeCell = cells[6]; // Tax Type column
-        const taxAmountCell = cells[7]; // Tax Amount column
-
-        if (!amountCell || !taxTypeCell || !taxAmountCell) return;
-
-        const amount = parseFloat(amountCell.textContent.replace(/[^0-9.-]+/g, "")) || 0;
-        const taxType = taxTypeCell.textContent.trim();
-        const taxAmount = parseFloat(taxAmountCell.textContent.replace(/[^0-9.-]+/g, "")) || 0;
-
-        totalExpenses += amount;
-        totalTax += taxAmount;
-
-        if (taxType.includes('VAT')) totalVat += taxAmount;
-        else if (taxType.includes('Withholding')) totalWithholding += taxAmount;
-    });
-
-    // Net after tax
-    const netAfterTax = totalExpenses - totalTax;
-
-    // Build report HTML
-    const reportHtml = `
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Tax Type</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Total Expenses</td><td>${formatCurrency(totalExpenses)}</td></tr>
-                <tr><td>VAT (12%)</td><td>${formatCurrency(totalVat)}</td></tr>
-                <tr><td>Withholding (2%)</td><td>${formatCurrency(totalWithholding)}</td></tr>
-                <tr><td><strong>Total Tax</strong></td><td><strong>${formatCurrency(totalTax)}</strong></td></tr>
-                <tr><td><strong>Net After Tax</strong></td><td><strong>${formatCurrency(netAfterTax)}</strong></td></tr>
-            </tbody>
-        </table>
-    `;
-
-    // Insert into modal content
-    const reportContent = document.getElementById('taxReportContent');
-    if (reportContent) {
-        reportContent.innerHTML = reportHtml;
-    }
-
-    // Show modal
-    const taxReportModal = new bootstrap.Modal(document.getElementById('taxReportModal'));
-    taxReportModal.show();
 }
 
 // Utility functions
