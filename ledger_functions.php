@@ -289,12 +289,48 @@ function getLiquidationRecord($id) {
     return $result->fetch_assoc();
 }
 
-function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $totalAmount, $status = 'Pending') {
+function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $totalAmount, $status = 'Pending', $expenseAccountCode = null) {
     global $conn;
     
     // Generate liquidation ID if not provided
     if (empty($liquidationId)) {
         $liquidationId = generateLiquidationId();
+    }
+    
+    // Use provided expense account or fallback to default
+    if (empty($expenseAccountCode)) {
+        // Find default expense account
+        $expenseAccountCode = '5300'; // Default expense account code
+        
+        $accountCheck = getAccount($expenseAccountCode);
+        if (!$accountCheck) {
+            // If default doesn't exist, find any active expense account
+            $accountSql = "SELECT account_code FROM chart_of_accounts WHERE account_type = 'Expense' AND status = 'Active' LIMIT 1";
+            $accountResult = $conn->query($accountSql);
+            if ($accountResult && $accountResult->num_rows > 0) {
+                $expenseAccountCode = $accountResult->fetch_assoc()['account_code'];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'No expense account found. Please create an expense account first or select one from the dropdown.'
+                ];
+            }
+        }
+    } else {
+        // Validate provided expense account
+        $accountCheck = getAccount($expenseAccountCode);
+        if (!$accountCheck) {
+            return [
+                'success' => false,
+                'message' => 'Selected expense account does not exist.'
+            ];
+        }
+        if ($accountCheck['account_type'] !== 'Expense') {
+            return [
+                'success' => false,
+                'message' => 'Selected account must be an Expense type account.'
+            ];
+        }
     }
     
     // Handle receipt upload
@@ -321,12 +357,12 @@ function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $total
     $conn->begin_transaction();
     
     try {
-        // Insert liquidation record
-        $sql = "INSERT INTO liquidation_records (liquidation_id, date, employee, purpose, total_amount, status, receipt_filename, receipt_path, uploaded_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Insert liquidation record WITH expense_account_code
+        $sql = "INSERT INTO liquidation_records (liquidation_id, date, employee, purpose, total_amount, status, expense_account_code, receipt_filename, receipt_path, uploaded_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssdssss", $liquidationId, $date, $employee, $purpose, $totalAmount, $status, $receiptFilename, $receiptPath, $uploadedAt);
+        $stmt->bind_param("ssssdsssss", $liquidationId, $date, $employee, $purpose, $totalAmount, $status, $expenseAccountCode, $receiptFilename, $receiptPath, $uploadedAt);
         
         if (!$stmt->execute()) {
             throw new Exception('Failed to insert liquidation record: ' . $stmt->error);
@@ -334,25 +370,10 @@ function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $total
         
         $liquidationRecordId = $conn->insert_id;
         
-        // Find or use default expense account
-        $expenseAccountCode = '5300'; // Default expense account code
-        
-        $accountCheck = getAccount($expenseAccountCode);
-        if (!$accountCheck) {
-            // If default doesn't exist, find any active expense account
-            $accountSql = "SELECT account_code FROM chart_of_accounts WHERE account_type = 'Expense' AND status = 'Active' LIMIT 1";
-            $accountResult = $conn->query($accountSql);
-            if ($accountResult && $accountResult->num_rows > 0) {
-                $expenseAccountCode = $accountResult->fetch_assoc()['account_code'];
-            } else {
-                throw new Exception('No expense account found. Please create an expense account first.');
-            }
-        }
-        
         // Generate unique journal entry reference
         $journalReference = generateEntryId();
         
-        // UPDATED: Create journal entry description using only the PURPOSE field
+        // Create journal entry description using only the PURPOSE field
         $journalDescription = $purpose;
         
         // Insert journal entry as DEBIT (expense increases with debit)
@@ -374,6 +395,7 @@ function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $total
             'id' => $liquidationRecordId,
             'liquidation_id' => $liquidationId,
             'journal_entry_id' => $journalReference,
+            'expense_account' => $expenseAccountCode,
             'message' => 'Liquidation record and journal entry created successfully'
         ];
         
@@ -393,7 +415,7 @@ function addLiquidationRecord($date, $liquidationId, $employee, $purpose, $total
     }
 }
 
-function updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose, $totalAmount, $status) {
+function updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose, $totalAmount, $status, $expenseAccountCode = null) {
     global $conn;
     
     $existingRecord = getLiquidationRecord($id);
@@ -407,6 +429,26 @@ function updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose
     
     // Store old liquidation_id to find the journal entry
     $oldLiquidationId = $existingRecord['liquidation_id'];
+    
+    // Use provided expense account or keep existing one
+    if (empty($expenseAccountCode)) {
+        $expenseAccountCode = $existingRecord['expense_account_code'] ?? '5300';
+    } else {
+        // Validate provided expense account
+        $accountCheck = getAccount($expenseAccountCode);
+        if (!$accountCheck) {
+            return [
+                'success' => false,
+                'message' => 'Selected expense account does not exist.'
+            ];
+        }
+        if ($accountCheck['account_type'] !== 'Expense') {
+            return [
+                'success' => false,
+                'message' => 'Selected account must be an Expense type account.'
+            ];
+        }
+    }
     
     // Handle receipt upload
     $receiptFilename = $existingRecord['receipt_filename'];
@@ -437,29 +479,29 @@ function updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose
     $conn->begin_transaction();
     
     try {
-        // Update liquidation record
+        // Update liquidation record WITH expense_account_code
         $sql = "UPDATE liquidation_records 
-                SET date = ?, liquidation_id = ?, employee = ?, purpose = ?, total_amount = ?, status = ?, 
+                SET date = ?, liquidation_id = ?, employee = ?, purpose = ?, total_amount = ?, status = ?, expense_account_code = ?, 
                     receipt_filename = ?, receipt_path = ?, uploaded_at = ?
                 WHERE id = ?";
         
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssdssssi", $date, $liquidationId, $employee, $purpose, $totalAmount, $status, 
+        $stmt->bind_param("ssssdsssssi", $date, $liquidationId, $employee, $purpose, $totalAmount, $status, $expenseAccountCode, 
                           $receiptFilename, $receiptPath, $uploadedAt, $id);
         
         if (!$stmt->execute()) {
             throw new Exception('Failed to update liquidation record: ' . $stmt->error);
         }
         
-        // UPDATED: Update corresponding journal entry using only the PURPOSE field
+        // Update corresponding journal entry using only the PURPOSE field
         $journalDescription = $purpose;
         
         $journalSql = "UPDATE journal_entries 
-                       SET date = ?, reference = ?, description = ?, debit = ?, status = ?
+                       SET date = ?, reference = ?, account_code = ?, description = ?, debit = ?, status = ?
                        WHERE reference = ? AND source_module = 'Liquidation'";
         
         $journalStmt = $conn->prepare($journalSql);
-        $journalStmt->bind_param("sssdss", $date, $liquidationId, $journalDescription, $totalAmount, $status, $oldLiquidationId);
+        $journalStmt->bind_param("ssssdss", $date, $liquidationId, $expenseAccountCode, $journalDescription, $totalAmount, $status, $oldLiquidationId);
         
         if (!$journalStmt->execute()) {
             throw new Exception('Failed to update journal entry: ' . $journalStmt->error);
