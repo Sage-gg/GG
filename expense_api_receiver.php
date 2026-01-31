@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // API Configuration
-define('API_KEY', 'your_secret_api_key_here'); // Change this to a secure key
+define('API_KEY', '02012026'); // Change this to a secure key
 
 /**
  * Verify API Key
