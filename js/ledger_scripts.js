@@ -1,29 +1,44 @@
-// Complete Fixed Ledger Scripts - Frontend JavaScript functions - OPTIMIZED VERSION
+// Improved Ledger Scripts with Enhanced Debugging
 document.addEventListener('DOMContentLoaded', function () {
+    
+    console.log('Ledger scripts initializing...');
+    
+    // ===================
+    // CONFIGURATION
+    // ===================
+    
+    const AJAX_HANDLER = 'ledger_ajax_handler.php';
+    
+    // Check if ajax handler exists
+    fetch(AJAX_HANDLER + '?action=ping')
+        .then(response => {
+            if (!response.ok) {
+                console.error('AJAX handler not accessible:', response.status);
+                showAlert('System configuration error. Please check server setup.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Cannot reach AJAX handler:', error);
+        });
     
     // ===================
     // INITIALIZATION
     // ===================
     
-    // Load accounts for dropdowns
     loadAccounts();
-    
-    // Auto-generate reference numbers
     setupAutoGeneration();
-    
-    // Setup all event listeners
     setupEventListeners();
     
     // ===================
-    // UTILITY FUNCTIONS - IMPROVED
+    // UTILITY FUNCTIONS
     // ===================
     
     function showAlert(message, type = 'success') {
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 350px;';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
         alertDiv.innerHTML = `
-            ${message}
+            <strong>${type === 'danger' ? 'Error!' : type === 'warning' ? 'Warning!' : 'Success!'}</strong> ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         document.body.appendChild(alertDiv);
@@ -42,47 +57,37 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // IMPROVED LOADING FUNCTIONS FOR BETTER PERFORMANCE
     function showLoading() {
-        const loadingModal = document.getElementById('loadingModal');
-        if (loadingModal) {
-            // Use faster modal show method
-            const modal = new bootstrap.Modal(loadingModal, {
-                backdrop: 'static',
-                keyboard: false
-            });
-            modal.show();
+        let loadingDiv = document.getElementById('globalLoading');
+        if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.id = 'globalLoading';
+            loadingDiv.innerHTML = `
+                <div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+                     style="background: rgba(0,0,0,0.5); z-index: 9998;">
+                    <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loadingDiv);
         }
+        loadingDiv.style.display = 'block';
     }
     
     function hideLoading() {
-        const loadingModal = document.getElementById('loadingModal');
-        const modalInstance = bootstrap.Modal.getInstance(loadingModal);
-        if (modalInstance) {
-            modalInstance.hide();
+        const loadingDiv = document.getElementById('globalLoading');
+        if (loadingDiv) {
+            loadingDiv.style.display = 'none';
         }
-        
-        // Force hide if still visible after 100ms
-        setTimeout(() => {
-            if (loadingModal && loadingModal.classList.contains('show')) {
-                loadingModal.classList.remove('show');
-                loadingModal.style.display = 'none';
-                document.body.classList.remove('modal-open');
-                const backdrop = document.querySelector('.modal-backdrop');
-                if (backdrop) backdrop.remove();
-            }
-        }, 100);
     }
     
-    // OPTIONAL: IMPROVED REFRESH FUNCTION (USE ONLY IF NEEDED)
     function refreshPage() {
-        // Add a small delay to ensure any pending operations complete
         setTimeout(() => {
-            window.location.reload(true); // Force reload from server
-        }, 200);
+            window.location.reload(true);
+        }, 800);
     }
     
-    // ALTERNATIVE: UPDATE TABLE WITHOUT FULL PAGE REFRESH
     function updateTableRow(rowElement, action = 'remove') {
         if (!rowElement) return;
         
@@ -107,13 +112,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    // ENHANCED ERROR HANDLING
     function handleAjaxError(error, operation = 'operation') {
         hideLoading();
         console.error(`Error during ${operation}:`, error);
         
         let errorMessage = `Error during ${operation}: `;
-        if (error.message) {
+        
+        if (error instanceof Response) {
+            errorMessage += `Server returned ${error.status} ${error.statusText}`;
+        } else if (error.message) {
             errorMessage += error.message;
         } else if (typeof error === 'string') {
             errorMessage += error;
@@ -124,14 +131,100 @@ document.addEventListener('DOMContentLoaded', function () {
         showAlert(errorMessage, 'danger');
     }
     
+    async function fetchJSON(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text);
+                throw new Error('Server returned non-JSON response. Check console for details.');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Fetch error:', error);
+            throw error;
+        }
+    }
+    
+    // ===================
+    // RECEIPT VIEWER - ENHANCED
+    // ===================
+    
+    window.openReceiptViewer = function(receiptPath, receiptFilename) {
+        console.log('Opening receipt:', receiptPath, receiptFilename);
+        
+        const modalElement = document.getElementById('receiptViewerModal');
+        if (!modalElement) {
+            console.error('Receipt viewer modal not found!');
+            showAlert('Receipt viewer modal not found. Please check your page setup.', 'danger');
+            return;
+        }
+        
+        const content = document.getElementById('receiptViewerContent');
+        const downloadLink = document.getElementById('receiptDownloadLink');
+        
+        if (!content) {
+            console.error('Receipt viewer content element not found!');
+            return;
+        }
+        
+        // Get file extension
+        const fileExt = receiptFilename.split('.').pop().toLowerCase();
+        
+        // Set download link
+        if (downloadLink) {
+            downloadLink.href = receiptPath;
+            downloadLink.download = receiptFilename;
+        }
+        
+        // Clear previous content
+        content.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+        
+        // Show modal
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Display based on file type
+        setTimeout(() => {
+            if (fileExt === 'pdf') {
+                content.innerHTML = `
+                    <div class="ratio ratio-16x9" style="min-height: 500px;">
+                        <embed src="${receiptPath}" type="application/pdf" />
+                    </div>
+                    <p class="mt-3 text-muted small">
+                        If PDF doesn't display, <a href="${receiptPath}" target="_blank" class="text-decoration-none">click here to open in new tab</a>
+                    </p>
+                `;
+            } else {
+                content.innerHTML = `
+                    <img src="${receiptPath}" 
+                         class="img-fluid rounded shadow" 
+                         alt="${receiptFilename}" 
+                         style="max-height: 70vh; width: auto; margin: 0 auto; display: block;" 
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'alert alert-danger\\'>Failed to load image</div>';" />
+                `;
+            }
+        }, 100);
+    };
+    
     // ===================
     // INITIALIZATION FUNCTIONS
     // ===================
     
     function loadAccounts() {
-        fetch('ajax_handlers.php?action=get_accounts')
-            .then(response => response.json())
+        console.log('Loading accounts...');
+        
+        fetchJSON(AJAX_HANDLER + '?action=get_accounts')
             .then(accounts => {
+                console.log('Accounts loaded:', accounts.length);
+                
                 const addSelect = document.getElementById('add_journal_account');
                 const editSelect = document.getElementById('edit_journal_account');
                 
@@ -145,26 +238,26 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(error => {
                 console.error('Error loading accounts:', error);
-                showAlert('Error loading accounts: ' + error.message, 'danger');
+                showAlert('Failed to load accounts. Please refresh the page.', 'warning');
             });
     }
     
     function setupAutoGeneration() {
-        // Auto-generate journal entry reference
+        // Journal Entry ID Auto-generation
         const addJournalModal = document.getElementById('addJournalEntryModal');
         if (addJournalModal) {
             addJournalModal.addEventListener('show.bs.modal', function() {
                 const referenceField = document.getElementById('add_journal_reference');
                 if (referenceField && !referenceField.value) {
-                    fetch('ajax_handlers.php?action=generate_entry_id')
-                        .then(response => response.json())
+                    fetchJSON(AJAX_HANDLER + '?action=generate_entry_id')
                         .then(data => {
                             if (data.success) {
                                 referenceField.value = data.entry_id;
+                                console.log('Generated entry ID:', data.entry_id);
                             }
                         })
-                        .catch(() => {
-                            // Fallback generation
+                        .catch(error => {
+                            console.error('Error generating entry ID:', error);
                             const timestamp = Date.now().toString().slice(-6);
                             referenceField.value = `GL-${timestamp}`;
                         });
@@ -172,24 +265,29 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         
-        // Auto-generate liquidation ID
+        // Liquidation ID Auto-generation
         const addLiquidationModal = document.getElementById('addLiquidationModal');
         if (addLiquidationModal) {
             addLiquidationModal.addEventListener('show.bs.modal', function() {
                 const liquidationField = document.getElementById('add_liq_id');
                 if (liquidationField && !liquidationField.value) {
-                    fetch('ajax_handlers.php?action=generate_liquidation_id')
-                        .then(response => response.json())
+                    console.log('Generating liquidation ID...');
+                    fetchJSON(AJAX_HANDLER + '?action=generate_liquidation_id')
                         .then(data => {
+                            console.log('Liquidation ID response:', data);
                             if (data.success) {
                                 liquidationField.value = data.liquidation_id;
+                                console.log('Generated liquidation ID:', data.liquidation_id);
+                            } else {
+                                throw new Error(data.message || 'Failed to generate ID');
                             }
                         })
-                        .catch(() => {
-                            // Fallback generation
+                        .catch(error => {
+                            console.error('Error generating liquidation ID:', error);
                             const year = new Date().getFullYear();
                             const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
                             liquidationField.value = `LQ-${year}-${randomNum}`;
+                            showAlert('Using temporary ID. Please verify before saving.', 'warning');
                         });
                 }
             });
@@ -197,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     function setupEventListeners() {
-        // Journal Entry Form Handlers
+        // Journal Entry Forms
         const addJournalForm = document.getElementById('addJournalEntryForm');
         if (addJournalForm) {
             addJournalForm.addEventListener('submit', handleAddJournalEntry);
@@ -208,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function () {
             editJournalForm.addEventListener('submit', handleEditJournalEntry);
         }
         
-        // Account Form Handlers
+        // Account Forms
         const addAccountForm = document.getElementById('addAccountForm');
         if (addAccountForm) {
             addAccountForm.addEventListener('submit', handleAddAccount);
@@ -219,9 +317,34 @@ document.addEventListener('DOMContentLoaded', function () {
             editAccountForm.addEventListener('submit', handleEditAccount);
         }
         
-        // Liquidation Form Handlers
+        // Liquidation Forms
         const addLiquidationForm = document.getElementById('addLiquidationForm');
         if (addLiquidationForm) {
+            const addReceiptInput = document.getElementById('add_liq_receipt');
+            if (addReceiptInput) {
+                addReceiptInput.addEventListener('change', function() {
+                    const preview = document.getElementById('add_receipt_preview');
+                    const filename = document.getElementById('add_receipt_filename');
+                    
+                    if (this.files && this.files[0]) {
+                        const file = this.files[0];
+                        const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+                        
+                        preview.style.display = 'block';
+                        filename.textContent = `${file.name} (${fileSize} MB)`;
+                        
+                        // Validate file size
+                        if (file.size > 5 * 1024 * 1024) {
+                            showAlert('File size exceeds 5MB limit. Please choose a smaller file.', 'warning');
+                            this.value = '';
+                            preview.style.display = 'none';
+                        }
+                    } else {
+                        preview.style.display = 'none';
+                    }
+                });
+            }
+            
             addLiquidationForm.addEventListener('submit', handleAddLiquidation);
         }
         
@@ -230,8 +353,24 @@ document.addEventListener('DOMContentLoaded', function () {
             editLiquidationForm.addEventListener('submit', handleEditLiquidation);
         }
         
-        // Button Event Delegation
+        // Event Delegation for Buttons
         document.body.addEventListener('click', function(e) {
+            // Receipt View Button Handler
+            const receiptBtn = e.target.closest('.view-receipt-btn');
+            if (receiptBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const receiptPath = receiptBtn.getAttribute('data-receipt-path');
+                const receiptFilename = receiptBtn.getAttribute('data-receipt-filename');
+                console.log('Receipt button clicked:', receiptPath, receiptFilename);
+                if (receiptPath && receiptFilename) {
+                    openReceiptViewer(receiptPath, receiptFilename);
+                } else {
+                    showAlert('Receipt information not found', 'warning');
+                }
+                return;
+            }
+            
             // Journal Entry Buttons
             if (e.target.classList.contains('view-journal-btn')) {
                 handleViewJournalEntry(e.target);
@@ -276,21 +415,27 @@ document.addEventListener('DOMContentLoaded', function () {
         const formData = new FormData(e.target);
         formData.append('action', 'add_journal_entry');
         
+        console.log('Adding journal entry...');
         showLoading();
-        fetch('ajax_handlers.php', {
+        
+        fetch(AJAX_HANDLER, {
             method: 'POST',
             body: formData
         })
         .then(response => {
             hideLoading();
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
+            console.log('Add journal entry response:', data);
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('addJournalEntryModal')).hide();
                 showAlert('Journal entry added successfully!', 'success');
                 e.target.reset();
-                setTimeout(refreshPage, 500);
+                refreshPage();
             } else {
                 showAlert('Error: ' + data.message, 'danger');
             }
@@ -303,8 +448,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleViewJournalEntry(button) {
         const id = button.dataset.id;
         
-        fetch(`ajax_handlers.php?action=get_journal_entry&id=${id}`)
-            .then(response => response.json())
+        fetchJSON(AJAX_HANDLER + `?action=get_journal_entry&id=${id}`)
             .then(data => {
                 if (data.success) {
                     const entry = data.entry;
@@ -331,8 +475,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleEditJournalEntryBtn(button) {
         const id = button.dataset.id;
         
-        fetch(`ajax_handlers.php?action=get_journal_entry&id=${id}`)
-            .then(response => response.json())
+        fetchJSON(AJAX_HANDLER + `?action=get_journal_entry&id=${id}`)
             .then(data => {
                 if (data.success) {
                     const entry = data.entry;
@@ -341,6 +484,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('edit_journal_reference').value = entry.entry_id;
                     document.getElementById('edit_journal_account').value = entry.account_code;
                     document.getElementById('edit_journal_description').value = entry.description;
+                    
+                    const sourceModuleField = document.getElementById('edit_journal_source_module');
+                    if (sourceModuleField && entry.source_module) {
+                        sourceModuleField.value = entry.source_module;
+                    }
                     
                     if (parseFloat(entry.debit) > 0) {
                         document.getElementById('edit_journal_amount').value = entry.debit;
@@ -366,19 +514,20 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('action', 'update_journal_entry');
         
         showLoading();
-        fetch('ajax_handlers.php', {
+        fetch(AJAX_HANDLER, {
             method: 'POST',
             body: formData
         })
         .then(response => {
             hideLoading();
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
         .then(data => {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('editJournalEntryModal')).hide();
                 showAlert('Journal entry updated successfully!', 'success');
-                setTimeout(refreshPage, 500);
+                refreshPage();
             } else {
                 showAlert('Error: ' + data.message, 'danger');
             }
@@ -388,31 +537,26 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // OPTIMIZED DELETE JOURNAL ENTRY - FIXED LOADING ISSUES
     function handleDeleteJournalEntry(button) {
         const id = button.dataset.id;
-        const row = button.closest('tr'); // Get row reference early
+        const row = button.closest('tr');
         
         if (confirm('Are you sure you want to delete this journal entry?')) {
-            // Show loading with shorter timeout
             showLoading();
             
-            fetch('ajax_handlers.php', {
+            fetch(AJAX_HANDLER, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: `action=delete_journal_entry&id=${id}`
             })
             .then(response => {
-                // Hide loading immediately when response received
                 hideLoading();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
             .then(data => {
                 if (data.success) {
-                    // Remove row immediately for instant feedback
-                    if (row) {
-                        updateTableRow(row, 'remove');
-                    }
+                    if (row) updateTableRow(row, 'remove');
                     showAlert('Journal entry deleted successfully!', 'success');
                 } else {
                     showAlert('Error: ' + data.message, 'danger');
@@ -425,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     // ===================
-    // ACCOUNT FUNCTIONS - COMPLETELY FIXED
+    // ACCOUNT FUNCTIONS
     // ===================
     
     function handleAddAccount(e) {
@@ -434,12 +578,13 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('action', 'add_account');
         
         showLoading();
-        fetch('ajax_handlers.php', {
+        fetch(AJAX_HANDLER, {
             method: 'POST',
             body: formData
         })
         .then(response => {
             hideLoading();
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
         .then(data => {
@@ -447,8 +592,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 bootstrap.Modal.getInstance(document.getElementById('addAccountModal')).hide();
                 showAlert('Account added successfully!', 'success');
                 e.target.reset();
-                loadAccounts(); // Reload accounts for dropdowns
-                setTimeout(refreshPage, 500);
+                loadAccounts();
+                refreshPage();
             } else {
                 showAlert('Error: ' + data.message, 'danger');
             }
@@ -461,8 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleViewAccount(button) {
         const accountCode = button.dataset.code;
         
-        fetch(`ajax_handlers.php?action=get_account&account_code=${accountCode}`)
-            .then(response => response.json())
+        fetchJSON(AJAX_HANDLER + `?action=get_account&account_code=${accountCode}`)
             .then(data => {
                 if (data.success) {
                     const account = data.account;
@@ -483,8 +627,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleEditAccountBtn(button) {
         const accountCode = button.dataset.code;
         
-        fetch(`ajax_handlers.php?action=get_account&account_code=${accountCode}`)
-            .then(response => response.json())
+        fetchJSON(AJAX_HANDLER + `?action=get_account&account_code=${accountCode}`)
             .then(data => {
                 if (data.success) {
                     const account = data.account;
@@ -510,20 +653,21 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('action', 'update_account');
         
         showLoading();
-        fetch('ajax_handlers.php', {
+        fetch(AJAX_HANDLER, {
             method: 'POST',
             body: formData
         })
         .then(response => {
             hideLoading();
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
         .then(data => {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('editAccountModal')).hide();
                 showAlert('Account updated successfully!', 'success');
-                loadAccounts(); // Reload accounts for dropdowns
-                setTimeout(refreshPage, 500);
+                loadAccounts();
+                refreshPage();
             } else {
                 showAlert('Error: ' + data.message, 'danger');
             }
@@ -533,10 +677,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // COMPLETELY FIXED Delete Account Handler - Now actually deletes from database
     function handleDeleteAccount(button) {
         const accountCode = button.dataset.code;
-        const row = button.closest('tr'); // Get row reference early
+        const row = button.closest('tr');
         
         if (!accountCode) {
             showAlert('Error: Account code not found', 'danger');
@@ -550,28 +693,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (confirm(confirmMessage)) {
             showLoading();
             
-            fetch('ajax_handlers.php', {
+            fetch(AJAX_HANDLER, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: `action=delete_account&account_code=${encodeURIComponent(accountCode)}`
             })
             .then(response => {
                 hideLoading();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
             .then(data => {
                 if (data && data.success) {
-                    // Remove the row from the table immediately
-                    if (row) {
-                        updateTableRow(row, 'remove');
-                    }
+                    if (row) updateTableRow(row, 'remove');
                     showAlert(data.message || 'Account deleted successfully!', 'success');
-                    loadAccounts(); // Reload accounts for dropdowns to reflect changes
-                    
-                    // Optional: Force refresh to ensure database sync
-                    // setTimeout(refreshPage, 1000);
+                    loadAccounts();
                 } else {
                     showAlert('Error: ' + (data?.message || 'Failed to delete account'), 'danger');
                 }
@@ -583,34 +719,54 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     // ===================
-    // LIQUIDATION FUNCTIONS
+    // LIQUIDATION FUNCTIONS - IMPROVED
     // ===================
     
     function handleAddLiquidation(e) {
         e.preventDefault();
+        
+        // Validate form
+        const employee = document.getElementById('add_liq_employee').value.trim();
+        const purpose = document.getElementById('add_liq_purpose').value.trim();
+        const amount = parseFloat(document.getElementById('add_liq_amount').value);
+        
+        if (!employee || !purpose || !amount || amount <= 0) {
+            showAlert('Please fill in all required fields with valid values.', 'warning');
+            return;
+        }
+        
         const formData = new FormData(e.target);
         formData.append('action', 'add_liquidation');
         
+        console.log('Submitting liquidation form...');
         showLoading();
-        fetch('ajax_handlers.php', {
+        
+        fetch(AJAX_HANDLER, {
             method: 'POST',
             body: formData
         })
         .then(response => {
             hideLoading();
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             return response.json();
         })
         .then(data => {
+            console.log('Add liquidation response:', data);
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('addLiquidationModal')).hide();
-                showAlert('Liquidation record added successfully!', 'success');
+                showAlert('Liquidation record and journal entry created successfully!', 'success');
                 e.target.reset();
-                setTimeout(refreshPage, 500);
+                document.getElementById('add_receipt_preview').style.display = 'none';
+                refreshPage();
             } else {
-                showAlert('Error: ' + data.message, 'danger');
+                showAlert('Error: ' + (data.message || 'Unknown error occurred'), 'danger');
             }
         })
         .catch(error => {
+            console.error('Add liquidation error:', error);
             handleAjaxError(error, 'adding liquidation');
         });
     }
@@ -618,8 +774,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleViewLiquidation(button) {
         const id = button.dataset.id;
         
-        fetch(`ajax_handlers.php?action=get_liquidation&id=${id}`)
-            .then(response => response.json())
+        fetchJSON(AJAX_HANDLER + `?action=get_liquidation&id=${id}`)
             .then(data => {
                 if (data.success) {
                     const liq = data.liquidation;
@@ -628,7 +783,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('view_liq_employee').textContent = liq.employee || '-';
                     document.getElementById('view_liq_purpose').textContent = liq.purpose || '-';
                     document.getElementById('view_liq_amount').textContent = liq.total_amount ? '₱' + formatCurrency(liq.total_amount) : '-';
-                    document.getElementById('view_liq_status').textContent = liq.status || '-';
+                    document.getElementById('view_liq_status').innerHTML = `<span class="badge ${liq.status === 'Approved' ? 'bg-success' : (liq.status === 'Rejected' ? 'bg-danger' : 'bg-warning')}">${liq.status}</span>`;
+                    
+                    const receiptElement = document.getElementById('view_liq_receipt');
+                    if (liq.receipt_filename && liq.receipt_path) {
+                        const fileExt = liq.receipt_filename.split('.').pop().toLowerCase();
+                        const isPdf = fileExt === 'pdf';
+                        
+                        receiptElement.innerHTML = `
+                            <button type="button" class="btn btn-sm btn-outline-primary view-receipt-btn" 
+                                    data-receipt-path="${liq.receipt_path}" 
+                                    data-receipt-filename="${liq.receipt_filename}">
+                                <i class="bi bi-${isPdf ? 'file-pdf' : 'image'}"></i> View Receipt
+                            </button>
+                        `;
+                    } else {
+                        receiptElement.textContent = 'No receipt uploaded';
+                    }
                 } else {
                     showAlert('Error loading liquidation record: ' + data.message, 'danger');
                 }
@@ -641,8 +812,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleEditLiquidationBtn(button) {
         const id = button.dataset.id;
         
-        fetch(`ajax_handlers.php?action=get_liquidation&id=${id}`)
-            .then(response => response.json())
+        fetchJSON(AJAX_HANDLER + `?action=get_liquidation&id=${id}`)
             .then(data => {
                 if (data.success) {
                     const liq = data.liquidation;
@@ -653,6 +823,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('edit_liq_purpose').value = liq.purpose;
                     document.getElementById('edit_liq_amount').value = liq.total_amount;
                     document.getElementById('edit_liq_status').value = liq.status;
+                    
+                    const currentReceiptDiv = document.getElementById('edit_current_receipt');
+                    if (currentReceiptDiv) {
+                        if (liq.receipt_filename) {
+                            const fileExt = liq.receipt_filename.split('.').pop().toLowerCase();
+                            const isPdf = fileExt === 'pdf';
+                            
+                            currentReceiptDiv.innerHTML = `
+                                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-${isPdf ? 'file-pdf' : 'image'}"></i>
+                                        <strong>Current:</strong> ${liq.receipt_filename}
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary view-receipt-btn" 
+                                            data-receipt-path="${liq.receipt_path}" 
+                                            data-receipt-filename="${liq.receipt_filename}">
+                                        View
+                                    </button>
+                                </div>
+                            `;
+                        } else {
+                            currentReceiptDiv.innerHTML = '<div class="text-muted">No receipt uploaded</div>';
+                        }
+                    }
                     
                     new bootstrap.Modal(document.getElementById('editLiquidationModal')).show();
                 } else {
@@ -670,19 +864,20 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('action', 'update_liquidation');
         
         showLoading();
-        fetch('ajax_handlers.php', {
+        fetch(AJAX_HANDLER, {
             method: 'POST',
             body: formData
         })
         .then(response => {
             hideLoading();
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
         .then(data => {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('editLiquidationModal')).hide();
-                showAlert('Liquidation record updated successfully!', 'success');
-                setTimeout(refreshPage, 500);
+                showAlert('Liquidation record and journal entry updated successfully!', 'success');
+                refreshPage();
             } else {
                 showAlert('Error: ' + data.message, 'danger');
             }
@@ -692,32 +887,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // OPTIMIZED DELETE LIQUIDATION - FIXED LOADING ISSUES
     function handleDeleteLiquidation(button) {
         const id = button.dataset.id;
-        const row = button.closest('tr'); // Get row reference early
+        const row = button.closest('tr');
         
-        if (confirm('Are you sure you want to delete this liquidation record?')) {
-            // Show loading with immediate response handling
+        const confirmMessage = 'Are you sure you want to delete this liquidation record?\n\n' +
+                             'This will also delete:\n' +
+                             '- The associated journal entry\n' +
+                             '- The receipt file (if any)\n\n' +
+                             'This action cannot be undone.';
+        
+        if (confirm(confirmMessage)) {
             showLoading();
             
-            fetch('ajax_handlers.php', {
+            fetch(AJAX_HANDLER, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: `action=delete_liquidation&id=${id}`
             })
             .then(response => {
-                // Hide loading immediately when response received
                 hideLoading();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
             .then(data => {
                 if (data.success) {
-                    // Remove row immediately with smooth animation
-                    if (row) {
-                        updateTableRow(row, 'remove');
-                    }
-                    showAlert('Liquidation record deleted successfully!', 'success');
+                    if (row) updateTableRow(row, 'remove');
+                    showAlert('Liquidation record, journal entry, and receipt deleted successfully!', 'success');
                 } else {
                     showAlert('Error: ' + data.message, 'danger');
                 }
@@ -728,5 +924,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     
-    console.log('Complete Fixed Ledger scripts loaded - Optimized loading and smooth UX');
+    console.log('✅ Improved ledger scripts loaded successfully!');
 });
