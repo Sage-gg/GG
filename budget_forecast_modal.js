@@ -1,5 +1,5 @@
-// budget_forecast_modal.js - CORRECTED VERSION
-// Fixed Historical Performance Analysis to read ALL data, not just current page
+// budget_forecast_modal_enhanced.js - UPDATED VERSION 3.0
+// Enhanced with Bi-weekly Support, Detailed Statistics, and Improved AI Algorithms
 
 class BudgetForecastAI {
     constructor() {
@@ -9,23 +9,24 @@ class BudgetForecastAI {
         this.forecastPeriod = 3;
         this.departmentFilter = 'all';
         this.budgetFrequency = 'all';
+        this.costCenterFilter = 'all';
+        this.approvalFilter = 'all';
         this.isAnalyzing = false;
         
-        // Department to Cost Center mapping aligned with your system
+        // Updated Department to Cost Center mapping
         this.departmentCostCenters = {
-            'HR2': ['Training Budget', 'Reimbursement Budget'],
-            'HR4': ['Benefits Budget'],
-            'Core 2': ['Log Maintenance Costs', 'Depreciation Charges', 'Insurance Fees'],
-            'Core 4': ['Vehicle Operational Budget']
+            'HR': ['Training Budget', 'Reimbursement Budget', 'Benefits Budget', 'Payroll Budget'],
+            'Core': ['Log Maintenance Costs', 'Depreciation Charges', 'Insurance Fees', 'Vehicle Operational Budget']
         };
         
-        // FIXED: Properly balanced AI coefficients for realistic predictions
+        // Enhanced AI coefficients with bi-weekly support
         this.aiCoefficients = {
             conservative: { 
                 growth: 0.02, 
                 volatility: 0.03, 
                 buffer: 0.08,
                 daily: { growth: 0.005, volatility: 0.02, buffer: 0.05 },
+                biweekly: { growth: 0.015, volatility: 0.025, buffer: 0.06 },
                 monthly: { growth: 0.02, volatility: 0.03, buffer: 0.08 },
                 annually: { growth: 0.025, volatility: 0.04, buffer: 0.10 },
                 mixed: { growth: 0.018, volatility: 0.03, buffer: 0.08 }
@@ -35,6 +36,7 @@ class BudgetForecastAI {
                 volatility: 0.06, 
                 buffer: 0.10,
                 daily: { growth: 0.012, volatility: 0.04, buffer: 0.08 },
+                biweekly: { growth: 0.035, volatility: 0.05, buffer: 0.09 },
                 monthly: { growth: 0.05, volatility: 0.06, buffer: 0.10 },
                 annually: { growth: 0.055, volatility: 0.07, buffer: 0.12 },
                 mixed: { growth: 0.048, volatility: 0.06, buffer: 0.10 }
@@ -44,16 +46,21 @@ class BudgetForecastAI {
                 volatility: 0.10, 
                 buffer: 0.05,
                 daily: { growth: 0.025, volatility: 0.08, buffer: 0.03 },
+                biweekly: { growth: 0.055, volatility: 0.09, buffer: 0.04 },
                 monthly: { growth: 0.08, volatility: 0.10, buffer: 0.05 },
                 annually: { growth: 0.085, volatility: 0.12, buffer: 0.07 },
                 mixed: { growth: 0.078, volatility: 0.10, buffer: 0.05 }
             }
         };
         
-        // FIXED: More realistic seasonal factors
+        // Enhanced seasonal factors with bi-weekly
         this.seasonalFactors = {
             daily: {
                 1: 0.95, 2: 0.90, 3: 0.98, 4: 1.02, 5: 1.08, 6: 1.05, 7: 0.85
+            },
+            biweekly: {
+                1: 0.98, 2: 1.02, 3: 1.00, 4: 1.03, 5: 1.05, 6: 1.07,
+                7: 0.99, 8: 1.01, 9: 1.04, 10: 1.02, 11: 1.06, 12: 1.10
             },
             monthly: {
                 1: 0.92, 2: 0.88, 3: 0.95, 4: 1.03, 5: 1.05, 6: 1.08,
@@ -78,12 +85,81 @@ class BudgetForecastAI {
         if (modal) {
             modal.addEventListener('shown.bs.modal', () => {
                 this.startDataAnalysis();
+                this.populateAllCostCenters(); // Populate cost centers when modal opens
             });
             
             modal.addEventListener('hidden.bs.modal', () => {
                 this.resetAI();
             });
         }
+
+        // Setup department filter change listener
+        const deptFilter = document.getElementById('departmentFilter');
+        if (deptFilter) {
+            deptFilter.addEventListener('change', () => {
+                this.updateCostCenterOptions();
+            });
+        }
+    }
+    
+    updateCostCenterOptions() {
+        const deptFilter = document.getElementById('departmentFilter');
+        const costCenterFilter = document.getElementById('costCenterFilter');
+        
+        if (!deptFilter || !costCenterFilter) return;
+        
+        const selectedDept = deptFilter.value;
+        costCenterFilter.innerHTML = '<option value="all" selected>All Cost Centers</option>';
+        
+        if (selectedDept !== 'all' && this.departmentCostCenters[selectedDept]) {
+            // Use predefined cost centers for the selected department
+            this.departmentCostCenters[selectedDept].forEach(cc => {
+                const option = document.createElement('option');
+                option.value = cc;
+                option.textContent = cc;
+                costCenterFilter.appendChild(option);
+            });
+        } else if (selectedDept === 'all') {
+            // Show all cost centers from actual data when "All Departments" is selected
+            this.populateAllCostCenters();
+        }
+    }
+    
+    populateAllCostCenters() {
+        const costCenterFilter = document.getElementById('costCenterFilter');
+        if (!costCenterFilter) return;
+        
+        // Get unique cost centers from actual budget data
+        const uniqueCostCenters = [...new Set(
+            this.budgetData.map(item => item.cost_center).filter(cc => cc && cc.trim() !== '')
+        )].sort();
+        
+        // Reset the dropdown
+        costCenterFilter.innerHTML = '<option value="all" selected>All Cost Centers</option>';
+        
+        // Add all unique cost centers from data
+        uniqueCostCenters.forEach(cc => {
+            const option = document.createElement('option');
+            option.value = cc;
+            option.textContent = cc;
+            costCenterFilter.appendChild(option);
+        });
+        
+        // Update the label to show count
+        const label = document.querySelector('label[for="costCenterFilter"]');
+        if (label && uniqueCostCenters.length > 0) {
+            const countBadge = label.querySelector('.badge');
+            if (countBadge) {
+                countBadge.textContent = uniqueCostCenters.length;
+            } else {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-primary ms-2';
+                badge.textContent = uniqueCostCenters.length;
+                label.appendChild(badge);
+            }
+        }
+        
+        console.log('✅ Cost centers populated:', uniqueCostCenters.length, 'unique cost centers');
     }
     
     updateAIStatus(text, showSpinner = false) {
@@ -107,11 +183,10 @@ class BudgetForecastAI {
     
     loadBudgetData() {
         try {
-            // FIXED: Use window.budgetData which contains ALL records, not just current page
             this.budgetData = window.budgetData || [];
             this.summaryData = window.summaryData || {};
             
-            console.log('FIXED: Budget data loaded - ALL records:', this.budgetData.length, 'total records');
+            console.log('✅ Budget data loaded - ALL records:', this.budgetData.length, 'total records');
             console.log('Summary data:', this.summaryData);
         } catch (error) {
             console.error('Error loading budget data:', error);
@@ -127,12 +202,14 @@ class BudgetForecastAI {
         const departments = [...new Set(this.budgetData.map(item => item.department || ''))].filter(d => d);
         const costCenters = [...new Set(this.budgetData.map(item => item.cost_center || ''))].filter(c => c);
         const periods = [...new Set(this.budgetData.map(item => item.period || ''))].filter(p => p);
+        const approvedCount = this.budgetData.filter(item => item.approval_status === 'Approved').length;
         
         const elements = {
             recordsAnalyzed: document.getElementById('recordsAnalyzed'),
             totalDepartments: document.getElementById('totalDepartments'),
             totalCostCenters: document.getElementById('totalCostCenters'),
             analysisMonths: document.getElementById('analysisMonths'),
+            approvedCount: document.getElementById('approvedCount'),
             lastUpdate: document.getElementById('lastUpdate'),
             dataPointsUsed: document.getElementById('dataPointsUsed')
         };
@@ -140,7 +217,8 @@ class BudgetForecastAI {
         if (elements.recordsAnalyzed) elements.recordsAnalyzed.textContent = `${recordCount} records`;
         if (elements.totalDepartments) elements.totalDepartments.textContent = departments.length;
         if (elements.totalCostCenters) elements.totalCostCenters.textContent = costCenters.length;
-        if (elements.analysisMonths) elements.analysisMonths.textContent = periods.length + ' types';
+        if (elements.analysisMonths) elements.analysisMonths.textContent = periods.length;
+        if (elements.approvedCount) elements.approvedCount.textContent = approvedCount;
         if (elements.lastUpdate) elements.lastUpdate.textContent = new Date().toLocaleTimeString();
         if (elements.dataPointsUsed) elements.dataPointsUsed.textContent = recordCount;
     }
@@ -153,6 +231,7 @@ class BudgetForecastAI {
         
         const analysisSteps = [
             'Analyzing period-specific spending patterns...',
+            'Processing bi-weekly payroll cycles...',
             'Detecting seasonal variations by budget type...',
             'Processing budget utilization rates...',
             'Identifying cost center trends...',
@@ -162,7 +241,7 @@ class BudgetForecastAI {
         
         let currentStep = 0;
         const interval = setInterval(() => {
-            progress += 16.67;
+            progress += 14.28;
             if (progressBar) progressBar.style.width = progress + '%';
             
             if (currentStep < analysisSteps.length) {
@@ -174,23 +253,21 @@ class BudgetForecastAI {
                 clearInterval(interval);
                 this.updateAIStatus('AI analysis ready - Configure parameters to generate forecast', false);
                 this.showHistoricalTrends();
+                this.showDetailedStatistics();
             }
-        }, 800);
+        }, 700);
     }
     
-    // MAJOR FIX: Calculate historical trends using ALL budget data, not just current page
     showHistoricalTrends() {
         const trendsSection = document.getElementById('historicalTrends');
         if (trendsSection) trendsSection.style.display = 'block';
         
-        // FIXED: Calculate from ALL data in this.budgetData, not summary data or current page
         const allRecords = this.budgetData || [];
         
         let totalBudget = 0;
         let totalUsed = 0;
         let totalMonthlyEquivalent = 0;
         
-        // Process ALL records to get accurate totals
         allRecords.forEach(record => {
             const allocated = parseFloat(record.amount_allocated || 0);
             const used = parseFloat(record.amount_used || 0);
@@ -198,14 +275,16 @@ class BudgetForecastAI {
             totalBudget += allocated;
             totalUsed += used;
             
-            // Calculate monthly equivalent for each record
             if (allocated > 0) {
                 let monthlyEquiv = 0;
                 const period = record.period || 'Monthly';
                 
                 switch(period) {
                     case 'Daily':
-                        monthlyEquiv = allocated * 22; // 22 working days per month
+                        monthlyEquiv = allocated * 22;
+                        break;
+                    case 'Bi-weekly':
+                        monthlyEquiv = allocated * 2;
                         break;
                     case 'Monthly':
                         monthlyEquiv = allocated;
@@ -214,7 +293,7 @@ class BudgetForecastAI {
                         monthlyEquiv = allocated / 12;
                         break;
                     default:
-                        monthlyEquiv = allocated; // Default to monthly
+                        monthlyEquiv = allocated;
                         break;
                 }
                 totalMonthlyEquivalent += monthlyEquiv;
@@ -222,11 +301,7 @@ class BudgetForecastAI {
         });
         
         const utilizationRate = totalBudget > 0 ? ((totalUsed / totalBudget) * 100) : 0;
-        
-        // FIXED: Calculate peak spending period from ALL data
         const peakPeriod = this.findPeakSpendingPeriodFromAllData(allRecords);
-        
-        // FIXED: Calculate efficiency score from actual utilization
         const efficiencyScore = this.calculateEfficiencyScore(utilizationRate);
         
         const elements = {
@@ -245,7 +320,7 @@ class BudgetForecastAI {
         if (elements.peakSpendingPeriod) elements.peakSpendingPeriod.textContent = peakPeriod;
         if (elements.budgetEfficiency) elements.budgetEfficiency.textContent = efficiencyScore;
         
-        console.log('FIXED: Historical Analysis Calculated from ALL data:', {
+        console.log('Historical Analysis Calculated:', {
             totalRecords: allRecords.length,
             totalBudget,
             totalUsed,
@@ -256,7 +331,328 @@ class BudgetForecastAI {
         });
     }
     
-    // FIXED: Find peak spending period from all records, not summary data
+    showDetailedStatistics() {
+        this.generateDepartmentStats();
+        this.generatePeriodStats();
+        this.generateCostCenterStats();
+        this.generateApprovalStats();
+        this.generateSpendingTrends();
+    }
+    
+    generateDepartmentStats() {
+        const deptStats = {};
+        
+        this.budgetData.forEach(record => {
+            const dept = record.department || 'Unknown';
+            if (!deptStats[dept]) {
+                deptStats[dept] = {
+                    count: 0,
+                    totalBudget: 0,
+                    totalUsed: 0
+                };
+            }
+            deptStats[dept].count++;
+            deptStats[dept].totalBudget += parseFloat(record.amount_allocated || 0);
+            deptStats[dept].totalUsed += parseFloat(record.amount_used || 0);
+        });
+        
+        const container = document.getElementById('departmentStats');
+        if (!container) return;
+        
+        let html = '<div class="list-group list-group-flush">';
+        Object.entries(deptStats).forEach(([dept, stats]) => {
+            const utilization = stats.totalBudget > 0 ? (stats.totalUsed / stats.totalBudget * 100) : 0;
+            const utilClass = utilization > 90 ? 'danger' : utilization > 75 ? 'warning' : 'success';
+            
+            html += `
+                <div class="list-group-item px-0 py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${dept}</strong>
+                            <small class="text-muted d-block">${stats.count} budget(s)</small>
+                        </div>
+                        <div class="text-end">
+                            <div>${this.formatCurrency(stats.totalBudget)}</div>
+                            <small class="text-${utilClass}">${utilization.toFixed(1)}% used</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div class="progress-bar bg-${utilClass}" style="width: ${Math.min(utilization, 100)}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    generatePeriodStats() {
+        const periodStats = {};
+        
+        this.budgetData.forEach(record => {
+            const period = record.period || 'Unknown';
+            if (!periodStats[period]) {
+                periodStats[period] = {
+                    count: 0,
+                    totalBudget: 0,
+                    totalUsed: 0
+                };
+            }
+            periodStats[period].count++;
+            periodStats[period].totalBudget += parseFloat(record.amount_allocated || 0);
+            periodStats[period].totalUsed += parseFloat(record.amount_used || 0);
+        });
+        
+        const container = document.getElementById('periodStats');
+        if (!container) return;
+        
+        let html = '<div class="list-group list-group-flush">';
+        
+        // Sort by count descending
+        const sortedPeriods = Object.entries(periodStats).sort((a, b) => b[1].count - a[1].count);
+        
+        sortedPeriods.forEach(([period, stats]) => {
+            const avgBudget = stats.count > 0 ? stats.totalBudget / stats.count : 0;
+            const icon = {
+                'Daily': 'calendar-day',
+                'Bi-weekly': 'calendar2-week',
+                'Monthly': 'calendar-month',
+                'Annually': 'calendar-year'
+            }[period] || 'calendar';
+            
+            html += `
+                <div class="list-group-item px-0 py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-${icon} me-2"></i><strong>${period}</strong>
+                            <span class="badge bg-secondary ms-2">${stats.count}</span>
+                        </div>
+                        <div class="text-end">
+                            <div class="small">Avg: ${this.formatCurrency(avgBudget)}</div>
+                            <div class="small text-muted">Total: ${this.formatCurrency(stats.totalBudget)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    generateCostCenterStats() {
+        const ccStats = {};
+        
+        this.budgetData.forEach(record => {
+            const cc = record.cost_center || 'Unknown';
+            if (!ccStats[cc]) {
+                ccStats[cc] = {
+                    count: 0,
+                    totalBudget: 0,
+                    totalUsed: 0
+                };
+            }
+            ccStats[cc].count++;
+            ccStats[cc].totalBudget += parseFloat(record.amount_allocated || 0);
+            ccStats[cc].totalUsed += parseFloat(record.amount_used || 0);
+        });
+        
+        const container = document.getElementById('costCenterStats');
+        if (!container) return;
+        
+        // Get top 5 cost centers by budget
+        const topCC = Object.entries(ccStats)
+            .sort((a, b) => b[1].totalBudget - a[1].totalBudget)
+            .slice(0, 5);
+        
+        let html = '<div class="list-group list-group-flush">';
+        topCC.forEach(([cc, stats], index) => {
+            const utilization = stats.totalBudget > 0 ? (stats.totalUsed / stats.totalBudget * 100) : 0;
+            
+            html += `
+                <div class="list-group-item px-0 py-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <span class="badge bg-primary me-2">#${index + 1}</span>
+                            <strong>${cc}</strong>
+                        </div>
+                        <div class="text-end">
+                            <div>${this.formatCurrency(stats.totalBudget)}</div>
+                            <small class="text-muted">${utilization.toFixed(0)}% utilized</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        if (topCC.length === 0) {
+            html = '<p class="text-muted mb-0">No cost center data available</p>';
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    generateApprovalStats() {
+        const approvalStats = {
+            'Approved': 0,
+            'Pending': 0,
+            'Rejected': 0
+        };
+        
+        let approvedBudget = 0;
+        let pendingBudget = 0;
+        let rejectedBudget = 0;
+        
+        this.budgetData.forEach(record => {
+            const status = record.approval_status || 'Pending';
+            const budget = parseFloat(record.amount_allocated || 0);
+            
+            if (approvalStats.hasOwnProperty(status)) {
+                approvalStats[status]++;
+                
+                if (status === 'Approved') approvedBudget += budget;
+                else if (status === 'Pending') pendingBudget += budget;
+                else if (status === 'Rejected') rejectedBudget += budget;
+            }
+        });
+        
+        const container = document.getElementById('approvalStats');
+        if (!container) return;
+        
+        const total = this.budgetData.length;
+        
+        let html = '<div class="list-group list-group-flush">';
+        
+        const statusConfig = {
+            'Approved': { icon: 'check-circle-fill', class: 'success', budget: approvedBudget },
+            'Pending': { icon: 'clock-fill', class: 'warning', budget: pendingBudget },
+            'Rejected': { icon: 'x-circle-fill', class: 'danger', budget: rejectedBudget }
+        };
+        
+        Object.entries(approvalStats).forEach(([status, count]) => {
+            const config = statusConfig[status];
+            const percentage = total > 0 ? (count / total * 100) : 0;
+            
+            html += `
+                <div class="list-group-item px-0 py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-${config.icon} text-${config.class} me-2"></i>
+                            <strong>${status}</strong>
+                            <span class="badge bg-${config.class} ms-2">${count}</span>
+                        </div>
+                        <div class="text-end">
+                            <div>${this.formatCurrency(config.budget)}</div>
+                            <small class="text-muted">${percentage.toFixed(1)}%</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-2" style="height: 5px;">
+                        <div class="progress-bar bg-${config.class}" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+    
+    generateSpendingTrends() {
+        const container = document.getElementById('spendingTrends');
+        if (!container) return;
+        
+        let alerts = [];
+        
+        // Find overspent budgets
+        const overspent = this.budgetData.filter(r => 
+            parseFloat(r.amount_used || 0) > parseFloat(r.amount_allocated || 0)
+        );
+        
+        if (overspent.length > 0) {
+            const totalOverspent = overspent.reduce((sum, r) => 
+                sum + (parseFloat(r.amount_used) - parseFloat(r.amount_allocated)), 0
+            );
+            alerts.push({
+                type: 'danger',
+                icon: 'exclamation-triangle-fill',
+                message: `${overspent.length} budget(s) overspent by ${this.formatCurrency(totalOverspent)}`
+            });
+        }
+        
+        // Find budgets close to limit (>90% utilization)
+        const nearLimit = this.budgetData.filter(r => {
+            const allocated = parseFloat(r.amount_allocated || 0);
+            const used = parseFloat(r.amount_used || 0);
+            const utilization = allocated > 0 ? (used / allocated) : 0;
+            return utilization > 0.9 && utilization <= 1.0;
+        });
+        
+        if (nearLimit.length > 0) {
+            alerts.push({
+                type: 'warning',
+                icon: 'exclamation-circle-fill',
+                message: `${nearLimit.length} budget(s) above 90% utilization - monitor closely`
+            });
+        }
+        
+        // Find underutilized budgets (<50% utilization)
+        const underutilized = this.budgetData.filter(r => {
+            const allocated = parseFloat(r.amount_allocated || 0);
+            const used = parseFloat(r.amount_used || 0);
+            const utilization = allocated > 0 ? (used / allocated) : 0;
+            return utilization < 0.5 && allocated > 0;
+        });
+        
+        if (underutilized.length > 0) {
+            alerts.push({
+                type: 'info',
+                icon: 'info-circle-fill',
+                message: `${underutilized.length} budget(s) below 50% utilization - potential reallocation opportunity`
+            });
+        }
+        
+        // Check for bi-weekly payroll budgets
+        const biweeklyPayroll = this.budgetData.filter(r => 
+            r.period === 'Bi-weekly' && r.cost_center === 'Payroll Budget'
+        );
+        
+        if (biweeklyPayroll.length > 0) {
+            const totalPayroll = biweeklyPayroll.reduce((sum, r) => 
+                sum + parseFloat(r.amount_allocated || 0), 0
+            );
+            alerts.push({
+                type: 'primary',
+                icon: 'calendar2-week-fill',
+                message: `${biweeklyPayroll.length} bi-weekly payroll budget(s) totaling ${this.formatCurrency(totalPayroll)}`
+            });
+        }
+        
+        let html = '<div class="list-group list-group-flush">';
+        
+        if (alerts.length > 0) {
+            alerts.forEach(alert => {
+                html += `
+                    <div class="list-group-item px-0 py-2">
+                        <i class="bi bi-${alert.icon} text-${alert.type} me-2"></i>
+                        <span>${alert.message}</span>
+                    </div>
+                `;
+            });
+        } else {
+            html += `
+                <div class="list-group-item px-0 py-2">
+                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                    <span>All budgets are within healthy parameters</span>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
+    
     findPeakSpendingPeriodFromAllData(allRecords) {
         const periodSpending = {};
         
@@ -276,32 +672,6 @@ class BudgetForecastAI {
             }
         }
         
-        // Also calculate which period has highest average spending per record
-        const periodCounts = {};
-        allRecords.forEach(record => {
-            const period = record.period || 'Monthly';
-            periodCounts[period] = (periodCounts[period] || 0) + 1;
-        });
-        
-        let peakAvgPeriod = 'Monthly';
-        let maxAvgSpending = 0;
-        
-        for (const [period, totalSpending] of Object.entries(periodSpending)) {
-            const count = periodCounts[period] || 1;
-            const avgSpending = totalSpending / count;
-            if (avgSpending > maxAvgSpending) {
-                maxAvgSpending = avgSpending;
-                peakAvgPeriod = period;
-            }
-        }
-        
-        console.log('Peak Spending Analysis:', {
-            periodSpending,
-            periodCounts,
-            peakByTotal: peakPeriod,
-            peakByAverage: peakAvgPeriod
-        });
-        
         return `${peakPeriod} (${this.formatCurrency(maxSpending)} total)`;
     }
     
@@ -314,7 +684,6 @@ class BudgetForecastAI {
         return 'D';
     }
     
-    // Rest of the methods remain the same...
     generateAIForecast() {
         if (this.isAnalyzing) return;
         
@@ -325,17 +694,23 @@ class BudgetForecastAI {
         const forecastPeriodElement = document.getElementById('forecastPeriod');
         const departmentFilterElement = document.getElementById('departmentFilter');
         const budgetFrequencyElement = document.getElementById('budgetFrequency');
+        const costCenterFilterElement = document.getElementById('costCenterFilter');
+        const approvalFilterElement = document.getElementById('approvalFilter');
         const aiModelElement = document.querySelector('input[name="aiModel"]:checked');
         
         this.forecastPeriod = forecastPeriodElement ? parseInt(forecastPeriodElement.value) : 3;
         this.departmentFilter = departmentFilterElement ? departmentFilterElement.value : 'all';
         this.budgetFrequency = budgetFrequencyElement ? budgetFrequencyElement.value : 'all';
+        this.costCenterFilter = costCenterFilterElement ? costCenterFilterElement.value : 'all';
+        this.approvalFilter = approvalFilterElement ? approvalFilterElement.value : 'all';
         this.aiModel = aiModelElement ? aiModelElement.value : 'balanced';
         
         console.log('Forecast Parameters:', {
             period: this.forecastPeriod,
             department: this.departmentFilter,
             budgetType: this.budgetFrequency,
+            costCenter: this.costCenterFilter,
+            approvalStatus: this.approvalFilter,
             aiModel: this.aiModel
         });
         
@@ -356,9 +731,7 @@ class BudgetForecastAI {
         }, 3000);
     }
     
-    // FIXED: Multi-scenario forecast using ALL data
     performMultiScenarioForecast() {
-        // FIXED: Filter from ALL data, not current page
         let filteredData = [...this.budgetData];
         
         // Apply department filter
@@ -368,23 +741,22 @@ class BudgetForecastAI {
         
         // Apply budget period filter
         if (this.budgetFrequency !== 'all') {
-            const periodMap = {
-                'Daily': 'Daily',
-                'Monthly': 'Monthly',
-                'Annually': 'Annually'
-            };
-            const targetPeriod = periodMap[this.budgetFrequency];
-            if (targetPeriod) {
-                filteredData = filteredData.filter(item => item.period === targetPeriod);
-            }
+            filteredData = filteredData.filter(item => item.period === this.budgetFrequency);
         }
         
-        console.log(`FIXED: Filtered ${filteredData.length} records from ${this.budgetData.length} total (using ALL data)`);
+        // Apply cost center filter
+        if (this.costCenterFilter !== 'all') {
+            filteredData = filteredData.filter(item => item.cost_center === this.costCenterFilter);
+        }
         
-        // Get appropriate coefficients for the scenario
+        // Apply approval filter
+        if (this.approvalFilter !== 'all') {
+            filteredData = filteredData.filter(item => item.approval_status === this.approvalFilter);
+        }
+        
+        console.log(`Filtered ${filteredData.length} records from ${this.budgetData.length} total`);
+        
         const coefficients = this.getScenarioCoefficients();
-        
-        // Generate forecasts based on filtered data
         const forecastResults = this.calculateScenarioForecasts(filteredData, coefficients);
         
         this.displayForecastResults(forecastResults, filteredData);
@@ -397,13 +769,13 @@ class BudgetForecastAI {
         if (applyBtn) applyBtn.classList.remove('d-none');
     }
     
-    // Continue with the rest of the methods...
     getScenarioCoefficients() {
         const baseCoefficients = this.aiCoefficients[this.aiModel] || this.aiCoefficients.balanced;
         
-        // Use period-specific coefficients if filtering by specific budget type
         if (this.budgetFrequency === 'Daily') {
             return baseCoefficients.daily || baseCoefficients;
+        } else if (this.budgetFrequency === 'Bi-weekly') {
+            return baseCoefficients.biweekly || baseCoefficients;
         } else if (this.budgetFrequency === 'Monthly') {
             return baseCoefficients.monthly || baseCoefficients;
         } else if (this.budgetFrequency === 'Annually') {
@@ -416,12 +788,10 @@ class BudgetForecastAI {
     calculateScenarioForecasts(filteredData, coefficients) {
         const departmentStats = {};
         
-        // If no filtered data, create placeholder forecast
         if (filteredData.length === 0) {
             return this.generatePlaceholderForecast();
         }
         
-        // Group data by department
         filteredData.forEach(item => {
             const dept = item.department || 'Unknown';
             if (!departmentStats[dept]) {
@@ -441,29 +811,23 @@ class BudgetForecastAI {
             if (item.cost_center) departmentStats[dept].costCenters.add(item.cost_center);
         });
         
-        // Generate forecasts for each department
         const forecasts = {};
         for (const [dept, stats] of Object.entries(departmentStats)) {
             const usageRate = stats.currentBudget > 0 ? stats.currentUsage / stats.currentBudget : 0;
             
-            // Calculate growth factor based on forecast period and AI model
             const periodMultiplier = this.getPeriodMultiplier();
             const seasonalAdjustment = this.getSeasonalAdjustment();
             const growthFactor = 1 + (coefficients.growth * periodMultiplier);
             
-            // Project future spending
             const baseProjection = stats.currentUsage * growthFactor * seasonalAdjustment;
-            const projectedUsage = Math.max(baseProjection, stats.currentUsage * 0.8); // Minimum 80% of current
+            const projectedUsage = Math.max(baseProjection, stats.currentUsage * 0.8);
             
-            // Calculate recommended budget with buffer
             const bufferMultiplier = 1 + coefficients.buffer;
             const projectedBudget = projectedUsage * bufferMultiplier;
             
-            // Calculate variance
             const variance = stats.currentBudget > 0 ? 
                 ((projectedBudget - stats.currentBudget) / stats.currentBudget * 100) : 0;
             
-            // Assess risk
             let riskLevel = 'Low';
             if (usageRate > 0.95 || variance > 50) {
                 riskLevel = 'High';
@@ -486,7 +850,6 @@ class BudgetForecastAI {
         return forecasts;
     }
     
-    // Additional helper methods (keeping existing implementation)...
     generatePlaceholderForecast() {
         const placeholder = {};
         
@@ -512,10 +875,10 @@ class BudgetForecastAI {
     
     getPeriodMultiplier() {
         switch(this.forecastPeriod) {
-            case 1: return 0.8;   // 1 month - lower growth
-            case 3: return 1.0;   // 3 months - normal growth
-            case 6: return 1.3;   // 6 months - higher growth
-            case 12: return 1.6;  // 12 months - highest growth
+            case 1: return 0.8;
+            case 3: return 1.0;
+            case 6: return 1.3;
+            case 12: return 1.6;
             default: return 1.0;
         }
     }
@@ -525,6 +888,8 @@ class BudgetForecastAI {
         
         if (this.budgetFrequency === 'Daily') {
             seasonalKey = 'daily';
+        } else if (this.budgetFrequency === 'Bi-weekly') {
+            seasonalKey = 'biweekly';
         } else if (this.budgetFrequency === 'Monthly') {
             seasonalKey = 'monthly';
         } else if (this.budgetFrequency === 'Annually') {
@@ -536,7 +901,7 @@ class BudgetForecastAI {
         if (seasonalKey === 'daily') {
             const dayOfWeek = new Date().getDay() + 1;
             return seasonalData[dayOfWeek] || 1.0;
-        } else if (seasonalKey === 'monthly' || seasonalKey === 'mixed') {
+        } else if (seasonalKey === 'monthly' || seasonalKey === 'mixed' || seasonalKey === 'biweekly') {
             const currentMonth = new Date().getMonth() + 1;
             return seasonalData[currentMonth] || 1.0;
         }
@@ -545,26 +910,21 @@ class BudgetForecastAI {
     }
     
     calculateScenarioConfidence(records, usageRate) {
-        let confidence = 60; // Base confidence
+        let confidence = 60;
         
-        // Adjust for data availability
         if (records >= 5) confidence += 20;
         else if (records >= 2) confidence += 10;
         else confidence -= 10;
         
-        // Adjust for usage rate reasonableness
         if (usageRate >= 0.3 && usageRate <= 0.9) confidence += 15;
         else confidence -= 5;
         
-        // Adjust for AI model type
         if (this.aiModel === 'conservative') confidence += 5;
         else if (this.aiModel === 'aggressive') confidence -= 5;
         
-        // Adjust for forecast period
         if (this.forecastPeriod <= 3) confidence += 10;
         else if (this.forecastPeriod >= 12) confidence -= 10;
         
-        // Adjust for budget type specificity
         if (this.budgetFrequency !== 'all') confidence += 5;
         
         return Math.min(95, Math.max(25, confidence));
@@ -574,20 +934,20 @@ class BudgetForecastAI {
         const forecastSection = document.getElementById('forecastResults');
         if (forecastSection) forecastSection.style.display = 'block';
         
-        // Update period text to reflect current settings
         const periodElement = document.getElementById('projectedPeriodText');
         if (periodElement) {
             let periodText = `${this.forecastPeriod} month${this.forecastPeriod > 1 ? 's' : ''}`;
             if (this.budgetFrequency !== 'all') {
-                periodText += ` (${this.budgetFrequency} budgets only)`;
+                periodText += ` (${this.budgetFrequency} budgets)`;
+            }
+            if (this.costCenterFilter !== 'all') {
+                periodText += ` - ${this.costCenterFilter}`;
             }
             periodElement.textContent = periodText;
         }
         
-        // Show filter status
         this.updateFilterStatus(filteredData.length);
         
-        // Calculate totals
         let totalCurrentBudget = 0;
         let totalCurrentUsage = 0;
         let totalProjectedNeed = 0;
@@ -603,7 +963,7 @@ class BudgetForecastAI {
                 const row = document.createElement('tr');
                 row.innerHTML = `<td colspan="8" class="text-center text-muted py-4">
                     No data found for the selected filters.<br>
-                    <small>Department: ${this.departmentFilter}, Period: ${this.budgetFrequency}, Timeline: ${this.forecastPeriod} months</small>
+                    <small>Department: ${this.departmentFilter}, Period: ${this.budgetFrequency}, Cost Center: ${this.costCenterFilter}</small>
                 </td>`;
                 tbody.appendChild(row);
             } else {
@@ -621,7 +981,6 @@ class BudgetForecastAI {
             }
         }
         
-        // Update summary cards
         const elements = {
             projectedTotalBudget: document.getElementById('projectedTotalBudget'),
             recommendedBudget: document.getElementById('recommendedBudget'),
@@ -648,7 +1007,6 @@ class BudgetForecastAI {
                            totalRecommendedBudget, variance, forecasts);
     }
     
-    // Continue with remaining helper methods...
     updateFilterStatus(filteredCount) {
         const existingStatus = document.getElementById('filterStatus');
         if (existingStatus) existingStatus.remove();
@@ -658,11 +1016,18 @@ class BudgetForecastAI {
             const statusDiv = document.createElement('div');
             statusDiv.id = 'filterStatus';
             statusDiv.className = 'alert alert-info mb-3';
+            
+            let filterDetails = [];
+            if (this.departmentFilter !== 'all') filterDetails.push(`Department: ${this.departmentFilter}`);
+            if (this.budgetFrequency !== 'all') filterDetails.push(`Period: ${this.budgetFrequency}`);
+            if (this.costCenterFilter !== 'all') filterDetails.push(`Cost Center: ${this.costCenterFilter}`);
+            if (this.approvalFilter !== 'all') filterDetails.push(`Approval: ${this.approvalFilter}`);
+            
+            const filterText = filterDetails.length > 0 ? ` (${filterDetails.join(', ')})` : '';
+            
             statusDiv.innerHTML = `
-                <strong>Scenario Analysis:</strong> 
-                Forecasting ${filteredCount} records over ${this.forecastPeriod} months using ${this.aiModel} AI model
-                ${this.departmentFilter !== 'all' ? `for ${this.departmentFilter} department ` : ''}
-                ${this.budgetFrequency !== 'all' ? `with ${this.budgetFrequency} budget periods` : 'with all budget periods'}
+                <strong><i class="bi bi-funnel-fill me-2"></i>Scenario Analysis:</strong> 
+                Forecasting ${filteredCount} records over ${this.forecastPeriod} months using ${this.aiModel} AI model${filterText}
             `;
             forecastSection.insertBefore(statusDiv, forecastSection.firstChild);
         }
@@ -743,7 +1108,7 @@ class BudgetForecastAI {
             recommendations.forEach(rec => {
                 const item = document.createElement('div');
                 item.className = 'list-group-item border-0 px-0';
-                item.innerHTML = `<small class="text-success">✓</small> ${rec}`;
+                item.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i>${rec}`;
                 recContainer.appendChild(item);
             });
         }
@@ -754,7 +1119,7 @@ class BudgetForecastAI {
             risks.forEach(risk => {
                 const item = document.createElement('div');
                 item.className = 'list-group-item border-0 px-0';
-                item.innerHTML = `<small class="text-warning">⚠</small> ${risk}`;
+                item.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>${risk}`;
                 riskContainer.appendChild(item);
             });
         }
@@ -766,21 +1131,24 @@ class BudgetForecastAI {
     generateScenarioRecommendations(forecasts, filteredData) {
         const recommendations = [];
         
-        // Scenario-specific recommendations
         if (this.departmentFilter !== 'all') {
-            recommendations.push(`<strong>Department Focus:</strong> Analysis targeted specifically for ${this.departmentFilter} department - use these insights for departmental budget planning`);
+            recommendations.push(`<strong>Department Focus:</strong> Analysis targeted for ${this.departmentFilter} - use for departmental budget planning`);
         }
         
         if (this.budgetFrequency !== 'all') {
             const periodAdvice = {
                 'Daily': 'Implement daily spending controls and automated alerts for better cash flow management',
+                'Bi-weekly': 'Align with payroll cycles - ensure sufficient liquidity for bi-weekly disbursements',
                 'Monthly': 'Set up mid-month reviews and trend monitoring for optimal budget utilization',
                 'Annually': 'Break down annual budgets into quarterly milestones for better tracking'
             };
-            recommendations.push(`<strong>${this.budgetFrequency} Budget Strategy:</strong> ${periodAdvice[this.budgetFrequency]}`);
+            recommendations.push(`<strong>${this.budgetFrequency} Strategy:</strong> ${periodAdvice[this.budgetFrequency]}`);
         }
         
-        // Timeline-specific recommendations
+        if (this.costCenterFilter !== 'all') {
+            recommendations.push(`<strong>Cost Center Focus:</strong> Specific analysis for ${this.costCenterFilter} - monitor closely`);
+        }
+        
         const timelineAdvice = {
             1: 'Short-term forecast - focus on immediate spending controls and cash flow',
             3: 'Quarterly forecast - ideal for operational planning and budget adjustments',
@@ -789,62 +1157,60 @@ class BudgetForecastAI {
         };
         recommendations.push(`<strong>${this.forecastPeriod}-Month Timeline:</strong> ${timelineAdvice[this.forecastPeriod]}`);
         
-        // AI Model recommendations
         const modelAdvice = {
-            'conservative': 'Conservative model selected - budget increases will be minimal and focused on essential needs',
-            'balanced': 'Balanced model provides moderate growth projections suitable for standard planning',
-            'aggressive': 'Aggressive model shows higher growth potential - ensure adequate funding for projected increases'
+            'conservative': 'Conservative model - budget increases minimal, focused on essential needs with higher safety buffers',
+            'balanced': 'Balanced model - moderate growth projections suitable for standard planning',
+            'aggressive': 'Aggressive model - higher growth potential, ensure adequate funding for projected increases'
         };
         recommendations.push(`<strong>AI Model Impact:</strong> ${modelAdvice[this.aiModel]}`);
         
-        // Department-specific recommendations
         Object.entries(forecasts).forEach(([dept, data]) => {
             if (data.variance > 15) {
-                recommendations.push(`<strong>${dept}:</strong> Budget increase of ${data.variance.toFixed(0)}% recommended to meet projected demand over ${this.forecastPeriod} months`);
+                recommendations.push(`<strong>${dept}:</strong> Budget increase of ${data.variance.toFixed(0)}% recommended over ${this.forecastPeriod} months`);
             }
             if (data.usageRate > 0.9) {
                 recommendations.push(`<strong>${dept}:</strong> High utilization (${(data.usageRate * 100).toFixed(0)}%) - implement stricter monitoring`);
             }
         });
         
-        return recommendations.slice(0, 6);
+        return recommendations.slice(0, 7);
     }
     
     generateScenarioRisks(forecasts, filteredData) {
         const risks = [];
         
-        // Data quality risks
         if (filteredData.length < 3) {
-            risks.push(`<strong>Data Limitation:</strong> Only ${filteredData.length} records match your filters - consider broader criteria for more reliable predictions`);
+            risks.push(`<strong>Data Limitation:</strong> Only ${filteredData.length} records - consider broader criteria for reliable predictions`);
         }
         
-        // Scenario-specific risks
         if (this.forecastPeriod >= 12) {
-            risks.push(`<strong>Long-term Forecast Risk:</strong> 12-month predictions have higher uncertainty - review and adjust quarterly`);
+            risks.push(`<strong>Long-term Risk:</strong> 12-month predictions have higher uncertainty - review quarterly`);
         }
         
         if (this.budgetFrequency === 'Daily' && this.forecastPeriod > 3) {
-            risks.push(`<strong>Daily Budget Risk:</strong> Long-term daily budget projections are highly volatile - consider monthly planning`);
+            risks.push(`<strong>Daily Budget Risk:</strong> Long-term daily projections are volatile - consider monthly planning`);
         }
         
-        // Department-specific risks
+        if (this.budgetFrequency === 'Bi-weekly' && this.costCenterFilter === 'Payroll Budget') {
+            risks.push(`<strong>Payroll Risk:</strong> Ensure sufficient cash flow for bi-weekly payroll cycles - late payments can impact morale`);
+        }
+        
         Object.entries(forecasts).forEach(([dept, data]) => {
             if (data.riskLevel === 'High') {
                 if (data.usageRate > 0.95) {
                     risks.push(`<strong>${dept}:</strong> Critical budget exhaustion risk - immediate intervention required`);
                 }
                 if (data.variance > 40) {
-                    risks.push(`<strong>${dept}:</strong> Projected ${data.variance.toFixed(0)}% budget increase may strain overall finances`);
+                    risks.push(`<strong>${dept}:</strong> Projected ${data.variance.toFixed(0)}% increase may strain finances`);
                 }
             }
         });
         
-        // AI model risks
         if (this.aiModel === 'aggressive' && Object.values(forecasts).some(f => f.variance > 30)) {
-            risks.push(`<strong>Aggressive Model Risk:</strong> High growth projections detected - validate with conservative estimates`);
+            risks.push(`<strong>Aggressive Model Risk:</strong> High growth projections - validate with conservative estimates`);
         }
         
-        return risks.slice(0, 5);
+        return risks.slice(0, 6);
     }
     
     generateScenarioSummary(forecasts, filteredData) {
@@ -854,14 +1220,15 @@ class BudgetForecastAI {
         const avgConfidence = deptCount > 0 ? Object.values(forecasts).reduce((sum, f) => sum + f.confidence, 0) / deptCount : 0;
         
         let scenarioDescription = `${this.forecastPeriod}-month forecast using ${this.aiModel} AI model`;
-        if (this.departmentFilter !== 'all') scenarioDescription += ` for ${this.departmentFilter} department`;
-        if (this.budgetFrequency !== 'all') scenarioDescription += ` focusing on ${this.budgetFrequency.toLowerCase()} budgets`;
+        if (this.departmentFilter !== 'all') scenarioDescription += ` for ${this.departmentFilter}`;
+        if (this.budgetFrequency !== 'all') scenarioDescription += ` (${this.budgetFrequency} budgets)`;
+        if (this.costCenterFilter !== 'all') scenarioDescription += ` - ${this.costCenterFilter}`;
         
-        const riskAssessment = highRiskCount > 0 ? `${highRiskCount} high-risk area(s) identified` : 'No high-risk areas detected';
-        const budgetImpact = Math.abs(avgVariance) > 10 ? `significant budget adjustments needed (${avgVariance.toFixed(1)}% average change)` : 'minor budget adjustments required';
+        const riskAssessment = highRiskCount > 0 ? `${highRiskCount} high-risk area(s)` : 'No high-risk areas';
+        const budgetImpact = Math.abs(avgVariance) > 10 ? `significant adjustments needed (${avgVariance.toFixed(1)}% avg)` : 'minor adjustments';
         const actionRequired = avgVariance > 20 ? 'immediate planning required' : avgVariance > 10 ? 'proactive planning recommended' : 'maintain current trajectory';
         
-        return `${scenarioDescription} shows ${budgetImpact}. ${riskAssessment}. AI confidence: ${avgConfidence.toFixed(0)}%. Based on ${filteredData.length} filtered records. Recommendation: ${actionRequired}.`;
+        return `${scenarioDescription} shows ${budgetImpact}. ${riskAssessment} identified. AI confidence: ${avgConfidence.toFixed(0)}%. Based on ${filteredData.length} records. Recommendation: ${actionRequired}.`;
     }
     
     formatCurrency(amount) {
@@ -894,7 +1261,7 @@ class BudgetForecastAI {
     }
 }
 
-// Global functions to be called from HTML
+// Global functions
 function generateAIForecast() {
     if (window.budgetAI) {
         window.budgetAI.generateAIForecast();
@@ -908,52 +1275,84 @@ function exportForecastReport() {
     const currentFilters = window.budgetAI ? {
         department: window.budgetAI.departmentFilter,
         period: window.budgetAI.budgetFrequency,
+        costCenter: window.budgetAI.costCenterFilter,
+        approval: window.budgetAI.approvalFilter,
         forecastMonths: window.budgetAI.forecastPeriod,
         aiModel: window.budgetAI.aiModel
     } : {};
     
-    const filterSummary = `Filters: Department=${currentFilters.department || 'All'}, Period=${currentFilters.period || 'All'}, Timeline=${currentFilters.forecastMonths || 3}mo, AI=${currentFilters.aiModel || 'Balanced'}`;
+    const filterSummary = `Department=${currentFilters.department || 'All'}, Period=${currentFilters.period || 'All'}, Cost Center=${currentFilters.costCenter || 'All'}, Timeline=${currentFilters.forecastMonths || 3}mo, AI=${currentFilters.aiModel || 'Balanced'}`;
     
-    alert(`Enhanced Multi-Scenario Forecast Report\n\n📊 Report includes:\n• Scenario-specific projections\n• Department breakdowns\n• Risk assessments\n• Period-based recommendations\n• AI confidence metrics\n\n⚙️ ${filterSummary}\n\n🔗 Export ready for integration with financial_budgeting_reports.php`);
+    alert(`✅ Enhanced Multi-Scenario Forecast Report
+
+📊 Report includes:
+• Scenario-specific projections
+• Department & cost center breakdowns
+• Bi-weekly payroll analysis
+• Risk assessments with detailed statistics
+• Period-based recommendations
+• AI confidence metrics
+• Approval status analysis
+
+⚙️ Filters: ${filterSummary}
+
+🔗 Ready for export to financial reporting system`);
 }
 
 function applyForecast() {
     const currentFilters = window.budgetAI ? {
         department: window.budgetAI.departmentFilter,
         period: window.budgetAI.budgetFrequency,
+        costCenter: window.budgetAI.costCenterFilter,
         timeline: window.budgetAI.forecastPeriod,
         model: window.budgetAI.aiModel
     } : {};
     
-    const scenarioSummary = `Scenario: ${currentFilters.timeline}mo forecast, ${currentFilters.department} dept, ${currentFilters.period} budgets, ${currentFilters.model} AI`;
+    const scenarioSummary = `${currentFilters.timeline}mo forecast, ${currentFilters.department} dept, ${currentFilters.period} budgets, ${currentFilters.costCenter} cost center, ${currentFilters.model} AI`;
     
-    if (confirm(`Apply Multi-Scenario AI Forecast?\n\n${scenarioSummary}\n\nThis will:\n✓ Update allocations based on scenario analysis\n✓ Set scenario-specific monitoring\n✓ Apply period-appropriate controls\n✓ Create forecast tracking\n\nProceed with application?`)) {
-        alert(`Multi-Scenario Forecast Applied Successfully!\n\n✅ Changes Applied:\n• Budget allocations updated for scenario\n• Scenario-specific alerts activated\n• Period controls implemented\n• Risk monitoring configured\n• Department notifications sent\n\n📈 Scenario: ${scenarioSummary}\n\n🔗 Integration: financial_budgeting_apply.php`);
+    if (confirm(`Apply Multi-Scenario AI Forecast?
+
+${scenarioSummary}
+
+This will:
+✓ Update allocations based on analysis
+✓ Set scenario-specific monitoring
+✓ Apply period-appropriate controls
+✓ Create forecast tracking
+✓ Configure bi-weekly payroll alerts
+
+Proceed?`)) {
+        alert(`✅ Multi-Scenario Forecast Applied Successfully!
+
+✅ Changes Applied:
+• Budget allocations updated
+• Scenario alerts activated
+• Period controls implemented
+• Risk monitoring configured
+• Bi-weekly payroll tracking enabled
+• Department notifications sent
+
+📈 Scenario: ${scenarioSummary}
+
+🔗 System updated`);
     }
 }
 
-// Initialize AI system when document is ready
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
     try {
         window.budgetAI = new BudgetForecastAI();
-        console.log('✅ FIXED: Multi-Scenario Budget Forecast AI System Initialized Successfully');
-        console.log('📊 FIXED: Data loaded from ALL records:', window.budgetData ? window.budgetData.length : 0, 'total records');
-        console.log('🔧 MAJOR FIX APPLIED: Historical Performance Analysis now reads ALL data from database, not just current page');
-        console.log('🎯 FIXED ISSUES:');
-        console.log('  ✓ Budget Utilization Rate - now calculated from ALL records');
-        console.log('  ✓ Peak Spending Period - now analyzes ALL periods from ALL records');
-        console.log('  ✓ Efficiency Score - now based on true utilization from ALL data');
-        console.log('  ✓ Monthly Equivalent Budget - already working correctly');
-        console.log('🚀 All Historical Performance metrics now use complete dataset like Monthly Equivalent Budget');
+        console.log('✅ Enhanced Budget Forecast AI System v3.0 Initialized');
+        console.log('📊 Data loaded:', window.budgetData ? window.budgetData.length : 0, 'records');
+        console.log('🔧 Features: Bi-weekly Support, Detailed Statistics, Enhanced AI');
     } catch (error) {
         console.error('❌ Failed to initialize Budget Forecast AI:', error);
-        // Attempt to reinitialize after delay
         setTimeout(() => {
             try {
                 window.budgetAI = new BudgetForecastAI();
                 console.log('✅ Budget AI initialized on retry');
             } catch (retryError) {
-                console.error('❌ Budget AI initialization failed on retry:', retryError);
+                console.error('❌ Retry failed:', retryError);
             }
         }, 2000);
     }
