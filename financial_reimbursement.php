@@ -1,6 +1,7 @@
 <?php
+// financial_reimbursement.php
 require_once 'db.php';
-requireModuleAccess('reimbursement');  // ← ADD THIS LINE (replaces requireLogin)
+requireModuleAccess('reimbursement');
 
 // Get permissions for this module
 $perms = getModulePermission('reimbursement');
@@ -92,13 +93,13 @@ $result = $stmt->get_result();
 $reimbursements = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Calculate summary statistics
+// Calculate summary statistics (removed Paid status)
 $summarySql = "SELECT 
     COUNT(*) as total_count,
     COALESCE(SUM(amount), 0) as total_amount,
     COALESCE(SUM(CASE WHEN status = 'Pending' THEN amount ELSE 0 END), 0) as pending_amount,
     COALESCE(SUM(CASE WHEN status = 'Approved' THEN amount ELSE 0 END), 0) as approved_amount,
-    COALESCE(SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END), 0) as paid_amount
+    COALESCE(SUM(CASE WHEN status = 'Rejected' THEN amount ELSE 0 END), 0) as rejected_amount
     FROM reimbursements";
 
 if (!empty($whereConditions)) {
@@ -177,7 +178,7 @@ function peso($n) {
             <?php unset($_SESSION['flash']); ?>
         <?php endif; ?>
 
-        <!-- Summary Cards -->
+        <!-- Summary Cards (removed Paid status) -->
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="summary-card border-primary">
@@ -192,20 +193,20 @@ function peso($n) {
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="summary-card border-info">
+                <div class="summary-card border-success">
                     <div class="summary-label">Approved Amount</div>
-                    <div class="summary-value text-info"><?= peso($summary['approved_amount']) ?></div>
+                    <div class="summary-value text-success"><?= peso($summary['approved_amount']) ?></div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="summary-card border-success">
-                    <div class="summary-label">Paid Amount</div>
-                    <div class="summary-value text-success"><?= peso($summary['paid_amount']) ?></div>
+                <div class="summary-card border-danger">
+                    <div class="summary-label">Rejected Amount</div>
+                    <div class="summary-value text-danger"><?= peso($summary['rejected_amount']) ?></div>
                 </div>
             </div>
         </div>
 
-        <!-- Filters -->
+        <!-- Filters (removed Paid option) -->
         <div class="card mb-4">
             <div class="card-body">
                 <form method="get" class="row g-3">
@@ -216,7 +217,6 @@ function peso($n) {
                             <option value="Pending" <?= $filterStatus === 'Pending' ? 'selected' : '' ?>>Pending</option>
                             <option value="Approved" <?= $filterStatus === 'Approved' ? 'selected' : '' ?>>Approved</option>
                             <option value="Rejected" <?= $filterStatus === 'Rejected' ? 'selected' : '' ?>>Rejected</option>
-                            <option value="Paid" <?= $filterStatus === 'Paid' ? 'selected' : '' ?>>Paid</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -264,9 +264,8 @@ function peso($n) {
                             $globalIndex = $offset + $index + 1;
                             $statusBadge = match($r['status']) {
                                 'Pending' => '<span class="badge bg-warning status-badge">Pending</span>',
-                                'Approved' => '<span class="badge bg-info status-badge">Approved</span>',
+                                'Approved' => '<span class="badge bg-success status-badge">Approved</span>',
                                 'Rejected' => '<span class="badge bg-danger status-badge">Rejected</span>',
-                                'Paid' => '<span class="badge bg-success status-badge">Paid</span>',
                                 default => '<span class="badge bg-secondary status-badge">Unknown</span>'
                             };
                             $dataAttrs = htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8');
