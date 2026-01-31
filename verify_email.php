@@ -7,6 +7,11 @@ if (!isset($_SESSION['pending_verification']) || !isset($_SESSION['temp_user_id'
     exit();
 }
 
+// ADD THESE TWO LINES
+$_SESSION['verifying_email'] = true;
+$_SESSION['last_activity'] = time();
+// END OF ADDED LINES
+
 $error_message = '';
 $success_message = '';
 $user_id = $_SESSION['temp_user_id'];
@@ -26,24 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = verifyCode($user_id, $code);
             
             if ($result['success']) {
-                // Verification successful - Complete the login with ROLE, DEPARTMENT, COST_CENTER
-                $_SESSION['user_id'] = $_SESSION['temp_user_id'];
-                $_SESSION['username'] = $_SESSION['temp_username'];
-                $_SESSION['email'] = $_SESSION['temp_email'];
-                $_SESSION['role'] = $_SESSION['temp_role'];
-                $_SESSION['department'] = $_SESSION['temp_department'];
-                $_SESSION['cost_center'] = $_SESSION['temp_cost_center'];
-                $_SESSION['last_activity'] = time();
-                $_SESSION['last_regeneration'] = time();
-                
-                // Clear temporary session data
-                unset($_SESSION['pending_verification']);
-                unset($_SESSION['temp_user_id']);
-                unset($_SESSION['temp_username']);
-                unset($_SESSION['temp_email']);
-                unset($_SESSION['temp_role']);
-                unset($_SESSION['temp_department']);
-                unset($_SESSION['temp_cost_center']);
+    // Verification successful - Complete the login with ROLE, DEPARTMENT, COST_CENTER
+    $_SESSION['user_id'] = $_SESSION['temp_user_id'];
+    $_SESSION['username'] = $_SESSION['temp_username'];
+    $_SESSION['email'] = $_SESSION['temp_email'];
+    $_SESSION['role'] = $_SESSION['temp_role'];
+    $_SESSION['department'] = $_SESSION['temp_department'];
+    $_SESSION['cost_center'] = $_SESSION['temp_cost_center'];
+    $_SESSION['last_activity'] = time();
+    $_SESSION['last_regeneration'] = time();
+    
+    // Clear temporary session data INCLUDING verification flag
+    unset($_SESSION['pending_verification']);
+    unset($_SESSION['verifying_email']); // ADD THIS LINE
+    unset($_SESSION['temp_user_id']);
+    unset($_SESSION['temp_username']);
+    unset($_SESSION['temp_email']);
+    unset($_SESSION['temp_role']);
+    unset($_SESSION['temp_department']);
+    unset($_SESSION['temp_cost_center']);
                 
                 // Redirect based on role
                 $redirect_url = 'index.php'; // Default to dashboard
