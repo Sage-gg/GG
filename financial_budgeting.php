@@ -212,6 +212,14 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
   <meta charset="UTF-8" />
   <title>Budgeting & Cost Allocation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
+  <!-- ADD THIS BLOCK -->
+  <script>
+    // Pass PHP session configuration to JavaScript
+    window.SESSION_TIMEOUT = <?php echo SESSION_TIMEOUT * 1000; ?>; // Convert to milliseconds
+  </script>
+  <!-- END OF ADDED BLOCK -->
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="css/style.css" />
@@ -631,6 +639,11 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
 <?php include 'send_to_core2_modal.php'; ?>
     
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- ADD THIS LINE -->
+<script src="session_check.js"></script>
+<!-- END OF ADDED LINE -->
+
 <script src="budget_forecast_modal.js"></script>
 <script>
 // Department to Cost Center mapping - UPDATED WITH PAYROLL BUDGET
