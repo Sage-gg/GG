@@ -9,7 +9,6 @@ $perms = getModulePermission('ledger');
 $canCreate = $perms['can_create'];
 $canEdit = $perms['can_edit'];
 $canDelete = $perms['can_delete'];
-
 // Now include your ledger functions after authentication
 require_once 'ledger_functions.php';
 
@@ -65,15 +64,15 @@ $liquidations = getLiquidationRecords();
         <div class="d-flex gap-3 mb-2 ledger-summary-small">
           <div class="text-end">
             <div>Total Debit</div>
-            <div class="text-danger fw-bold"><?= formatCurrency($summary['total_debit'] ?? 0) ?></div>
+            <div class="text-danger fw-bold">₱<?= formatCurrency($summary['total_debit'] ?? 0) ?></div>
           </div>
           <div class="text-end">
             <div>Total Credit</div>
-            <div class="text-success fw-bold"><?= formatCurrency($summary['total_credit'] ?? 0) ?></div>
+            <div class="text-success fw-bold">₱<?= formatCurrency($summary['total_credit'] ?? 0) ?></div>
           </div>
           <div class="text-end">
             <div>Net Balance</div>
-            <div class="text-primary fw-bold"><?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
+            <div class="text-primary fw-bold">₱<?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
           </div>
         </div>
         <div class="d-flex gap-2">
@@ -86,53 +85,63 @@ $liquidations = getLiquidationRecords();
 
     <!-- Three Tables Section -->
     <div class="row mt-5">
-      <!-- Journal Entries Table -->
+      <!-- Liquidation Records Table -->
       <div class="col-12 mb-4">
         <div class="p-3 bg-white border rounded shadow-sm">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5>Journal Entries</h5>
-            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addJournalEntryModal">
-              + New Journal Entry
+            <h5>Liquidation Records</h5>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLiquidationModal">
+              + New Liquidation Record
             </button>
           </div>
           <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle table-sm mb-0">
               <thead class="table-light">
                 <tr>
-                  <th>Entry Date</th>
-                  <th>Entry ID</th>
-                  <th>Reference</th>
-                  <th>Description</th>
-                  <th>Account Code</th>
-                  <th>Account Name</th>
-                  <th>Debit (₱)</th>
-                  <th>Credit (₱)</th>
-                  <th>Source Module</th>
+                  <th>Date</th>
+                  <th>Liquidation ID</th>
+                  <th>Employee</th>
+                  <th>Purpose</th>
+                  <th>Total Amount (₱)</th>
+                  <th>Receipt</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($entries as $entry): ?>
-                <tr data-journal-id="<?= $entry['id'] ?>">
-                  <td><?= $entry['date'] ?></td>
-                  <td><?= htmlspecialchars($entry['entry_id']) ?></td>
-                  <td><?= htmlspecialchars($entry['reference']) ?></td>
-                  <td><?= htmlspecialchars($entry['description']) ?></td>
-                  <td><?= $entry['account_code'] ?></td>
-                  <td><?= htmlspecialchars($entry['account_name']) ?></td>
-                  <td><?= $entry['debit'] > 0 ? formatCurrency($entry['debit']) : '-' ?></td>
-                  <td><?= $entry['credit'] > 0 ? formatCurrency($entry['credit']) : '-' ?></td>
-                  <td><?= htmlspecialchars($entry['source_module']) ?></td>
+                <?php foreach ($liquidations as $liquidation): ?>
+                <tr data-liq-id="<?= $liquidation['id'] ?>">
+                  <td><?= $liquidation['date'] ?></td>
+                  <td><?= htmlspecialchars($liquidation['liquidation_id']) ?></td>
+                  <td><?= htmlspecialchars($liquidation['employee']) ?></td>
+                  <td><?= htmlspecialchars($liquidation['purpose']) ?></td>
+                  <td><?= formatCurrency($liquidation['total_amount']) ?></td>
                   <td>
-                    <span class="badge <?= isset($entry['status']) ? ($entry['status'] === 'Approved' ? 'bg-success' : ($entry['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning')) : 'bg-info' ?>">
-                      <?= $entry['status'] ?? 'Pending' ?>
+                    <?php if (!empty($liquidation['receipt_filename'])): ?>
+                      <?php 
+                        $fileExt = pathinfo($liquidation['receipt_filename'], PATHINFO_EXTENSION);
+                        $isPdf = strtolower($fileExt) === 'pdf';
+                      ?>
+                      <button 
+                        class="btn btn-sm btn-outline-primary view-receipt-btn" 
+                        data-receipt-path="<?= htmlspecialchars($liquidation['receipt_path']) ?>"
+                        data-receipt-filename="<?= htmlspecialchars($liquidation['receipt_filename']) ?>"
+                        title="View Receipt">
+                        <i class="bi bi-<?= $isPdf ? 'file-pdf' : 'image' ?>"></i> View
+                      </button>
+                    <?php else: ?>
+                      <span class="text-muted">No receipt</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <span class="badge <?= $liquidation['status'] === 'Approved' ? 'bg-success' : ($liquidation['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning') ?>">
+                      <?= $liquidation['status'] ?>
                     </span>
                   </td>
                   <td>
-                    <button class="btn btn-sm btn-primary view-journal-btn" data-bs-toggle="modal" data-bs-target="#viewJournalModal" data-id="<?= $entry['id'] ?>">View</button>
-                    <button class="btn btn-sm btn-warning edit-journal-btn" data-id="<?= $entry['id'] ?>">Edit</button>
-                    <button class="btn btn-sm btn-danger delete-journal-btn" data-id="<?= $entry['id'] ?>">Delete</button>
+                    <button class="btn btn-sm btn-primary view-liquidation-btn" data-bs-toggle="modal" data-bs-target="#viewLiquidationModal" data-id="<?= $liquidation['id'] ?>">View</button>
+                    <button class="btn btn-sm btn-warning edit-liquidation-btn" data-id="<?= $liquidation['id'] ?>">Edit</button>
+                    <button class="btn btn-sm btn-danger delete-liquidation-btn" data-id="<?= $liquidation['id'] ?>">Delete</button>
                   </td>
                 </tr>
                 <?php endforeach; ?>
@@ -142,7 +151,7 @@ $liquidations = getLiquidationRecords();
         </div>
       </div>
 
-    <!-- Chart of Accounts Table -->
+      <!-- Chart of Accounts Table -->
       <div class="col-12 mb-4">
         <div class="p-3 bg-white border rounded shadow-sm">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -189,45 +198,47 @@ $liquidations = getLiquidationRecords();
         </div>
       </div>
 
-      <!-- Liquidation Records Table -->
+      <!-- Journal Entries Table -->
       <div class="col-12 mb-4">
         <div class="p-3 bg-white border rounded shadow-sm">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5>Liquidation Records</h5>
-            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLiquidationModal">
-              + New Liquidation Record
+            <h5>Journal Entries</h5>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addJournalEntryModal">
+              + New Journal Entry
             </button>
           </div>
           <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle table-sm mb-0">
               <thead class="table-light">
                 <tr>
-                  <th>Date</th>
-                  <th>Liquidation ID</th>
-                  <th>Employee</th>
-                  <th>Purpose</th>
-                  <th>Total Amount (₱)</th>
-                  <th>Status</th>
+                  <th>Entry Date</th>
+                  <th>Entry ID</th>
+                  <th>Reference</th>
+                  <th>Description</th>
+                  <th>Account Code</th>
+                  <th>Account Name</th>
+                  <th>Debit (₱)</th>
+                  <th>Credit (₱)</th>
+                  <th>Source Module</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($liquidations as $liquidation): ?>
-                <tr data-liq-id="<?= $liquidation['id'] ?>">
-                  <td><?= $liquidation['date'] ?></td>
-                  <td><?= htmlspecialchars($liquidation['liquidation_id']) ?></td>
-                  <td><?= htmlspecialchars($liquidation['employee']) ?></td>
-                  <td><?= htmlspecialchars($liquidation['purpose']) ?></td>
-                  <td><?= formatCurrency($liquidation['total_amount']) ?></td>
+                <?php foreach ($entries as $entry): ?>
+                <tr data-journal-id="<?= $entry['id'] ?>">
+                  <td><?= $entry['date'] ?></td>
+                  <td><?= htmlspecialchars($entry['entry_id']) ?></td>
+                  <td><?= htmlspecialchars($entry['reference']) ?></td>
+                  <td><?= htmlspecialchars($entry['description']) ?></td>
+                  <td><?= $entry['account_code'] ?></td>
+                  <td><?= htmlspecialchars($entry['account_name']) ?></td>
+                  <td><?= $entry['debit'] > 0 ? formatCurrency($entry['debit']) : '-' ?></td>
+                  <td><?= $entry['credit'] > 0 ? formatCurrency($entry['credit']) : '-' ?></td>
+                  <td><?= htmlspecialchars($entry['source_module']) ?></td>
                   <td>
-                    <span class="badge <?= $liquidation['status'] === 'Approved' ? 'bg-success' : ($liquidation['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning') ?>">
-                      <?= $liquidation['status'] ?>
-                    </span>
-                  </td>
-                  <td>
-                    <button class="btn btn-sm btn-primary view-liquidation-btn" data-bs-toggle="modal" data-bs-target="#viewLiquidationModal" data-id="<?= $liquidation['id'] ?>">View</button>
-                    <button class="btn btn-sm btn-warning edit-liquidation-btn" data-id="<?= $liquidation['id'] ?>">Edit</button>
-                    <button class="btn btn-sm btn-danger delete-liquidation-btn" data-id="<?= $liquidation['id'] ?>">Delete</button>
+                    <button class="btn btn-sm btn-primary view-journal-btn" data-bs-toggle="modal" data-bs-target="#viewJournalModal" data-id="<?= $entry['id'] ?>">View</button>
+                    <button class="btn btn-sm btn-warning edit-journal-btn" data-id="<?= $entry['id'] ?>">Edit</button>
+                    <button class="btn btn-sm btn-danger delete-journal-btn" data-id="<?= $entry['id'] ?>">Delete</button>
                   </td>
                 </tr>
                 <?php endforeach; ?>
@@ -236,7 +247,6 @@ $liquidations = getLiquidationRecords();
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Pagination -->
     <nav class="mt-4" aria-label="Ledger pagination">
@@ -258,5 +268,3 @@ $liquidations = getLiquidationRecords();
 
 </body>
 </html>
-
-
