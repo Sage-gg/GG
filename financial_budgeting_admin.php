@@ -57,59 +57,34 @@ session_start();
                                 <h6>🏢 Department Budget Categories:</h6>
                                 <div class="accordion" id="departmentAccordion">
                                     <div class="accordion-item">
-                                        <h2 class="accordion-header" id="hr2Header">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hr2Collapse">
-                                                HR2 Department
+                                        <h2 class="accordion-header" id="hrHeader">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hrCollapse">
+                                                HR Department
                                             </button>
                                         </h2>
-                                        <div id="hr2Collapse" class="accordion-collapse collapse" data-bs-parent="#departmentAccordion">
+                                        <div id="hrCollapse" class="accordion-collapse collapse" data-bs-parent="#departmentAccordion">
                                             <div class="accordion-body">
                                                 <ul class="list-unstyled">
                                                     <li>• Training Budget</li>
                                                     <li>• Reimbursement Budget</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header" id="hr4Header">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#hr4Collapse">
-                                                HR4 Department
-                                            </button>
-                                        </h2>
-                                        <div id="hr4Collapse" class="accordion-collapse collapse" data-bs-parent="#departmentAccordion">
-                                            <div class="accordion-body">
-                                                <ul class="list-unstyled">
                                                     <li>• Benefits Budget</li>
+                                                    <li><strong>• Payroll Budget (Bi-weekly)</strong></li>
                                                 </ul>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="accordion-item">
-                                        <h2 class="accordion-header" id="core2Header">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#core2Collapse">
-                                                Core 2 Department
+                                        <h2 class="accordion-header" id="coreHeader">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#coreCollapse">
+                                                Core Department
                                             </button>
                                         </h2>
-                                        <div id="core2Collapse" class="accordion-collapse collapse" data-bs-parent="#departmentAccordion">
+                                        <div id="coreCollapse" class="accordion-collapse collapse" data-bs-parent="#departmentAccordion">
                                             <div class="accordion-body">
                                                 <ul class="list-unstyled">
                                                     <li>• Log Maintenance Costs</li>
                                                     <li>• Depreciation Charges</li>
                                                     <li>• Insurance Fees</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header" id="core4Header">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#core4Collapse">
-                                                Core 4 Department
-                                            </button>
-                                        </h2>
-                                        <div id="core4Collapse" class="accordion-collapse collapse" data-bs-parent="#departmentAccordion">
-                                            <div class="accordion-body">
-                                                <ul class="list-unstyled">
                                                     <li>• Vehicle Operational Budget</li>
                                                 </ul>
                                             </div>
