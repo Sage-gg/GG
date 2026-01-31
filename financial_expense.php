@@ -63,7 +63,6 @@ if (isStaff()) {
         <!-- Action Buttons (below summary) -->
         <div class="d-flex gap-2">
           <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addExpenseModal">+ Add Expense</button>
-          <button class="btn btn-outline-primary" id="generateTaxReportBtn">Generate Tax Report</button>
         </div>
 
       </div>
