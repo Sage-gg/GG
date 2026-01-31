@@ -29,29 +29,20 @@ session_start();
                         <h6>🔧 Planned Functionality:</h6>
                         <ul class="list-group list-group-flush mb-4">
                             <li class="list-group-item">
-                                <strong>HR2 Department:</strong>
+                                <strong>HR Department:</strong>
                                 <ul class="mt-2">
                                     <li>Training Budget notifications</li>
                                     <li>Reimbursement Budget notifications</li>
-                                </ul>
-                            </li>
-                            <li class="list-group-item">
-                                <strong>HR4 Department:</strong>
-                                <ul class="mt-2">
                                     <li>Benefits Budget notifications</li>
+                                    <li><strong>Payroll Budget notifications</strong> (Bi-weekly)</li>
                                 </ul>
                             </li>
                             <li class="list-group-item">
-                                <strong>Core 2 Department:</strong>
+                                <strong>Core Department:</strong>
                                 <ul class="mt-2">
                                     <li>Log Maintenance Costs notifications</li>
                                     <li>Depreciation Charges notifications</li>
                                     <li>Insurance Fees notifications</li>
-                                </ul>
-                            </li>
-                            <li class="list-group-item">
-                                <strong>Core 4 Department:</strong>
-                                <ul class="mt-2">
                                     <li>Vehicle Operational Budget notifications</li>
                                 </ul>
                             </li>
@@ -77,6 +68,10 @@ session_start();
                             <div class="bg-light p-3 rounded mt-2">
                                 <strong>Budget Rejected:</strong><br>
                                 "Your budget request for [Cost Center] has been reviewed and requires revision. Please contact the finance team for details."
+                            </div>
+                            <div class="bg-light p-3 rounded mt-2">
+                                <strong>Bi-weekly Payroll Reminder:</strong><br>
+                                "Your bi-weekly payroll budget for this period is ₱[Amount]. Current usage: ₱[Used]. Remaining: ₱[Balance]."
                             </div>
                         </div>
 
