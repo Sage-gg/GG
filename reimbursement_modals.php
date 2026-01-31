@@ -20,6 +20,16 @@
                             <label class="form-label">Employee ID</label>
                             <input type="text" class="form-control" name="employee_id">
                         </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Address <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="address" rows="2" required 
+                                      placeholder="Enter complete address..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="contact_no" required 
+                                   placeholder="e.g., +63 912 345 6789">
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Department <span class="text-danger">*</span></label>
                             <select class="form-select" name="department" id="add_dept" onchange="updateReimbursementCostCenter('add')" required>
@@ -101,6 +111,14 @@
                         <label class="form-label text-muted small">Employee ID</label>
                         <div id="v_employee_id">-</div>
                     </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small">Address</label>
+                        <div id="v_address">-</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Contact Number</label>
+                        <div id="v_contact_no">-</div>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Department</label>
                         <div id="v_department">-</div>
@@ -125,6 +143,10 @@
                         <label class="form-label text-muted small">Submission Date</label>
                         <div id="v_submission_date">-</div>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Receipt File</label>
+                        <div id="v_receipt_file">-</div>
+                    </div>
                     <div class="col-12">
                         <label class="form-label text-muted small">Description</label>
                         <div id="v_description">-</div>
@@ -136,14 +158,6 @@
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Approved By</label>
                         <div id="v_approved_by">-</div>
-                    </div>
-                    <div class="col-md-6" id="payment_section" style="display:none;">
-                        <label class="form-label text-muted small">Payment Date</label>
-                        <div id="v_payment_date">-</div>
-                    </div>
-                    <div class="col-md-6" id="payment_method_section" style="display:none;">
-                        <label class="form-label text-muted small">Payment Method</label>
-                        <div id="v_payment_method">-</div>
                     </div>
                     <div class="col-12" id="remarks_section" style="display:none;">
                         <label class="form-label text-muted small">Remarks</label>
@@ -168,7 +182,7 @@
 <div class="modal fade" id="editReimbursementModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="reimbursement_actions.php" method="post">
+            <form action="reimbursement_actions.php" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="modal-header">
@@ -184,6 +198,14 @@
                         <div class="col-md-6">
                             <label class="form-label">Employee ID</label>
                             <input type="text" class="form-control" name="employee_id" id="edit_employee_id">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" name="address" id="edit_address" rows="2" required></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Number</label>
+                            <input type="text" class="form-control" name="contact_no" id="edit_contact_no" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Department</label>
@@ -217,6 +239,11 @@
                         <div class="col-md-6">
                             <label class="form-label">Expense Date</label>
                             <input type="date" class="form-control" name="expense_date" id="edit_expense_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Update Receipt (Optional)</label>
+                            <input type="file" class="form-control" name="receipt_file" accept=".pdf,.jpg,.jpeg,.png">
+                            <small class="text-muted">Leave blank to keep existing file</small>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description</label>
