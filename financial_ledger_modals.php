@@ -230,8 +230,6 @@
   </div>
 </div>
 
-<!-- Add this Edit Account Modal to your financial_ledger_modals.php file, after the Add Account Modal -->
-
 <!-- Edit Account Modal -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -280,7 +278,7 @@
 <div class="modal fade" id="addLiquidationModal" tabindex="-1" aria-labelledby="addLiquidationModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-      <form id="addLiquidationForm">
+      <form id="addLiquidationForm" enctype="multipart/form-data">
         <div class="modal-header">
           <h5 class="modal-title fw-bold">Add Liquidation Record</h5>
           <button class="btn-close" data-bs-dismiss="modal"></button>
@@ -314,6 +312,17 @@
               <option value="Rejected">Rejected</option>
             </select>
           </div>
+          <div class="col-12">
+            <label class="form-label">Attach Receipt</label>
+            <input id="add_liq_receipt" name="receipt" type="file" class="form-control" accept=".jpg,.jpeg,.png,.gif,.pdf">
+            <small class="text-muted">Accepted formats: JPG, PNG, GIF, PDF (Max 5MB)</small>
+          </div>
+          <div class="col-12" id="add_receipt_preview" style="display:none;">
+            <div class="alert alert-info d-flex align-items-center">
+              <i class="bi bi-file-earmark-text me-2"></i>
+              <span id="add_receipt_filename"></span>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -328,7 +337,7 @@
 <div class="modal fade" id="editLiquidationModal" tabindex="-1" aria-labelledby="editLiquidationModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-      <form id="editLiquidationForm">
+      <form id="editLiquidationForm" enctype="multipart/form-data">
         <input type="hidden" id="edit_liq_record_id" name="id">
         <div class="modal-header">
           <h5 class="modal-title fw-bold">Edit Liquidation Record</h5>
@@ -363,6 +372,13 @@
               <option value="Rejected">Rejected</option>
             </select>
           </div>
+          <div class="col-12">
+            <label class="form-label">Current Receipt</label>
+            <div id="edit_current_receipt" class="mb-2"></div>
+            <label class="form-label">Replace Receipt</label>
+            <input id="edit_liq_receipt" name="receipt" type="file" class="form-control" accept=".jpg,.jpeg,.png,.gif,.pdf">
+            <small class="text-muted">Leave empty to keep current receipt. Accepted formats: JPG, PNG, GIF, PDF (Max 5MB)</small>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -390,6 +406,7 @@
             <tr><th>Purpose</th><td id="view_liq_purpose">-</td></tr>
             <tr><th>Total Amount</th><td id="view_liq_amount">-</td></tr>
             <tr><th>Status</th><td id="view_liq_status">-</td></tr>
+            <tr><th>Receipt</th><td id="view_liq_receipt">-</td></tr>
           </tbody>
         </table>
       </div>
@@ -400,4 +417,23 @@
   </div>
 </div>
 
-
+<!-- Receipt Viewer Modal -->
+<div class="modal fade" id="receiptViewerModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Receipt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center p-4" style="min-height: 400px; max-height: 80vh; overflow: auto;">
+        <div id="receiptViewerContent"></div>
+      </div>
+      <div class="modal-footer">
+        <a id="receiptDownloadLink" href="#" target="_blank" class="btn btn-primary" download>
+          <i class="bi bi-download"></i> Download
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
