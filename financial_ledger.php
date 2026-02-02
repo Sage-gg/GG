@@ -2,14 +2,14 @@
 require_once 'db.php';
 
 // CRITICAL: Check authentication and session timeout BEFORE any output
-requireModuleAccess('ledger');  // ← ADD THIS LINE (replaces requireLogin)
+requireModuleAccess('ledger');
 
 // Get permissions for this module
 $perms = getModulePermission('ledger');
 $canCreate = $perms['can_create'];
 $canEdit = $perms['can_edit'];
 $canDelete = $perms['can_delete'];
-// Now include your ledger functions after authentication
+
 require_once 'ledger_functions.php';
 
 // Get filter parameters
@@ -31,16 +31,115 @@ $liquidations = getLiquidationRecords();
   <meta charset="UTF-8" />
   <title>General Ledger</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  
-  <!-- ADD THIS BLOCK -->
-  <script>
-    // Pass PHP session configuration to JavaScript
-    window.SESSION_TIMEOUT = <?php echo SESSION_TIMEOUT * 1000; ?>; // Convert to milliseconds
-  </script>
-  <!-- END OF ADDED BLOCK -->
-  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .ledger-tabs {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-top: 20px;
+    }
+    
+    .nav-tabs {
+      border-bottom: 2px solid #dee2e6;
+      margin-bottom: 20px;
+    }
+    
+    .nav-tabs .nav-link {
+      color: #6c757d;
+      font-weight: 500;
+      padding: 12px 24px;
+      border: none;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+    
+    .nav-tabs .nav-link:hover {
+      color: #0d6efd;
+      border-bottom-color: #0d6efd;
+      background: transparent;
+    }
+    
+    .nav-tabs .nav-link.active {
+      color: #0d6efd;
+      background: transparent;
+      border-bottom-color: #0d6efd;
+      font-weight: 600;
+    }
+    
+    .tab-content {
+      padding: 20px 0;
+    }
+    
+    .tab-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .tab-header h5 {
+      margin: 0;
+      color: #212529;
+      font-weight: 600;
+    }
+    
+    .ledger-summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .summary-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .summary-card.debit {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .summary-card.credit {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .summary-card.balance {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+    
+    .summary-card .label {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    
+    .summary-card .value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    .filters-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .table-wrapper {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
 
@@ -48,234 +147,280 @@ $liquidations = getLiquidationRecords();
 
 <div class="main-content">
   <div class="container-fluid mt-4 px-4">
-    <h2 class="fw-bold mb-4">General Ledger</h2>
+    <h2 class="fw-bold mb-4"><i class="bi bi-journal-text me-2"></i>General Ledger</h2>
 
-    <!-- Filters and Summary + Actions -->
-    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
-      <!-- Left: Filters -->
-      <form method="GET" class="d-flex flex-column gap-2" style="max-width: 250px;">
-        <input type="date" name="from_date" value="<?= htmlspecialchars($fromDate) ?>" class="form-control date-input" placeholder="From Date" />
-        <input type="date" name="to_date" value="<?= htmlspecialchars($toDate) ?>" class="form-control date-input" placeholder="To Date" />
-        <select name="account_code" class="form-select filter-account">
-          <option value="">Filter by Account</option>
-          <?php foreach ($accounts as $account): ?>
-            <option value="<?= $account['account_code'] ?>" <?= $accountCode === $account['account_code'] ? 'selected' : '' ?>>
-              <?= htmlspecialchars($account['account_name']) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Search</button>
+    <!-- Summary Cards -->
+    <div class="ledger-summary-cards">
+      <div class="summary-card debit">
+        <div class="label">Total Debit</div>
+        <div class="value"><?= formatCurrency($summary['total_debit'] ?? 0) ?></div>
+      </div>
+      <div class="summary-card credit">
+        <div class="label">Total Credit</div>
+        <div class="value"><?= formatCurrency($summary['total_credit'] ?? 0) ?></div>
+      </div>
+      <div class="summary-card balance">
+        <div class="label">Net Balance</div>
+        <div class="value"><?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">From Date</label>
+          <input type="date" name="from_date" value="<?= htmlspecialchars($fromDate) ?>" class="form-control" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">To Date</label>
+          <input type="date" name="to_date" value="<?= htmlspecialchars($toDate) ?>" class="form-control" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Filter by Account</label>
+          <select name="account_code" class="form-select">
+            <option value="">All Accounts</option>
+            <?php foreach ($accounts as $account): ?>
+              <option value="<?= $account['account_code'] ?>" <?= $accountCode === $account['account_code'] ? 'selected' : '' ?>>
+                <?= $account['account_code'] ?> - <?= htmlspecialchars($account['account_name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i> Filter
+          </button>
+        </div>
       </form>
+    </div>
 
-      <!-- Right: Summary + Buttons -->
-      <div class="d-flex flex-column align-items-end gap-2 summary-actions">
-        <div class="d-flex gap-3 mb-2 ledger-summary-small">
-          <div class="text-end">
-            <div>Total Debit</div>
-            <div class="text-danger fw-bold">₱<?= formatCurrency($summary['total_debit'] ?? 0) ?></div>
+    <!-- Tabbed Interface -->
+    <div class="ledger-tabs">
+      <ul class="nav nav-tabs" id="ledgerTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="coa-tab" data-bs-toggle="tab" data-bs-target="#coa" type="button" role="tab">
+            <i class="bi bi-list-ul me-2"></i>COA
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="liquidation-tab" data-bs-toggle="tab" data-bs-target="#liquidation" type="button" role="tab">
+            <i class="bi bi-receipt me-2"></i>Liquidation
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="journal-tab" data-bs-toggle="tab" data-bs-target="#journal" type="button" role="tab">
+            <i class="bi bi-journal-bookmark me-2"></i>JE
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content" id="ledgerTabContent">
+        <!-- Chart of Accounts Tab -->
+        <div class="tab-pane fade show active" id="coa" role="tabpanel">
+          <div class="tab-header">
+            <h5><i class="bi bi-list-ul me-2"></i>Chart of Accounts</h5>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+              <i class="bi bi-plus-circle me-1"></i> New Account
+            </button>
           </div>
-          <div class="text-end">
-            <div>Total Credit</div>
-            <div class="text-success fw-bold">₱<?= formatCurrency($summary['total_credit'] ?? 0) ?></div>
+          <div class="table-wrapper">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Account Code</th>
+                    <th>Account Name</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($accounts as $account): ?>
+                  <tr data-account-id="<?= $account['id'] ?? $account['account_code'] ?>">
+                    <td><strong><?= $account['account_code'] ?></strong></td>
+                    <td><?= htmlspecialchars($account['account_name']) ?></td>
+                    <td>
+                      <span class="badge bg-info"><?= $account['account_type'] ?></span>
+                    </td>
+                    <td><?= htmlspecialchars($account['description']) ?></td>
+                    <td>
+                      <span class="badge <?= $account['status'] === 'Active' ? 'bg-success' : 'bg-secondary' ?>">
+                        <?= $account['status'] ?>
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary view-account-btn" data-bs-toggle="modal" data-bs-target="#viewAccountModal" data-code="<?= $account['account_code'] ?>">
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-warning edit-account-btn" data-code="<?= $account['account_code'] ?>">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div class="text-end">
-            <div>Net Balance</div>
-            <div class="text-primary fw-bold">₱<?= formatCurrency($summary['net_balance'] ?? 0) ?></div>
+        </div>
+
+        <!-- Liquidation Records Tab -->
+        <div class="tab-pane fade" id="liquidation" role="tabpanel">
+          <div class="tab-header">
+            <h5><i class="bi bi-receipt me-2"></i>Liquidation Records</h5>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLiquidationModal">
+              <i class="bi bi-plus-circle me-1"></i> New Liquidation
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Date</th>
+                    <th>Liquidation ID</th>
+                    <th>Employee</th>
+                    <th>Purpose</th>
+                    <th>Amount</th>
+                    <th>Receipt</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($liquidations as $liquidation): ?>
+                  <tr data-liq-id="<?= $liquidation['id'] ?>">
+                    <td><?= $liquidation['date'] ?></td>
+                    <td><strong><?= htmlspecialchars($liquidation['liquidation_id']) ?></strong></td>
+                    <td><?= htmlspecialchars($liquidation['employee']) ?></td>
+                    <td><?= htmlspecialchars($liquidation['purpose']) ?></td>
+                    <td><strong>₱<?= formatCurrency($liquidation['total_amount']) ?></strong></td>
+                    <td>
+                      <?php if (!empty($liquidation['receipt_filename'])): ?>
+                        <?php 
+                          $fileExt = pathinfo($liquidation['receipt_filename'], PATHINFO_EXTENSION);
+                          $isPdf = strtolower($fileExt) === 'pdf';
+                        ?>
+                        <button 
+                          class="btn btn-sm btn-outline-primary view-receipt-btn" 
+                          data-receipt-path="<?= htmlspecialchars($liquidation['receipt_path']) ?>"
+                          data-receipt-filename="<?= htmlspecialchars($liquidation['receipt_filename']) ?>"
+                          title="View Receipt">
+                          <i class="bi bi-<?= $isPdf ? 'file-pdf' : 'image' ?>"></i>
+                        </button>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <span class="badge <?= $liquidation['status'] === 'Approved' ? 'bg-success' : ($liquidation['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning') ?>">
+                        <?= $liquidation['status'] ?>
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary view-liquidation-btn" data-bs-toggle="modal" data-bs-target="#viewLiquidationModal" data-id="<?= $liquidation['id'] ?>">
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-warning edit-liquidation-btn" data-id="<?= $liquidation['id'] ?>">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Journal Entries Tab -->
+        <div class="tab-pane fade" id="journal" role="tabpanel">
+          <div class="tab-header">
+            <h5><i class="bi bi-journal-bookmark me-2"></i>Journal Entries</h5>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addJournalEntryModal">
+              <i class="bi bi-plus-circle me-1"></i> New Entry
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Date</th>
+                    <th>Entry ID</th>
+                    <th>Reference</th>
+                    <th>Description</th>
+                    <th>Account</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Source</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($entries as $entry): ?>
+                  <tr data-journal-id="<?= $entry['id'] ?>">
+                    <td><?= $entry['date'] ?></td>
+                    <td><strong><?= htmlspecialchars($entry['entry_id']) ?></strong></td>
+                    <td><?= htmlspecialchars($entry['reference']) ?></td>
+                    <td><?= htmlspecialchars($entry['description']) ?></td>
+                    <td>
+                      <div class="text-muted small"><?= $entry['account_code'] ?></div>
+                      <div><?= htmlspecialchars($entry['account_name']) ?></div>
+                    </td>
+                    <td class="text-danger fw-semibold"><?= $entry['debit'] > 0 ? '₱' . formatCurrency($entry['debit']) : '—' ?></td>
+                    <td class="text-success fw-semibold"><?= $entry['credit'] > 0 ? '₱' . formatCurrency($entry['credit']) : '—' ?></td>
+                    <td><span class="badge bg-secondary"><?= htmlspecialchars($entry['source_module']) ?></span></td>
+                    <td class="text-end">
+                      <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary view-journal-btn" data-bs-toggle="modal" data-bs-target="#viewJournalModal" data-id="<?= $entry['id'] ?>">
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-warning edit-journal-btn" data-id="<?= $entry['id'] ?>">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-
-
-    <!-- Three Tables Section -->
-    <div class="row mt-5">
-      <!-- Liquidation Records Table -->
-      <div class="col-12 mb-4">
-        <div class="p-3 bg-white border rounded shadow-sm">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5>Liquidation Records</h5>
-            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addLiquidationModal">
-              + New Liquidation Record
-            </button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle table-sm mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Date</th>
-                  <th>Liquidation ID</th>
-                  <th>Employee</th>
-                  <th>Purpose</th>
-                  <th>Total Amount (₱)</th>
-                  <th>Receipt</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($liquidations as $liquidation): ?>
-                <tr data-liq-id="<?= $liquidation['id'] ?>">
-                  <td><?= $liquidation['date'] ?></td>
-                  <td><?= htmlspecialchars($liquidation['liquidation_id']) ?></td>
-                  <td><?= htmlspecialchars($liquidation['employee']) ?></td>
-                  <td><?= htmlspecialchars($liquidation['purpose']) ?></td>
-                  <td><?= formatCurrency($liquidation['total_amount']) ?></td>
-                  <td>
-                    <?php if (!empty($liquidation['receipt_filename'])): ?>
-                      <?php 
-                        $fileExt = pathinfo($liquidation['receipt_filename'], PATHINFO_EXTENSION);
-                        $isPdf = strtolower($fileExt) === 'pdf';
-                      ?>
-                      <button 
-                        class="btn btn-sm btn-outline-primary view-receipt-btn" 
-                        data-receipt-path="<?= htmlspecialchars($liquidation['receipt_path']) ?>"
-                        data-receipt-filename="<?= htmlspecialchars($liquidation['receipt_filename']) ?>"
-                        title="View Receipt">
-                        <i class="bi bi-<?= $isPdf ? 'file-pdf' : 'image' ?>"></i> View
-                      </button>
-                    <?php else: ?>
-                      <span class="text-muted">No receipt</span>
-                    <?php endif; ?>
-                  </td>
-                  <td>
-                    <span class="badge <?= $liquidation['status'] === 'Approved' ? 'bg-success' : ($liquidation['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning') ?>">
-                      <?= $liquidation['status'] ?>
-                    </span>
-                  </td>
-                  <td>
-                    <button class="btn btn-sm btn-primary view-liquidation-btn" data-bs-toggle="modal" data-bs-target="#viewLiquidationModal" data-id="<?= $liquidation['id'] ?>">View</button>
-                    <button class="btn btn-sm btn-warning edit-liquidation-btn" data-id="<?= $liquidation['id'] ?>">Edit</button>
-                    <button class="btn btn-sm btn-danger delete-liquidation-btn" data-id="<?= $liquidation['id'] ?>">Delete</button>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chart of Accounts Table -->
-      <div class="col-12 mb-4">
-        <div class="p-3 bg-white border rounded shadow-sm">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5>Chart of Accounts</h5>
-            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addAccountModal">
-              + New Account
-            </button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle table-sm mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Account Code</th>
-                  <th>Account Name</th>
-                  <th>Type</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($accounts as $account): ?>
-                <tr data-account-id="<?= $account['id'] ?? $account['account_code'] ?>">
-                  <td><?= $account['account_code'] ?></td>
-                  <td><?= htmlspecialchars($account['account_name']) ?></td>
-                  <td><?= $account['account_type'] ?></td>
-                  <td><?= htmlspecialchars($account['description']) ?></td>
-                  <td>
-                    <span class="badge <?= $account['status'] === 'Active' ? 'bg-success' : 'bg-secondary' ?>">
-                      <?= $account['status'] ?>
-                    </span>
-                  </td>
-                  <td>
-                    <button class="btn btn-sm btn-primary view-account-btn" data-bs-toggle="modal" data-bs-target="#viewAccountModal" data-code="<?= $account['account_code'] ?>">View</button>
-                    <button class="btn btn-sm btn-warning edit-account-btn" data-code="<?= $account['account_code'] ?>">Edit</button>
-                    <button class="btn btn-sm btn-danger delete-account-btn" data-code="<?= $account['account_code'] ?>">Delete</button>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Journal Entries Table -->
-      <div class="col-12 mb-4">
-        <div class="p-3 bg-white border rounded shadow-sm">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5>Journal Entries</h5>
-            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addJournalEntryModal">
-              + New Journal Entry
-            </button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle table-sm mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Entry Date</th>
-                  <th>Entry ID</th>
-                  <th>Reference</th>
-                  <th>Description</th>
-                  <th>Account Code</th>
-                  <th>Account Name</th>
-                  <th>Debit (₱)</th>
-                  <th>Credit (₱)</th>
-                  <th>Source Module</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($entries as $entry): ?>
-                <tr data-journal-id="<?= $entry['id'] ?>">
-                  <td><?= $entry['date'] ?></td>
-                  <td><?= htmlspecialchars($entry['entry_id']) ?></td>
-                  <td><?= htmlspecialchars($entry['reference']) ?></td>
-                  <td><?= htmlspecialchars($entry['description']) ?></td>
-                  <td><?= $entry['account_code'] ?></td>
-                  <td><?= htmlspecialchars($entry['account_name']) ?></td>
-                  <td><?= $entry['debit'] > 0 ? formatCurrency($entry['debit']) : '-' ?></td>
-                  <td><?= $entry['credit'] > 0 ? formatCurrency($entry['credit']) : '-' ?></td>
-                  <td><?= htmlspecialchars($entry['source_module']) ?></td>
-                  <td>
-                    <button class="btn btn-sm btn-primary view-journal-btn" data-bs-toggle="modal" data-bs-target="#viewJournalModal" data-id="<?= $entry['id'] ?>">View</button>
-                    <button class="btn btn-sm btn-warning edit-journal-btn" data-id="<?= $entry['id'] ?>">Edit</button>
-                    <button class="btn btn-sm btn-danger delete-journal-btn" data-id="<?= $entry['id'] ?>">Delete</button>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-    <!-- Pagination -->
-    <nav class="mt-4" aria-label="Ledger pagination">
-      <ul class="pagination justify-content-center">
-        <li class="page-item disabled"><a class="page-link">Previous</a></li>
-        <li class="page-item active"><a class="page-link">1</a></li>
-        <li class="page-item"><a class="page-link">2</a></li>
-        <li class="page-item"><a class="page-link">3</a></li>
-        <li class="page-item"><a class="page-link">Next</a></li>
-      </ul>
-    </nav>
+    <!-- Export and Pagination -->
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      <button class="btn btn-outline-primary">
+        <i class="bi bi-download me-2"></i>Export Ledger
+      </button>
+      
+      <nav aria-label="Ledger pagination">
+        <ul class="pagination mb-0">
+          <li class="page-item disabled"><a class="page-link">Previous</a></li>
+          <li class="page-item active"><a class="page-link">1</a></li>
+          <li class="page-item"><a class="page-link">2</a></li>
+          <li class="page-item"><a class="page-link">3</a></li>
+          <li class="page-item"><a class="page-link">Next</a></li>
+        </ul>
+      </nav>
+    </div>
   </div>
 </div>
 
 <?php include 'financial_ledger_modals.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- ADD THIS LINE -->
-<script src="session_check.js"></script>
-<!-- END OF ADDED LINE -->
-
 <script src="js/ledger_scripts.js"></script>
 
 </body>
 </html>
-
