@@ -626,7 +626,6 @@ window.collectionsPagination.renderTableData = function(data) {
             <div class="btn-group">
               <button class="btn btn-sm btn-primary" onclick="openView(${row.id})">View</button>
               <button class="btn btn-sm btn-warning" onclick="openEdit(${row.id})">Edit</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteRow(${row.id})">Delete</button>
             </div>
           </td>
         </tr>
@@ -923,21 +922,6 @@ function clearAddFilePreview() {
 function clearEditFilePreview() {
   qs('#edit_receipt_attachment').value = '';
   qs('#edit_file_preview').style.display = 'none';
-}
-
-async function deleteRow(id) {
-  if (!confirm('Delete this record?')) return;
-  const res = await fetch('collections_action.php', {
-    method: 'POST',
-    headers: {'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'delete', id})
-  });
-  const ok = await res.text();
-  if (ok.trim() === 'ok') {
-    collectionsPagination.refresh();
-  } else {
-    alert('Delete failed: ' + ok);
-  }
 }
 
 function updatePenaltyPreview(prefix) {
