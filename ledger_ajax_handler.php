@@ -199,13 +199,15 @@ try {
             $purpose = sanitizeInput($_POST['purpose']);
             $totalAmount = floatval($_POST['total_amount']);
             $status = sanitizeInput($_POST['status']);
+            $expenseAccount = sanitizeInput($_POST['expense_account'] ?? '');
             
             if (empty($date) || empty($employee) || empty($purpose) || $totalAmount <= 0) {
                 echo json_encode(['success' => false, 'message' => 'All fields are required and amount must be greater than 0']);
                 exit;
             }
             
-            $result = addLiquidationRecord($date, $liquidationId, $employee, $purpose, $totalAmount, $status);
+            // Pass expense account to function
+            $result = addLiquidationRecord($date, $liquidationId, $employee, $purpose, $totalAmount, $status, $expenseAccount);
             echo json_encode($result);
             break;
             
@@ -233,6 +235,7 @@ try {
             $purpose = sanitizeInput($_POST['purpose']);
             $totalAmount = floatval($_POST['total_amount']);
             $status = sanitizeInput($_POST['status']);
+            $expenseAccount = sanitizeInput($_POST['expense_account'] ?? '');
             
             if ($id <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid liquidation ID']);
@@ -244,7 +247,8 @@ try {
                 exit;
             }
             
-            $result = updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose, $totalAmount, $status);
+            // Pass expense account to function
+            $result = updateLiquidationRecord($id, $date, $liquidationId, $employee, $purpose, $totalAmount, $status, $expenseAccount);
             echo json_encode($result);
             break;
             
