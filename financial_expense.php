@@ -22,7 +22,63 @@ if (isStaff()) {
   <title>Expense Tracking & Tax Management</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .analytics-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+    }
+    
+    .analytics-card h5 {
+      font-size: 0.75rem;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    
+    .analytics-card .value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+    
+    .chart-container {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+    
+    .search-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .receipt-modal-content {
+      max-height: 80vh;
+      overflow: auto;
+    }
+    
+    .receipt-modal-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .receipt-modal-content embed {
+      width: 100%;
+      min-height: 600px;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
 
@@ -30,47 +86,66 @@ if (isStaff()) {
 
 <div class="main-content">
   <div class="container-fluid mt-4 px-4">
-    <h2 class="fw-bold mb-4">Expense Tracking & Tax Management</h2>
+    <h2 class="fw-bold mb-4"><i class="bi bi-receipt-cutoff me-2"></i>Expense Tracking & Tax Management</h2>
 
-    <!-- Filters and Summary and Actions -->
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-
-      <!-- Search input (left side) -->
-      <div class="input-group w-auto">
-        <input type="text" id="searchInput" class="form-control" placeholder="Search by expense type, vendor, remarks..." />
-        <button class="btn btn-outline-secondary" id="searchBtn">Search</button>
-      </div>
-
-      <!-- Summary + Action Buttons container (right side) -->
-      <div class="d-flex flex-column align-items-end gap-2">
-
-   <!-- Smaller Summary (top right) -->
-<div class="d-flex gap-2 flex-wrap justify-content-end" style="min-width: 280px;">
-  <div class="p-2 bg-light border rounded text-center" style="min-width: 100px;">
-    <h6 class="mb-1" style="font-size: 0.75rem;">Total Expenses</h6>
-    <h5 class="text-danger mb-0" id="totalExpenses" style="font-size: 0.9rem;">₱0.00</h5>
-  </div>
-  <div class="p-2 bg-light border rounded text-center" style="min-width: 130px;">
-    <h6 class="mb-1" style="font-size: 0.75rem;">Total Tax (VAT, Withholding)</h6>
-    <h5 class="text-warning mb-0" id="totalTax" style="font-size: 0.9rem;">₱0.00</h5>
-  </div>
-  <div class="p-2 bg-light border rounded text-center" style="min-width: 100px;">
-    <h6 class="mb-1" style="font-size: 0.75rem;">Net After Tax</h6>
-    <h5 class="text-success mb-0" id="netAfterTax" style="font-size: 0.9rem;">₱0.00</h5>
-  </div>
-</div>
-
-        <!-- Action Buttons (below summary) -->
-        <div class="d-flex gap-2">
-          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addExpenseModal">+ Add Expense</button>
+    <!-- Analytics Section -->
+    <div class="row mb-4">
+      <!-- Chart -->
+      <div class="col-lg-6">
+        <div class="chart-container">
+          <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-fill me-2"></i>Expense Analytics</h5>
+          <canvas id="expenseChart" style="max-height: 220px;"></canvas>
         </div>
+      </div>
+      
+      <!-- Summary Cards -->
+      <div class="col-lg-6">
+        <div class="row g-2">
+          <div class="col-12">
+            <div class="analytics-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+              <h5><i class="bi bi-cash-stack me-2"></i>Total Expenses</h5>
+              <div class="value" id="totalExpenses">₱0.00</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="analytics-card" style="background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);">
+              <h5><i class="bi bi-percent me-2"></i>Total Tax (VAT, Withholding)</h5>
+              <div class="value" id="totalTax">₱0.00</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="analytics-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+              <h5><i class="bi bi-calculator me-2"></i>Net After Tax</h5>
+              <div class="value" id="netAfterTax">₱0.00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- Search and Action Buttons -->
+    <div class="search-section">
+      <div class="row align-items-end g-3">
+        <div class="col-md-8">
+          <label class="form-label fw-semibold"><i class="bi bi-search me-1"></i>Search Expenses</label>
+          <div class="input-group">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search by category, vendor, remarks..." />
+            <button class="btn btn-primary" id="searchBtn">
+              <i class="bi bi-search"></i> Search
+            </button>
+          </div>
+        </div>
+        <div class="col-md-4 text-end">
+          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+            <i class="bi bi-plus-circle me-1"></i> Add Expense
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Expense Table -->
-    <div class="table-responsive shadow-sm rounded">
-      <table class="table table-bordered table-hover align-middle">
+    <div class="table-responsive shadow-sm rounded" style="background: white;">
+      <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
             <th>#</th>
@@ -91,8 +166,7 @@ if (isStaff()) {
           </tr>
         </thead>
         <tbody id="expenseTableBody">
-          <!-- Rows to be dynamically loaded from database -->
-          <tr><td colspan="15" class="text-center">Loading expenses...</td></tr>
+          <tr><td colspan="15" class="text-center py-4">Loading expenses...</td></tr>
         </tbody>
       </table>
     </div>
@@ -103,6 +177,31 @@ if (isStaff()) {
         <!-- Pagination buttons to be generated dynamically -->
       </ul>
     </nav>
+  </div>
+</div>
+
+<!-- Receipt Viewer Modal -->
+<div class="modal fade" id="receiptViewerModal" tabindex="-1" aria-labelledby="receiptViewerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-text me-2"></i>Receipt Viewer</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body receipt-modal-content" id="receiptModalContent">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="receiptDownloadLink" href="#" class="btn btn-primary" download>
+          <i class="bi bi-download me-1"></i> Download
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
   </div>
 </div>
 
