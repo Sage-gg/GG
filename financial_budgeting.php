@@ -497,12 +497,6 @@ $paginationInfo = getPaginationInfo($pagination['current_page'], $recordsPerPage
                           data-bs-toggle="modal" 
                           data-bs-target="#editBudgetModal"
                           onclick="editBudget(this); event.stopPropagation();">Edit</button>
-                  <button type="button" class="btn btn-sm btn-danger btn-delete" 
-                          data-id="<?=$r['id']?>" 
-                          data-name="<?=htmlspecialchars($r['department'].' - '.$r['cost_center'])?>" 
-                          data-bs-toggle="modal" 
-                          data-bs-target="#deleteBudgetModal"
-                          onclick="deleteBudget(this); event.stopPropagation();">Delete</button>
                 </div>
               </td>
             </tr>
@@ -807,20 +801,6 @@ function editBudget(btn) {
   }
 }
 
-// Delete modal - Direct function
-function deleteBudget(btn) {
-  try {
-    console.log('Delete budget, id:', btn.dataset.id);
-    
-    document.getElementById('delete_id').value = btn.dataset.id || '';
-    document.getElementById('delete_name').textContent = btn.dataset.name || 'this record';
-    
-  } catch (error) {
-    console.error('Error in deleteBudget:', error);
-    alert('Error: ' + error.message);
-  }
-}
-
 function notifyDepartment(formType) {
   const department = document.getElementById(formType + '_department')?.value;
   const costCenter = document.getElementById(formType + '_cost_center')?.value;
@@ -919,4 +899,3 @@ console.log('System Ready - Press Ctrl+Shift+F for AI Forecast, Ctrl+Shift+A for
 </script>
 </body>
 </html>
-
