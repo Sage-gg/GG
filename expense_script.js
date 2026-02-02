@@ -3,81 +3,96 @@ let currentPage = 1;
 let currentSearch = '';
 let currentEditId = null;
 let currentDeleteId = null;
+let expenseChart = null;
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== EXPENSE SYSTEM INITIALIZATION ===');
     console.log('DOM loaded, initializing expense system...');
-    
-    // Check if Bootstrap is loaded
-    if (typeof bootstrap === 'undefined') {
-        console.error('❌ Bootstrap library not loaded! Modals will not work.');
-        showAlert('Bootstrap library not loaded. Please refresh the page.', 'danger');
+    loadExpenses();
+    setupEventListeners();
+    initializeChart();
+});
+
+// Initialize Chart
+function initializeChart() {
+    const ctx = document.getElementById('expenseChart');
+    if (!ctx) {
+        console.error('Chart canvas not found');
         return;
     }
     
-    console.log('✅ Bootstrap loaded. Version:', bootstrap.Modal.VERSION || 'unknown');
-    
-    // Check if jQuery is loaded (optional but good to know)
-    if (typeof jQuery !== 'undefined') {
-        console.log('✅ jQuery loaded. Version:', jQuery.fn.jquery);
-    } else {
-        console.log('ℹ️ jQuery not loaded (not required for Bootstrap 5)');
-    }
-    
-    // Check if key DOM elements exist
-    const checks = {
-        'addExpenseModal': document.getElementById('addExpenseModal'),
-        'editExpenseModal': document.getElementById('editExpenseModal'),
-        'viewExpenseModal': document.getElementById('viewExpenseModal'),
-        'deleteExpenseModal': document.getElementById('deleteExpenseModal'),
-        'addExpenseForm': document.getElementById('addExpenseForm'),
-        'expenseTableBody': document.getElementById('expenseTableBody'),
-        'addExpenseButton': document.querySelector('[data-bs-target="#addExpenseModal"]')
-    };
-    
-    console.log('=== DOM ELEMENTS CHECK ===');
-    Object.keys(checks).forEach(key => {
-        if (checks[key]) {
-            console.log(`✅ ${key} found`);
-        } else {
-            console.error(`❌ ${key} NOT FOUND`);
+    expenseChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Total Expenses', 'Total Tax', 'Net After Tax'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: [
+                    'rgba(245, 87, 108, 0.8)',
+                    'rgba(166, 193, 238, 0.8)',
+                    'rgba(67, 233, 123, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(245, 87, 108, 1)',
+                    'rgba(166, 193, 238, 1)',
+                    'rgba(67, 233, 123, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12,
+                            weight: '500'
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += formatCurrency(context.parsed);
+                            return label;
+                        }
+                    }
+                }
+            }
         }
     });
+}
+
+// Update Chart with new data
+function updateChart(totalExpenses, totalTax, netAfterTax) {
+    if (!expenseChart) return;
     
-    console.log('=== STARTING INITIALIZATION ===');
-    loadExpenses();
-    setupEventListeners();
-    console.log('=== INITIALIZATION COMPLETE ===');
-});
+    // Parse currency values
+    const expenseValue = parseCurrency(totalExpenses);
+    const taxValue = parseCurrency(totalTax);
+    const netValue = parseCurrency(netAfterTax);
+    
+    expenseChart.data.datasets[0].data = [expenseValue, taxValue, netValue];
+    expenseChart.update();
+}
+
+// Parse currency string to number
+function parseCurrency(currencyString) {
+    if (typeof currencyString === 'number') return currencyString;
+    return parseFloat(currencyString.replace(/[₱,]/g, '')) || 0;
+}
 
 // Setup all event listeners
 function setupEventListeners() {
     console.log('Setting up event listeners...');
-    
-    // Manual setup for Add Expense button (in case Bootstrap data attributes don't work)
-    const addExpenseBtn = document.querySelector('[data-bs-target="#addExpenseModal"]');
-    if (addExpenseBtn) {
-        addExpenseBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const modalElement = document.getElementById('addExpenseModal');
-            if (modalElement && typeof bootstrap !== 'undefined') {
-                try {
-                    const modal = new bootstrap.Modal(modalElement, {
-                        backdrop: 'static',
-                        keyboard: true
-                    });
-                    modal.show();
-                } catch (error) {
-                    console.error('Error opening add expense modal:', error);
-                    showAlert('Unable to open add expense form', 'danger');
-                }
-            }
-        });
-        console.log('Add Expense button listener attached');
-    } else {
-        console.warn('Add Expense button not found');
-    }
     
     // Add expense form
     const addForm = document.getElementById('addExpenseForm');
@@ -145,7 +160,7 @@ function loadExpenses(page = 1, search = '') {
     // Show loading state
     const tbody = document.getElementById('expenseTableBody');
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center">Loading expenses...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading expenses...</td></tr>';
     }
     
     const params = new URLSearchParams({
@@ -161,7 +176,6 @@ function loadExpenses(page = 1, search = '') {
     fetch(url)
         .then(response => {
             console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -205,7 +219,7 @@ function loadExpenses(page = 1, search = '') {
             if (tbody) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="15" class="text-center text-danger">
+                        <td colspan="15" class="text-center text-danger py-4">
                             <div class="alert alert-danger">
                                 <strong>Error loading expenses:</strong><br>
                                 ${error.message}
@@ -234,7 +248,7 @@ function renderExpenseTable(expenses) {
     tbody.innerHTML = '';
     
     if (!expenses || expenses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center">No expenses found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-4 text-muted">No expenses found</td></tr>';
         return;
     }
     
@@ -243,33 +257,32 @@ function renderExpenseTable(expenses) {
         row.innerHTML = `
             <td>${(currentPage - 1) * 10 + index + 1}</td>
             <td>${expense.formatted_date || formatDate(expense.expense_date)}</td>
-            <td>${escapeHtml(expense.category || '')}</td>
+            <td><span class="badge bg-info">${escapeHtml(expense.category || '')}</span></td>
             <td>${escapeHtml(expense.vendor || '')}</td>
             <td>${truncateText(expense.remarks || '', 30)}</td>
-            <td>${expense.formatted_amount || formatCurrency(expense.amount)}</td>
+            <td class="fw-bold text-danger">${expense.formatted_amount || formatCurrency(expense.amount)}</td>
             <td>${escapeHtml(expense.tax_type || '')}</td>
-            <td>${expense.formatted_tax_amount || formatCurrency(expense.tax_amount)}</td>
+            <td class="text-warning fw-semibold">${expense.formatted_tax_amount || formatCurrency(expense.tax_amount)}</td>
             <td>
                 ${expense.receipt_file ? 
-                    `<a href="uploads/receipts/${expense.receipt_file}" target="_blank" class="text-success">View</a>` : 
-                    '<span class="text-muted">None</span>'
+                    `<button class="btn btn-sm btn-outline-primary" onclick="viewReceipt('${expense.receipt_file}')" title="View Receipt">
+                        <i class="bi bi-file-earmark-image"></i>
+                    </button>` : 
+                    '<span class="text-muted">—</span>'
                 }
             </td>
-            <td>${escapeHtml(expense.approved_by || '-')}</td>
+            <td>${escapeHtml(expense.approved_by || '—')}</td>
             <td><span class="badge ${getStatusBadgeClass(expense.status)}">${escapeHtml(expense.status || '')}</span></td>
             <td>${escapeHtml(expense.payment_method || '')}</td>
-            <td>${escapeHtml(expense.vehicle || '-')}</td>
-            <td>${escapeHtml(expense.job_linked || '-')}</td>
+            <td>${escapeHtml(expense.vehicle || '—')}</td>
+            <td>${escapeHtml(expense.job_linked || '—')}</td>
             <td>
                 <div class="btn-group btn-group-sm" role="group">
                     <button class="btn btn-outline-primary" onclick="viewExpense(${expense.id})" title="View">
-                        👁️
+                        <i class="bi bi-eye"></i>
                     </button>
                     <button class="btn btn-outline-warning" onclick="editExpense(${expense.id})" title="Edit">
-                        ✏️
-                    </button>
-                    <button class="btn btn-outline-danger" onclick="deleteExpense(${expense.id})" title="Delete">
-                        🗑️
+                        <i class="bi bi-pencil"></i>
                     </button>
                 </div>
             </td>
@@ -277,6 +290,54 @@ function renderExpenseTable(expenses) {
         tbody.appendChild(row);
     });
 }
+
+// View Receipt in Modal
+window.viewReceipt = function(filename) {
+    console.log('Viewing receipt:', filename);
+    
+    const modal = new bootstrap.Modal(document.getElementById('receiptViewerModal'));
+    const content = document.getElementById('receiptModalContent');
+    const downloadLink = document.getElementById('receiptDownloadLink');
+    
+    const receiptPath = `uploads/receipts/${filename}`;
+    const fileExt = filename.split('.').pop().toLowerCase();
+    
+    // Set download link
+    downloadLink.href = receiptPath;
+    downloadLink.download = filename;
+    
+    // Show loading
+    content.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Load content based on file type
+    setTimeout(() => {
+        if (fileExt === 'pdf') {
+            content.innerHTML = `
+                <embed src="${receiptPath}" type="application/pdf" style="width: 100%; min-height: 600px; border-radius: 8px;" />
+                <p class="text-center text-muted mt-3">
+                    <small>If PDF doesn't display, <a href="${receiptPath}" target="_blank">click here to open in new tab</a></small>
+                </p>
+            `;
+        } else {
+            content.innerHTML = `
+                <div class="text-center">
+                    <img src="${receiptPath}" 
+                         alt="Receipt" 
+                         style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'alert alert-danger\\'>Failed to load image</div>';" />
+                </div>
+            `;
+        }
+    }, 100);
+};
 
 // Render pagination
 function renderPagination(currentPage, totalPages) {
@@ -297,7 +358,7 @@ function renderPagination(currentPage, totalPages) {
     const prevLi = document.createElement('li');
     prevLi.className = `page-item ${prevDisabled}`;
     prevLi.innerHTML = `
-        <a class="page-link" href="#" onclick="loadExpenses(${currentPage - 1}, '${currentSearch}')">Previous</a>
+        <a class="page-link" href="#" onclick="loadExpenses(${currentPage - 1}, '${currentSearch}'); return false;">Previous</a>
     `;
     pagination.appendChild(prevLi);
     
@@ -307,7 +368,7 @@ function renderPagination(currentPage, totalPages) {
         const pageLi = document.createElement('li');
         pageLi.className = `page-item ${active}`;
         pageLi.innerHTML = `
-            <a class="page-link" href="#" onclick="loadExpenses(${i}, '${currentSearch}')">${i}</a>
+            <a class="page-link" href="#" onclick="loadExpenses(${i}, '${currentSearch}'); return false;">${i}</a>
         `;
         pagination.appendChild(pageLi);
     }
@@ -317,12 +378,12 @@ function renderPagination(currentPage, totalPages) {
     const nextLi = document.createElement('li');
     nextLi.className = `page-item ${nextDisabled}`;
     nextLi.innerHTML = `
-        <a class="page-link" href="#" onclick="loadExpenses(${currentPage + 1}, '${currentSearch}')">Next</a>
+        <a class="page-link" href="#" onclick="loadExpenses(${currentPage + 1}, '${currentSearch}'); return false;">Next</a>
     `;
     pagination.appendChild(nextLi);
 }
 
-// Update summary cards
+// Update summary cards and chart
 function updateSummary(summary) {
     console.log('Updating summary:', summary);
     
@@ -333,6 +394,13 @@ function updateSummary(summary) {
     if (totalExpenses) totalExpenses.textContent = summary.total_expenses || '₱0.00';
     if (totalTax) totalTax.textContent = summary.total_tax || '₱0.00';
     if (netAfterTax) netAfterTax.textContent = summary.net_after_tax || '₱0.00';
+    
+    // Update chart
+    updateChart(
+        summary.total_expenses || '₱0.00',
+        summary.total_tax || '₱0.00',
+        summary.net_after_tax || '₱0.00'
+    );
 }
 
 // Handle add expense form submission
@@ -363,11 +431,8 @@ function handleAddExpense(e) {
         console.log('Add response:', data);
         
         if (data.success) {
-            const modalElement = document.getElementById('addExpenseModal');
-            if (modalElement && typeof bootstrap !== 'undefined') {
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) modal.hide();
-            }
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addExpenseModal'));
+            if (modal) modal.hide();
             
             document.getElementById('addExpenseForm').reset();
             loadExpenses(currentPage, currentSearch);
@@ -381,7 +446,6 @@ function handleAddExpense(e) {
         showAlert(`Error adding expense: ${error.message}`, 'danger');
     })
     .finally(() => {
-        // Restore button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     });
@@ -401,7 +465,6 @@ function handleEditExpense(e) {
     formData.append('action', 'update');
     formData.append('id', currentEditId);
     
-    // Show loading state
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Updating...';
@@ -421,11 +484,8 @@ function handleEditExpense(e) {
         console.log('Edit response:', data);
         
         if (data.success) {
-            const modalElement = document.getElementById('editExpenseModal');
-            if (modalElement && typeof bootstrap !== 'undefined') {
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) modal.hide();
-            }
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editExpenseModal'));
+            if (modal) modal.hide();
             
             loadExpenses(currentPage, currentSearch);
             showAlert(data.message || 'Expense updated successfully', 'success');
@@ -438,7 +498,6 @@ function handleEditExpense(e) {
         showAlert(`Error updating expense: ${error.message}`, 'danger');
     })
     .finally(() => {
-        // Restore button state
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     });
@@ -471,11 +530,8 @@ function handleDeleteExpense() {
         console.log('Delete response:', data);
         
         if (data.success) {
-            const modalElement = document.getElementById('deleteExpenseModal');
-            if (modalElement && typeof bootstrap !== 'undefined') {
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) modal.hide();
-            }
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteExpenseModal'));
+            if (modal) modal.hide();
             
             loadExpenses(currentPage, currentSearch);
             showAlert(data.message || 'Expense deleted successfully', 'success');
@@ -516,63 +572,38 @@ function viewExpense(id) {
         .then(data => {
             console.log('Expense details:', data);
             
-            // Check if response is successful
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to load expense');
-            }
-            
-            // Check if response has expense data
-            const expense = data.expense;
+            const expense = data.expense || data;
             
             if (!expense) {
                 throw new Error('Expense not found');
             }
             
-            // Safely populate view modal - handle values that might already be formatted
-            const setElementText = (elementId, value) => {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.textContent = value || '-';
-                } else {
-                    console.warn(`Element ${elementId} not found in view modal`);
-                }
+            // Populate view modal
+            const elements = {
+                'viewDate': formatDate(expense.expense_date),
+                'viewCategory': expense.category || '',
+                'viewVendor': expense.vendor || '',
+                'viewAmount': formatCurrency(expense.amount),
+                'viewRemarks': expense.remarks || '',
+                'viewTaxType': expense.tax_type || '',
+                'viewTaxAmount': formatCurrency(expense.tax_amount),
+                'viewReceiptAttached': expense.receipt_file ? 'Yes' : 'No',
+                'viewPaymentMethod': expense.payment_method || '',
+                'viewVehicle': expense.vehicle || '—',
+                'viewJobLinked': expense.job_linked || '—',
+                'viewApprovedBy': expense.approved_by || '—',
+                'viewStatus': expense.status || ''
             };
             
-            setElementText('viewDate', formatDate(expense.expense_date));
-            setElementText('viewCategory', expense.category);
-            setElementText('viewVendor', expense.vendor);
-            setElementText('viewAmount', formatCurrency(expense.amount));
-            setElementText('viewRemarks', expense.remarks);
-            setElementText('viewTaxType', expense.tax_type);
-            setElementText('viewTaxAmount', formatCurrency(expense.tax_amount));
-            setElementText('viewReceiptAttached', expense.receipt_file ? 'Yes' : 'No');
-            setElementText('viewPaymentMethod', expense.payment_method);
-            setElementText('viewVehicle', expense.vehicle || '-');
-            setElementText('viewJobLinked', expense.job_linked || '-');
-            setElementText('viewApprovedBy', expense.approved_by || '-');
-            setElementText('viewStatus', expense.status);
+            Object.keys(elements).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = elements[id];
+                }
+            });
             
-            // Show modal using Bootstrap 5 syntax
-            const modalElement = document.getElementById('viewExpenseModal');
-            if (!modalElement) {
-                throw new Error('View modal element not found in DOM');
-            }
-            
-            // Check if Bootstrap is loaded
-            if (typeof bootstrap === 'undefined') {
-                throw new Error('Bootstrap library not loaded');
-            }
-            
-            try {
-                const modal = new bootstrap.Modal(modalElement, {
-                    backdrop: 'static',
-                    keyboard: true
-                });
-                modal.show();
-            } catch (modalError) {
-                console.error('Modal creation error:', modalError);
-                throw new Error('Failed to initialize modal: ' + modalError.message);
-            }
+            const modal = new bootstrap.Modal(document.getElementById('viewExpenseModal'));
+            modal.show();
         })
         .catch(error => {
             console.error('Error loading expense details:', error);
@@ -595,61 +626,36 @@ function editExpense(id) {
         .then(data => {
             console.log('Expense for edit:', data);
             
-            // Check if response is successful
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to load expense');
-            }
-            
-            // Check if response has expense data
-            const expense = data.expense;
+            const expense = data.expense || data;
             
             if (!expense) {
                 throw new Error('Expense not found');
             }
             
-            // Safely set form field values
-            const setFieldValue = (fieldId, value) => {
-                const element = document.getElementById(fieldId);
-                if (element) {
-                    element.value = value || '';
-                } else {
-                    console.warn(`Element ${fieldId} not found in edit modal`);
-                }
+            // Populate edit modal
+            const fields = {
+                'editDate': expense.expense_date,
+                'editCategory': expense.category,
+                'editVendor': expense.vendor,
+                'editAmount': expense.amount,
+                'editDescription': expense.remarks,
+                'editTaxType': expense.tax_type,
+                'editPaymentMethod': expense.payment_method,
+                'editVehicle': expense.vehicle || '',
+                'editJobLinked': expense.job_linked || '',
+                'editApprovedBy': expense.approved_by || '',
+                'editStatus': expense.status
             };
             
-            setFieldValue('editDate', expense.expense_date);
-            setFieldValue('editCategory', expense.category);
-            setFieldValue('editVendor', expense.vendor);
-            setFieldValue('editAmount', expense.amount);
-            setFieldValue('editDescription', expense.remarks);
-            setFieldValue('editTaxType', expense.tax_type);
-            setFieldValue('editPaymentMethod', expense.payment_method);
-            setFieldValue('editVehicle', expense.vehicle || '');
-            setFieldValue('editJobLinked', expense.job_linked || '');
-            setFieldValue('editApprovedBy', expense.approved_by || '');
-            setFieldValue('editStatus', expense.status);
+            Object.keys(fields).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.value = fields[id] || '';
+                }
+            });
             
-            // Show modal using Bootstrap 5 syntax
-            const modalElement = document.getElementById('editExpenseModal');
-            if (!modalElement) {
-                throw new Error('Edit modal element not found in DOM');
-            }
-            
-            // Check if Bootstrap is loaded
-            if (typeof bootstrap === 'undefined') {
-                throw new Error('Bootstrap library not loaded');
-            }
-            
-            try {
-                const modal = new bootstrap.Modal(modalElement, {
-                    backdrop: 'static',
-                    keyboard: true
-                });
-                modal.show();
-            } catch (modalError) {
-                console.error('Modal creation error:', modalError);
-                throw new Error('Failed to initialize modal: ' + modalError.message);
-            }
+            const modal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
+            modal.show();
         })
         .catch(error => {
             console.error('Error loading expense for edit:', error);
@@ -662,30 +668,8 @@ function deleteExpense(id) {
     console.log('Preparing to delete expense ID:', id);
     currentDeleteId = id;
     
-    const modalElement = document.getElementById('deleteExpenseModal');
-    if (!modalElement) {
-        console.error('Delete modal element not found in DOM');
-        showAlert('Unable to open delete confirmation', 'danger');
-        return;
-    }
-    
-    // Check if Bootstrap is loaded
-    if (typeof bootstrap === 'undefined') {
-        console.error('Bootstrap library not loaded');
-        showAlert('Unable to open delete confirmation', 'danger');
-        return;
-    }
-    
-    try {
-        const modal = new bootstrap.Modal(modalElement, {
-            backdrop: 'static',
-            keyboard: true
-        });
-        modal.show();
-    } catch (modalError) {
-        console.error('Modal creation error:', modalError);
-        showAlert('Failed to open delete confirmation: ' + modalError.message, 'danger');
-    }
+    const modal = new bootstrap.Modal(document.getElementById('deleteExpenseModal'));
+    modal.show();
 }
 
 // Calculate tax for add form
@@ -693,7 +677,6 @@ function calculateAddTax() {
     const amount = parseFloat(document.getElementById('addAmount')?.value) || 0;
     const taxType = document.getElementById('addTaxType')?.value;
     console.log('Calculating add tax:', amount, taxType);
-    // Tax calculation is handled server-side
 }
 
 // Calculate tax for edit form
@@ -701,12 +684,11 @@ function calculateEditTax() {
     const amount = parseFloat(document.getElementById('editAmount')?.value) || 0;
     const taxType = document.getElementById('editTaxType')?.value;
     console.log('Calculating edit tax:', amount, taxType);
-    // Tax calculation is handled server-side
 }
 
 // Utility functions
 function truncateText(text, maxLength) {
-    if (!text) return '-';
+    if (!text) return '—';
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 }
 
@@ -717,7 +699,7 @@ function getStatusBadgeClass(status) {
         case 'approved':
             return 'bg-success';
         case 'pending':
-            return 'bg-warning';
+            return 'bg-warning text-dark';
         case 'rejected':
             return 'bg-danger';
         default:
@@ -726,29 +708,14 @@ function getStatusBadgeClass(status) {
 }
 
 function formatCurrency(amount) {
-    // Handle null, undefined, or empty
-    if (amount === null || amount === undefined || amount === '') {
-        return '₱0.00';
-    }
-    
-    // If already a formatted string with ₱, return as is
     if (typeof amount === 'string' && amount.includes('₱')) {
         return amount;
     }
-    
-    // Convert to number and validate
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount)) {
-        console.warn('Invalid amount for currency formatting:', amount);
-        return '₱0.00';
-    }
-    
-    // Format with commas and two decimal places
-    return '₱' + numAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return '₱' + parseFloat(amount || 0).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
 }
 
 function formatDate(dateString) {
-    if (!dateString) return '-';
+    if (!dateString) return '—';
     try {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -770,18 +737,16 @@ function escapeHtml(text) {
 function showAlert(message, type = 'info') {
     console.log(`Alert (${type}):`, message);
     
-    // Create alert element
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
     alertDiv.innerHTML = `
-        ${escapeHtml(message)}
+        <strong>${type === 'success' ? '✓' : '⚠'}</strong> ${escapeHtml(message)}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
     document.body.appendChild(alertDiv);
     
-    // Auto remove after 5 seconds
     setTimeout(() => {
         if (alertDiv.parentNode) {
             alertDiv.remove();
