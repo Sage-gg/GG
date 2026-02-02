@@ -322,10 +322,6 @@ function peso($n) {
                                             <button class="btn btn-warning btn-sm" data-record='<?=$dataAttrs?>' 
                                                     onclick="editReimbursement(this)" data-bs-toggle="modal" 
                                                     data-bs-target="#editReimbursementModal">Edit</button>
-                                            <button class="btn btn-danger btn-sm" data-id="<?=$r['id']?>" 
-                                                    data-name="<?=htmlspecialchars($r['employee_name'])?>" 
-                                                    onclick="deleteReimbursement(this)" data-bs-toggle="modal" 
-                                                    data-bs-target="#deleteReimbursementModal">Delete</button>
                                         <?php endif; ?>
                                     </div>
                                 </td>
