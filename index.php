@@ -74,11 +74,24 @@ function getBudgetSummary() {
   ];
 }
 
-// NEW AI ANALYTICS FUNCTIONS
+// NEW AI ANALYTICS FUNCTIONS - ENHANCED WITH DETAILED REASONING
 
 /**
  * AI-Powered Collections Analysis
  * Provides insights, trends, and predictions for collections
+ * 
+ * ENHANCED WITH:
+ * - Clear risk thresholds and basis
+ * - Detailed reasoning for each risk level
+ * - Specific, actionable recommendations
+ * 
+ * RISK LEVEL THRESHOLDS:
+ * - LOW RISK: Overdue < 15% of total invoices
+ *   Basis: Industry standard for healthy accounts receivable management
+ * - MEDIUM RISK: Overdue 15-30% of total invoices
+ *   Basis: Above acceptable threshold, requires proactive intervention
+ * - HIGH RISK: Overdue > 30% of total invoices
+ *   Basis: Critical level indicating systemic collection problems
  */
 function getCollectionsAnalytics() {
   global $conn;
@@ -89,6 +102,7 @@ function getCollectionsAnalytics() {
     'prediction' => '',
     'insight' => '',
     'risk_level' => 'low',
+    'risk_reasoning' => '',  // NEW: Detailed explanation of risk assessment
     'recommended_actions' => [],
     'monthly_comparison' => [],
     'data_quality' => 'good',
@@ -232,7 +246,7 @@ function getCollectionsAnalytics() {
       }
     }
     
-    // Analyze overdue risk
+    // Analyze overdue risk - ENHANCED WITH DETAILED REASONING
     $overdueQuery = "SELECT 
                       COUNT(*) as overdue_count, 
                       COALESCE(SUM(amount_due - amount_paid), 0) as overdue_amount
@@ -248,14 +262,73 @@ function getCollectionsAnalytics() {
     }
     
     $overduePercentage = 0;
+    $totalInvoices = 0;
+    
     if (count($monthlyData) > 0 && isset($monthlyData[0]['invoice_count']) && $monthlyData[0]['invoice_count'] > 0) {
-      $overduePercentage = ((int)$overdueData['overdue_count'] / (int)$monthlyData[0]['invoice_count']) * 100;
+      $totalInvoices = (int)$monthlyData[0]['invoice_count'];
+      $overduePercentage = ((int)$overdueData['overdue_count'] / $totalInvoices) * 100;
     }
+    
+    // ENHANCED RISK ASSESSMENT WITH THRESHOLDS AND DETAILED REASONING
+    // 
+    // THRESHOLD DEFINITIONS AND BASIS:
+    // - LOW RISK (< 15% overdue):
+    //   * Industry benchmark for healthy AR management
+    //   * Indicates effective collection processes
+    //   * Normal business operations expected
+    //
+    // - MEDIUM RISK (15-30% overdue):
+    //   * Above acceptable industry threshold
+    //   * Signals need for process improvement
+    //   * Proactive intervention can prevent escalation
+    //
+    // - HIGH RISK (> 30% overdue):
+    //   * Critical level indicating systemic issues
+    //   * Significant cash flow impact
+    //   * Immediate corrective action required
     
     if ($overduePercentage > 30) {
       $analytics['risk_level'] = 'high';
+      $analytics['risk_reasoning'] = sprintf(
+        "CRITICAL: Over 30%% of invoices are currently overdue (%d out of %d total invoices = %.1f%%), " .
+        "totaling ₱%s in outstanding receivables. " .
+        "This exceeds the critical threshold and indicates significant collection challenges. " .
+        "Industry standard for healthy accounts receivable is to maintain overdue invoices below 15%%. " .
+        "At this level, there is substantial impact on cash flow and increased risk of bad debt write-offs. " .
+        "Immediate escalation and intensive collection efforts are required to prevent further deterioration.",
+        (int)$overdueData['overdue_count'],
+        $totalInvoices,
+        $overduePercentage,
+        number_format($overdueData['overdue_amount'], 2)
+      );
     } elseif ($overduePercentage > 15) {
       $analytics['risk_level'] = 'medium';
+      $analytics['risk_reasoning'] = sprintf(
+        "WARNING: Between 15-30%% of invoices are overdue (%d out of %d total invoices = %.1f%%), " .
+        "totaling ₱%s in outstanding receivables. " .
+        "This is above the recommended industry threshold of 15%% and requires closer monitoring. " .
+        "While not yet critical, this level indicates emerging collection issues that need proactive attention. " .
+        "Studies show that collection probability decreases significantly as accounts age beyond 30 days. " .
+        "Enhanced collection efforts now can prevent escalation to high-risk status and minimize bad debt exposure.",
+        (int)$overdueData['overdue_count'],
+        $totalInvoices,
+        $overduePercentage,
+        number_format($overdueData['overdue_amount'], 2)
+      );
+    } else {
+      $analytics['risk_level'] = 'low';
+      $analytics['risk_reasoning'] = sprintf(
+        "HEALTHY: Less than 15%% of invoices are overdue (%d out of %d total invoices = %.1f%%), " .
+        "totaling ₱%s in outstanding receivables. " .
+        "Collection performance is within acceptable industry standards (benchmark: <15%% overdue rate). " .
+        "This indicates effective accounts receivable management and healthy customer payment behavior. " .
+        "Current collection practices are working well and should be maintained. " .
+        "Continue monitoring to ensure this healthy status persists and catch any emerging trends early.",
+        (int)$overdueData['overdue_count'],
+        $totalInvoices,
+        $overduePercentage,
+        number_format($overdueData['overdue_amount'], 2)
+      );
     }
     
     // Generate insights
@@ -283,18 +356,36 @@ function getCollectionsAnalytics() {
       }
     }
     
-    // Recommended actions
+    // ENHANCED Recommended actions - specific, actionable, risk-appropriate
     if ($analytics['risk_level'] === 'high') {
-      $analytics['recommended_actions'][] = "Urgent: Follow up on " . $overdueData['overdue_count'] . " overdue invoices";
-      $analytics['recommended_actions'][] = "Consider implementing stricter payment terms";
+      $analytics['recommended_actions'][] = "URGENT: Immediately follow up on " . $overdueData['overdue_count'] . " overdue invoices totaling ₱" . number_format($overdueData['overdue_amount'], 2);
+      $analytics['recommended_actions'][] = "Implement daily collection call schedule for all accounts over 30 days past due";
+      $analytics['recommended_actions'][] = "Send formal demand letters to accounts 60+ days overdue with payment deadline";
+      $analytics['recommended_actions'][] = "For accounts 90+ days overdue: Consider engaging professional collection agency";
+      $analytics['recommended_actions'][] = "Implement stricter payment terms for new invoices (e.g., 50% deposit, Net 15 days)";
+      $analytics['recommended_actions'][] = "Review and tighten credit approval process to prevent future high-risk accounts";
+      $analytics['recommended_actions'][] = "Escalate to senior management - this requires executive attention and possible policy changes";
     } elseif ($analytics['risk_level'] === 'medium') {
-      $analytics['recommended_actions'][] = "Monitor overdue accounts closely";
-      $analytics['recommended_actions'][] = "Send payment reminders to clients";
+      $analytics['recommended_actions'][] = "Actively monitor " . $overdueData['overdue_count'] . " overdue accounts totaling ₱" . number_format($overdueData['overdue_amount'], 2);
+      $analytics['recommended_actions'][] = "Send formal payment reminder emails twice weekly to all overdue accounts";
+      $analytics['recommended_actions'][] = "Schedule systematic collection calls for accounts 15+ days overdue";
+      $analytics['recommended_actions'][] = "Document all collection communication attempts for escalation tracking";
+      $analytics['recommended_actions'][] = "Offer structured payment plans to clients experiencing temporary cash flow issues";
+      $analytics['recommended_actions'][] = "Consider offering early payment incentives (e.g., 2% discount for payment within 10 days)";
+      $analytics['recommended_actions'][] = "Review customer creditworthiness before extending additional credit";
+    } else {
+      $analytics['recommended_actions'][] = "Maintain current collection practices - performance is healthy and within industry benchmarks";
+      $analytics['recommended_actions'][] = "Continue sending automated payment reminders 5 days before due date";
+      $analytics['recommended_actions'][] = "Monitor for any increases in overdue percentages in weekly review cycles";
+      $analytics['recommended_actions'][] = "Document successful collection strategies for process optimization";
+      $analytics['recommended_actions'][] = "Consider implementing early payment discount program to improve cash flow velocity";
     }
     
     if ($analytics['trend'] === 'decreasing') {
-      $analytics['recommended_actions'][] = "Review pricing strategy and market conditions";
-      $analytics['recommended_actions'][] = "Increase client engagement and follow-ups";
+      $analytics['recommended_actions'][] = "TREND ALERT: Investigate root cause of declining collections - analyze by client segment, industry, and invoice size";
+      $analytics['recommended_actions'][] = "Review accounts receivable aging report weekly to identify patterns and problem accounts";
+      $analytics['recommended_actions'][] = "Assess market conditions and client financial health for systemic issues";
+      $analytics['recommended_actions'][] = "Consider revising pricing strategy or payment terms if market conditions have changed";
     }
     
     $analytics['monthly_comparison'] = $monthlyData;
@@ -308,6 +399,19 @@ function getCollectionsAnalytics() {
 
 /**
  * AI-Powered Budget Analysis
+ * 
+ * ENHANCED WITH:
+ * - Clear utilization thresholds and basis
+ * - Detailed reasoning for each risk level
+ * - Department-specific tracking and alerts
+ * 
+ * RISK LEVEL THRESHOLDS:
+ * - LOW RISK: Utilization < 75%
+ *   Basis: Healthy buffer for unexpected expenses and contingencies
+ * - MEDIUM RISK: Utilization 75-90%
+ *   Basis: Approaching critical threshold, requires spending controls
+ * - HIGH RISK: Utilization > 90%
+ *   Basis: Minimal buffer remaining, high risk of budget overrun
  */
 function getBudgetAnalytics() {
   global $conn;
@@ -317,6 +421,7 @@ function getBudgetAnalytics() {
     'trend' => 'stable',
     'insight' => '',
     'risk_level' => 'low',
+    'risk_reasoning' => '',  // NEW: Detailed explanation of risk assessment
     'prediction' => '',
     'recommended_actions' => [],
     'top_spending_departments' => [],
@@ -373,28 +478,131 @@ function getBudgetAnalytics() {
     if ($analytics['burn_rate'] > 0 && $overall['total_allocated'] > $overall['total_used']) {
       $remaining = $overall['total_allocated'] - $overall['total_used'];
       $monthsRemaining = $remaining / $analytics['burn_rate'];
-      $analytics['prediction'] = round($monthsRemaining, 1) . " months until budget depletion at current rate";
+      $analytics['prediction'] = round($monthsRemaining, 1) . " months until budget depletion at current burn rate of ₱" . number_format($analytics['burn_rate'], 2) . "/month";
     }
     
-    // Risk assessment
+    // ENHANCED RISK ASSESSMENT WITH THRESHOLDS AND DETAILED REASONING
+    //
+    // THRESHOLD DEFINITIONS AND BASIS:
+    // - LOW RISK (< 75% utilized):
+    //   * Recommended buffer: 25%+ for contingencies
+    //   * Allows flexibility for unexpected expenses
+    //   * Healthy spending velocity
+    //
+    // - MEDIUM RISK (75-90% utilized):
+    //   * Warning zone - limited buffer remaining
+    //   * Need to slow spending velocity
+    //   * Enhanced approvals recommended
+    //
+    // - HIGH RISK (> 90% utilized):
+    //   * Critical threshold - minimal buffer
+    //   * High probability of budget overrun
+    //   * Immediate spending freeze often required
+    
+    $remaining_amount = $overall['total_allocated'] - $overall['total_used'];
+    $remaining_pct = 100 - $analytics['utilization_rate'];
+    
     if ($analytics['utilization_rate'] > 90) {
       $analytics['risk_level'] = 'high';
+      $analytics['risk_reasoning'] = sprintf(
+        "CRITICAL: Budget utilization at %.1f%% with only %.1f%% (₱%s) remaining of ₱%s total allocated budget. " .
+        "At this critical level (>90%%), there is minimal buffer for unexpected expenses or emergencies. " .
+        "Based on current burn rate of ₱%s/month, remaining funds may be exhausted within %.1f months. " .
+        "Industry best practice is to maintain at least 10%% reserve for contingencies and unexpected costs. " .
+        "Immediate spending freeze on non-essential expenses is strongly recommended to prevent budget overrun. " .
+        "Any overage will require emergency budget increases or reallocation from other departments.",
+        $analytics['utilization_rate'],
+        $remaining_pct,
+        number_format($remaining_amount, 2),
+        number_format($overall['total_allocated'], 2),
+        number_format($analytics['burn_rate'], 2),
+        $analytics['burn_rate'] > 0 ? $remaining_amount / $analytics['burn_rate'] : 0
+      );
       $analytics['insight'] = "Critical: {$analytics['utilization_rate']}% budget utilized. Immediate action required!";
-      $analytics['recommended_actions'][] = "Freeze non-essential spending";
-      $analytics['recommended_actions'][] = "Request budget increase or reallocation";
+      $analytics['recommended_actions'][] = "IMMEDIATE: Implement spending freeze on all non-essential expenses effective immediately";
+      $analytics['recommended_actions'][] = "URGENT: Request emergency budget increase or reallocation from senior management";
+      $analytics['recommended_actions'][] = "Review all pending purchase orders and cancel/postpone non-critical items";
+      $analytics['recommended_actions'][] = "Require executive approval for ANY new expenses, regardless of amount";
+      $analytics['recommended_actions'][] = "Conduct daily budget monitoring and send alerts if utilization exceeds 95%";
+      $analytics['recommended_actions'][] = "Identify opportunities for cost savings or expense deferrals to next period";
+      $analytics['recommended_actions'][] = "Prepare contingency plan and communicate budget constraints to all stakeholders";
     } elseif ($analytics['utilization_rate'] > 75) {
       $analytics['risk_level'] = 'medium';
+      $analytics['risk_reasoning'] = sprintf(
+        "WARNING: Budget utilization at %.1f%% with %.1f%% (₱%s) remaining of ₱%s total allocated budget. " .
+        "Approaching the 90%% critical threshold. Proactive spending controls needed now to avoid escalation. " .
+        "At current burn rate of ₱%s/month, projected to reach 90%% utilization within %.1f months. " .
+        "Standard financial practice is to implement enhanced controls when crossing 75%% utilization. " .
+        "This provides adequate time to slow spending velocity and make necessary adjustments. " .
+        "Weekly budget review meetings recommended to monitor trends and implement corrective actions.",
+        $analytics['utilization_rate'],
+        $remaining_pct,
+        number_format($remaining_amount, 2),
+        number_format($overall['total_allocated'], 2),
+        number_format($analytics['burn_rate'], 2),
+        $analytics['burn_rate'] > 0 ? ($overall['total_allocated'] * 0.9 - $overall['total_used']) / $analytics['burn_rate'] : 0
+      );
       $analytics['insight'] = "Warning: {$analytics['utilization_rate']}% budget utilized. Monitor spending closely.";
-      $analytics['recommended_actions'][] = "Review and prioritize upcoming expenses";
-      $analytics['recommended_actions'][] = "Implement spending controls";
+      $analytics['recommended_actions'][] = "Implement enhanced approval process for all new expenses over ₱10,000";
+      $analytics['recommended_actions'][] = "Require department head justification for non-budgeted expenses";
+      $analytics['recommended_actions'][] = "Review and prioritize all remaining planned expenses - defer non-critical items to next period";
+      $analytics['recommended_actions'][] = "Conduct weekly budget review meetings with all department heads";
+      $analytics['recommended_actions'][] = "Reduce discretionary spending by 20-30% to create buffer";
+      $analytics['recommended_actions'][] = "Prepare contingency plan in case utilization reaches 90% threshold";
+      $analytics['recommended_actions'][] = "Identify opportunities for cost optimization and vendor renegotiation";
     } else {
+      $analytics['risk_level'] = 'low';
+      $analytics['risk_reasoning'] = sprintf(
+        "HEALTHY: Budget utilization at %.1f%% with %.1f%% (₱%s) remaining of ₱%s total allocated budget. " .
+        "Spending is well-controlled with healthy reserves for contingencies and unexpected expenses. " .
+        "At current burn rate of ₱%s/month, adequate buffer exists to accommodate normal business operations. " .
+        "Best practice target is 70-80%% utilization by end of budget period, which allows for optimal resource usage " .
+        "while maintaining appropriate reserves. Current performance indicates effective budget management. " .
+        "Continue monitoring to maintain this healthy utilization rate and catch any emerging spending trends.",
+        $analytics['utilization_rate'],
+        $remaining_pct,
+        number_format($remaining_amount, 2),
+        number_format($overall['total_allocated'], 2),
+        number_format($analytics['burn_rate'], 2)
+      );
       $analytics['insight'] = "Budget utilization at {$analytics['utilization_rate']}%. On track.";
-      $analytics['recommended_actions'][] = "Continue monitoring department spending";
+      $analytics['recommended_actions'][] = "Continue current spending controls - budget health is good and within target range";
+      $analytics['recommended_actions'][] = "Monitor monthly spending trends to ensure predictable and sustainable burn rate";
+      $analytics['recommended_actions'][] = "Plan ahead for end-of-period spending to optimize budget usage without waste";
+      $analytics['recommended_actions'][] = "Document successful budget management practices for future periods";
+      $analytics['recommended_actions'][] = "Consider strategic investments or initiatives with remaining budget capacity";
     }
     
+    // ENHANCED: Check individual department overspending with specific alerts
     foreach ($analytics['top_spending_departments'] as $dept) {
       if ($dept['utilization'] > 100) {
-        $analytics['recommended_actions'][] = "Review {$dept['department']} - over budget by " . round($dept['utilization'] - 100, 1) . "%";
+        $overage_amount = $dept['used'] - $dept['allocated'];
+        $overage_pct = $dept['utilization'] - 100;
+        $analytics['recommended_actions'][] = sprintf(
+          "🚨 CRITICAL: %s department has EXCEEDED budget by %.1f%% - spent ₱%s against ₱%s allocated (₱%s over budget). " .
+          "Require immediate investigation, spending freeze, and corrective action plan from department head.",
+          $dept['department'],
+          $overage_pct,
+          number_format($dept['used'], 2),
+          number_format($dept['allocated'], 2),
+          number_format($overage_amount, 2)
+        );
+      } elseif ($dept['utilization'] > 90) {
+        $remaining_dept = $dept['allocated'] - $dept['used'];
+        $analytics['recommended_actions'][] = sprintf(
+          "⚠️ WARNING: %s department at %.1f%% utilization - only ₱%s remaining of ₱%s allocated. " .
+          "Implement immediate spending controls to prevent budget overrun.",
+          $dept['department'],
+          $dept['utilization'],
+          number_format($remaining_dept, 2),
+          number_format($dept['allocated'], 2)
+        );
+      } elseif ($dept['utilization'] > 75) {
+        $analytics['recommended_actions'][] = sprintf(
+          "📊 MONITOR: %s department at %.1f%% utilization. Trending toward high utilization - increase oversight.",
+          $dept['department'],
+          $dept['utilization']
+        );
       }
     }
     
@@ -407,6 +615,29 @@ function getBudgetAnalytics() {
 
 /**
  * AI-Powered Overdue Analysis
+ * 
+ * ENHANCED WITH:
+ * - Clear aging thresholds and collection probability
+ * - Detailed reasoning for risk assessment
+ * - Specific collection strategies by risk level
+ * 
+ * RISK LEVEL THRESHOLDS:
+ * - LOW RISK: Average days overdue < 30 days
+ *   Basis: Recent overdues, high collection probability (85%+)
+ * - MEDIUM RISK: Average days overdue 30-60 days
+ *   Basis: Moderate aging, declining collection probability (70-85%)
+ * - HIGH RISK: Average days overdue > 60 days
+ *   Basis: Severely aged, low collection probability (<70%)
+ * 
+ * COLLECTION PROBABILITY CALCULATION:
+ * Base rate calculated from historical collection success
+ * Adjusted by days overdue:
+ * - 0-30 days: Base rate (no reduction)
+ * - 31-60 days: Base rate minus 10%
+ * - 61-90 days: Base rate minus 25%
+ * - 90+ days: Base rate minus 40%
+ * 
+ * Basis: Industry research shows sharp decline in collectability after 60 days
  */
 function getOverdueAnalytics() {
   global $conn;
@@ -417,6 +648,7 @@ function getOverdueAnalytics() {
     'trend' => 'stable',
     'insight' => '',
     'risk_level' => 'low',
+    'risk_reasoning' => '',  // NEW: Detailed explanation of risk assessment
     'recommended_actions' => [],
     'aging_analysis' => []
   ];
@@ -462,7 +694,7 @@ function getOverdueAnalytics() {
       $analytics['average_days_overdue'] = round((float)$avgData['avg_overdue'], 0);
     }
     
-    // Calculate collection probability
+    // Calculate collection probability based on historical data and aging
     $historicalSql = "SELECT 
                         COUNT(CASE WHEN payment_status = 'Paid' THEN 1 END) as eventually_paid,
                         COUNT(*) as total
@@ -474,6 +706,14 @@ function getOverdueAnalytics() {
     if ($histResult && $histData = $histResult->fetch_assoc()) {
       if ($histData['total'] > 0) {
         $baseCollectionRate = ($histData['eventually_paid'] / $histData['total']) * 100;
+        
+        // COLLECTION PROBABILITY FORMULA:
+        // Base rate = Historical collection success rate
+        // Adjusted by aging factor based on industry research:
+        // - Accounts 0-30 days overdue: No reduction (recent, high probability)
+        // - Accounts 31-60 days overdue: -10% (collection effort intensifies)
+        // - Accounts 61-90 days overdue: -25% (significant decline in collectability)
+        // - Accounts 90+ days overdue: -40% (very low collection probability)
         
         if ($analytics['average_days_overdue'] > 90) {
           $analytics['collection_probability'] = max(0, $baseCollectionRate - 40);
@@ -489,21 +729,143 @@ function getOverdueAnalytics() {
       }
     }
     
-    // Risk assessment
+    // Count accounts in each aging bucket for detailed analysis
+    $agingCounts = [
+      '0-30' => 0, '31-60' => 0, '61-90' => 0, '90+' => 0
+    ];
+    $agingAmounts = [
+      '0-30' => 0, '31-60' => 0, '61-90' => 0, '90+' => 0
+    ];
+    
+    foreach ($analytics['aging_analysis'] as $bucket) {
+      $key = str_replace(' days', '', $bucket['bracket']);
+      if (isset($agingCounts[$key])) {
+        $agingCounts[$key] = $bucket['count'];
+        $agingAmounts[$key] = $bucket['amount'];
+      }
+    }
+    
+    // ENHANCED RISK ASSESSMENT WITH THRESHOLDS AND DETAILED REASONING
+    //
+    // THRESHOLD DEFINITIONS AND BASIS:
+    // - LOW RISK (< 30 days average):
+    //   * Recent overdues with high collection probability (typically 85%+)
+    //   * Standard follow-up processes effective
+    //   * Cash flow impact minimal
+    //
+    // - MEDIUM RISK (30-60 days average):
+    //   * Moderate aging with declining collection probability (70-85%)
+    //   * Requires intensified collection efforts
+    //   * Noticeable cash flow impact
+    //
+    // - HIGH RISK (> 60 days average):
+    //   * Severely aged with low collection probability (<70%)
+    //   * Industry data shows sharp decline after 60 days
+    //   * Significant cash flow impact and bad debt risk
+    
     if ($analytics['average_days_overdue'] > 60) {
       $analytics['risk_level'] = 'high';
+      $analytics['risk_reasoning'] = sprintf(
+        "HIGH RISK: Average overdue period of %d days significantly exceeds the 60-day critical threshold. " .
+        "Collection probability estimated at %.1f%% (base historical rate %.1f%% minus 25-40%% aging penalty). " .
+        "Industry research consistently shows that collection success rates drop sharply after 60 days overdue, " .
+        "with accounts over 90 days having less than 50%% probability of full collection. " .
+        "Aging breakdown: %d accounts 0-30 days (₱%s), %d accounts 31-60 days (₱%s), " .
+        "%d accounts 61-90 days (₱%s), %d accounts 90+ days (₱%s). " .
+        "Accounts in 90+ category require immediate legal action consideration as recovery probability diminishes rapidly. " .
+        "This level represents substantial bad debt risk and significant negative impact on cash flow and working capital.",
+        $analytics['average_days_overdue'],
+        $analytics['collection_probability'],
+        $histData['total'] > 0 ? ($histData['eventually_paid'] / $histData['total']) * 100 : 0,
+        $agingCounts['0-30'], number_format($agingAmounts['0-30'], 2),
+        $agingCounts['31-60'], number_format($agingAmounts['31-60'], 2),
+        $agingCounts['61-90'], number_format($agingAmounts['61-90'], 2),
+        $agingCounts['90+'], number_format($agingAmounts['90+'], 2)
+      );
       $analytics['insight'] = "High risk: Average {$analytics['average_days_overdue']} days overdue. {$analytics['collection_probability']}% collection probability.";
-      $analytics['recommended_actions'][] = "Escalate collection efforts immediately";
-      $analytics['recommended_actions'][] = "Consider legal action for 90+ day accounts";
-      $analytics['recommended_actions'][] = "Offer payment plans to recover funds";
+      
+      $analytics['recommended_actions'][] = "🚨 ESCALATE: Immediately escalate to senior management - this requires executive-level attention and emergency collection protocol";
+      
+      if ($agingCounts['90+'] > 0) {
+        $analytics['recommended_actions'][] = sprintf(
+          "⚖️ LEGAL ACTION: For %d accounts over 90 days overdue (₱%s total), issue final demand letters with explicit legal action warning and 7-day payment deadline",
+          $agingCounts['90+'],
+          number_format($agingAmounts['90+'], 2)
+        );
+        $analytics['recommended_actions'][] = "Consider engaging professional collection agency for accounts over 120 days - recovery rate improves with specialist intervention";
+      }
+      
+      if ($agingCounts['61-90'] > 0) {
+        $analytics['recommended_actions'][] = sprintf(
+          "📞 INTENSIVE FOLLOW-UP: For %d accounts 61-90 days overdue (₱%s), implement daily collection calls and document all communication",
+          $agingCounts['61-90'],
+          number_format($agingAmounts['61-90'], 2)
+        );
+      }
+      
+      $analytics['recommended_actions'][] = "💰 PAYMENT PLANS: Offer structured settlement options (e.g., 50% immediate payment + 6-month installments for remainder) - recovering partial payment is better than write-off";
+      $analytics['recommended_actions'][] = "📋 POLICY REVIEW: Comprehensive review of credit approval and collection policies to prevent future high-risk aging";
+      $analytics['recommended_actions'][] = "💵 WRITE-OFF PREPARATION: Begin assessing which accounts may require bad debt write-off and establish reserves accordingly";
+      $analytics['recommended_actions'][] = "📊 CASH FLOW IMPACT: Quantify cash flow impact and adjust financial projections - these aged receivables should not be counted as liquid assets";
+      
     } elseif ($analytics['average_days_overdue'] > 30) {
       $analytics['risk_level'] = 'medium';
+      $analytics['risk_reasoning'] = sprintf(
+        "MODERATE RISK: Average overdue period of %d days falls in the 30-60 day moderate risk range. " .
+        "Collection probability estimated at %.1f%% (base historical rate %.1f%% minus 10%% aging penalty). " .
+        "While not yet critical, accounts in this range show declining collection probability with each passing week. " .
+        "Industry data indicates collection success drops 10-15%% for each additional month of delay beyond 30 days. " .
+        "Aging breakdown: %d accounts 0-30 days (₱%s), %d accounts 31-60 days (₱%s), " .
+        "%d accounts 61-90 days (₱%s), %d accounts 90+ days (₱%s). " .
+        "Proactive and intensified collection efforts now can prevent escalation to high-risk category. " .
+        "Accounts still have good recovery potential with systematic follow-up and professional collection approach.",
+        $analytics['average_days_overdue'],
+        $analytics['collection_probability'],
+        $histData['total'] > 0 ? ($histData['eventually_paid'] / $histData['total']) * 100 : 0,
+        $agingCounts['0-30'], number_format($agingAmounts['0-30'], 2),
+        $agingCounts['31-60'], number_format($agingAmounts['31-60'], 2),
+        $agingCounts['61-90'], number_format($agingAmounts['61-90'], 2),
+        $agingCounts['90+'], number_format($agingAmounts['90+'], 2)
+      );
       $analytics['insight'] = "Moderate risk: {$analytics['average_days_overdue']} days average overdue. {$analytics['collection_probability']}% likely to collect.";
-      $analytics['recommended_actions'][] = "Send formal demand letters";
-      $analytics['recommended_actions'][] = "Schedule collection calls";
+      
+      $analytics['recommended_actions'][] = "📧 FORMAL DEMANDS: Send formal demand letters to all accounts 30+ days overdue - shift from friendly reminders to serious collection tone";
+      $analytics['recommended_actions'][] = sprintf(
+        "📞 SYSTEMATIC CALLS: Implement structured weekly collection call program for all %d overdue accounts - document every contact attempt and response",
+        array_sum($agingCounts)
+      );
+      $analytics['recommended_actions'][] = "📝 DOCUMENTATION: Maintain detailed records of all collection communication - critical for potential legal proceedings if accounts age further";
+      $analytics['recommended_actions'][] = "💳 PAYMENT OPTIONS: Offer early settlement incentives (e.g., 5% discount for full payment within 7 days, 3% for payment within 14 days)";
+      $analytics['recommended_actions'][] = "⏰ ESCALATION PATH: Establish clear timeline - if no response within 15 days, escalate to supervisor; within 30 days, move to formal collections";
+      $analytics['recommended_actions'][] = "🔒 CREDIT HOLD: Place future orders on credit hold for customers with balances over 45 days until account brought current";
+      $analytics['recommended_actions'][] = "📊 TREND MONITORING: Weekly review of aging report to catch accounts moving from 30-60 days to 60-90 days for immediate intensive action";
+      
     } else {
+      $analytics['risk_level'] = 'low';
+      $analytics['risk_reasoning'] = sprintf(
+        "LOW RISK: Average overdue period of %d days is within acceptable range (< 30 days). " .
+        "Collection probability estimated at %.1f%% based on historical collection rate with no aging penalty applied. " .
+        "Recent overdues (less than 30 days past due) typically resolve through standard collection processes. " .
+        "Aging breakdown: %d accounts 0-30 days (₱%s), %d accounts 31-60 days (₱%s), " .
+        "%d accounts 61-90 days (₱%s), %d accounts 90+ days (₱%s). " .
+        "At this level, normal business operations and standard accounts receivable follow-up is appropriate. " .
+        "Focus should be on preventing accounts from aging into higher risk categories through timely, consistent follow-up. " .
+        "Maintain systematic reminder processes to keep accounts from progressing beyond 30 days overdue.",
+        $analytics['average_days_overdue'],
+        $analytics['collection_probability'],
+        $agingCounts['0-30'], number_format($agingAmounts['0-30'], 2),
+        $agingCounts['31-60'], number_format($agingAmounts['31-60'], 2),
+        $agingCounts['61-90'], number_format($agingAmounts['61-90'], 2),
+        $agingCounts['90+'], number_format($agingAmounts['90+'], 2)
+      );
       $analytics['insight'] = "Low risk: Recent overdues. {$analytics['collection_probability']}% collection probability.";
-      $analytics['recommended_actions'][] = "Send friendly payment reminders";
+      
+      $analytics['recommended_actions'][] = "✉️ FRIENDLY REMINDERS: Send courteous payment reminder emails to all overdue accounts - maintain positive customer relationships";
+      $analytics['recommended_actions'][] = "📞 COURTESY CALLS: Follow up with friendly phone calls for accounts 15+ days overdue to check if there are any issues or disputes";
+      $analytics['recommended_actions'][] = "⚠️ EARLY DETECTION: Monitor closely to catch any accounts approaching 30 days overdue threshold for more intensive follow-up";
+      $analytics['recommended_actions'][] = "🔄 PROCESS OPTIMIZATION: Document successful collection strategies and automate reminder sequences for efficiency";
+      $analytics['recommended_actions'][] = "📋 DISPUTE RESOLUTION: Quickly address any invoice disputes or payment issues before they cause account aging";
+      $analytics['recommended_actions'][] = "📈 TREND ANALYSIS: Track week-over-week changes in average days overdue to catch emerging patterns early";
     }
     
   } catch (Exception $e) {
@@ -1806,7 +2168,7 @@ function formatCurrency($amount) {
 
 
   <script>
-  // Store analytics data
+  // Store analytics data - ENHANCED with risk_reasoning
   const analyticsData = {
     collections: <?php echo json_encode($collectionsAnalytics); ?>,
     budget: <?php echo json_encode($budgetAnalytics); ?>,
@@ -1851,6 +2213,7 @@ function formatCurrency($amount) {
     }
   }
 
+  // ENHANCED: Show AI insights with risk_reasoning
   function showAIInsights(type) {
     const modal = document.getElementById('aiInsightsModal');
     const overlay = document.getElementById('aiInsightsOverlay');
@@ -1880,6 +2243,18 @@ function formatCurrency($amount) {
             <p class="insight-text">${data.insight}</p>
           </div>
         </div>
+        
+        ${data.risk_reasoning ? `
+          <div class="insight-section">
+            <div class="insight-section-title">
+              <i class="bi bi-shield-check"></i>
+              Risk Assessment Basis
+            </div>
+            <div class="insight-card">
+              <p class="insight-text">${data.risk_reasoning}</p>
+            </div>
+          </div>
+        ` : ''}
         
         <div class="insight-section">
           <div class="insight-section-title">
@@ -1978,6 +2353,18 @@ function formatCurrency($amount) {
           </div>
         </div>
         
+        ${data.risk_reasoning ? `
+          <div class="insight-section">
+            <div class="insight-section-title">
+              <i class="bi bi-shield-check"></i>
+              Risk Assessment Basis
+            </div>
+            <div class="insight-card">
+              <p class="insight-text">${data.risk_reasoning}</p>
+            </div>
+          </div>
+        ` : ''}
+        
         <div class="insight-section">
           <div class="insight-section-title">
             <i class="bi bi-bar-chart"></i>
@@ -2005,7 +2392,7 @@ function formatCurrency($amount) {
           <div class="insight-section">
             <div class="insight-section-title">
               <i class="bi bi-exclamation-circle"></i>
-              Urgent Actions
+              Recommended Actions
             </div>
             <ul class="action-list">
               ${data.recommended_actions.map(action => `
@@ -2032,6 +2419,18 @@ function formatCurrency($amount) {
             <p class="insight-text">${data.insight}</p>
           </div>
         </div>
+        
+        ${data.risk_reasoning ? `
+          <div class="insight-section">
+            <div class="insight-section-title">
+              <i class="bi bi-shield-check"></i>
+              Risk Assessment Basis
+            </div>
+            <div class="insight-card">
+              <p class="insight-text">${data.risk_reasoning}</p>
+            </div>
+          </div>
+        ` : ''}
         
         <div class="insight-section">
           <div class="insight-section-title">
