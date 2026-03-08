@@ -1,5 +1,5 @@
 <?php
-// reimbursement_actions.php
+// reimbursement_actions.php - UPDATED WITH AUTO-SYNC TO HR
 session_start();
 include 'db.php';
 
@@ -155,10 +155,23 @@ try {
         
         if ($id <= 0) back('danger', 'Invalid reimbursement ID.');
         
+        // Get reimbursement details
+        $getStmt = $conn->prepare("SELECT department, cost_center, amount, employee_name FROM reimbursements WHERE id = ?");
+        $getStmt->bind_param('i', $id);
+        $getStmt->execute();
+        $reimbData = $getStmt->get_result()->fetch_assoc();
+        $getStmt->close();
+        
+        if (!$reimbData) {
+            back('danger', 'Reimbursement not found.');
+        }
+        
         // Get current user (in real system, this would come from session)
-        $approved_by = $_SESSION['user_name'] ?? 'Manager';
+        $approved_by = $_SESSION['user_name'] ?? 'Finance Manager';
         $approved_date = date('Y-m-d H:i:s');
         
+        // CRITICAL: Update status to 'Approved'
+        // This automatically syncs back to HR dashboard since they query the same table
         $sql = "UPDATE reimbursements 
                 SET status = 'Approved', approved_by = ?, approved_date = ?
                 WHERE id = ?";
@@ -167,6 +180,8 @@ try {
         $stmt->bind_param('ssi', $approved_by, $approved_date, $id);
         
         if ($stmt->execute()) {
+            $stmt->close();
+            
             // Update budget amount_used if linked to budget
             $update_budget_sql = "UPDATE budgets b
                                  JOIN reimbursements r ON b.id = r.budget_id
@@ -177,11 +192,15 @@ try {
             $update_stmt->execute();
             $update_stmt->close();
             
-            back('success', 'Reimbursement approved successfully. Budget updated.');
+            // Log the approval
+            logReimbursementAction($id, 'Approved', "Approved by {$approved_by}. Amount: ₱" . number_format($reimbData['amount'], 2));
+            
+            back('success', "Reimbursement for {$reimbData['employee_name']} approved successfully! " .
+                 "The approval has been automatically synced back to the {$reimbData['department']} department dashboard. " .
+                 "Budget updated.");
         } else {
             back('danger', 'Failed to approve reimbursement.');
         }
-        $stmt->close();
         
     } elseif ($action === 'reject') {
         $id = (int)($_POST['id'] ?? 0);
@@ -189,8 +208,17 @@ try {
         
         if ($id <= 0) back('danger', 'Invalid reimbursement ID.');
         
-        $approved_by = $_SESSION['user_name'] ?? 'Manager';
+        // Get reimbursement details
+        $getStmt = $conn->prepare("SELECT department, employee_name FROM reimbursements WHERE id = ?");
+        $getStmt->bind_param('i', $id);
+        $getStmt->execute();
+        $reimbData = $getStmt->get_result()->fetch_assoc();
+        $getStmt->close();
         
+        $approved_by = $_SESSION['user_name'] ?? 'Finance Manager';
+        
+        // CRITICAL: Update status to 'Rejected'
+        // This automatically syncs back to HR dashboard
         $sql = "UPDATE reimbursements 
                 SET status = 'Rejected', approved_by = ?, remarks = ?
                 WHERE id = ?";
@@ -199,11 +227,16 @@ try {
         $stmt->bind_param('ssi', $approved_by, $remarks, $id);
         
         if ($stmt->execute()) {
-            back('warning', 'Reimbursement request rejected.');
+            $stmt->close();
+            
+            // Log the rejection
+            logReimbursementAction($id, 'Rejected', "Rejected by {$approved_by}. Reason: {$remarks}");
+            
+            back('warning', "Reimbursement for {$reimbData['employee_name']} has been rejected. " .
+                 "The rejection has been automatically synced back to the {$reimbData['department']} department dashboard with the reason provided.");
         } else {
             back('danger', 'Failed to reject reimbursement.');
         }
-        $stmt->close();
         
     } elseif ($action === 'delete') {
         $id = (int)($_POST['id'] ?? 0);
@@ -239,3 +272,26 @@ try {
 } catch (Exception $e) {
     back('danger', 'Error: ' . $e->getMessage());
 }
+
+function logReimbursementAction($reimbursement_id, $action, $notes) {
+    global $conn;
+    
+    // Create log table if it doesn't exist
+    $conn->query("CREATE TABLE IF NOT EXISTS reimbursement_action_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        reimbursement_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (reimbursement_id) REFERENCES reimbursements(id) ON DELETE CASCADE
+    )");
+    
+    $sql = "INSERT INTO reimbursement_action_log (reimbursement_id, action, notes) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param('iss', $reimbursement_id, $action, $notes);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+?>
