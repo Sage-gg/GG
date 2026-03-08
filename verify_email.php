@@ -307,13 +307,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <ul>
         <li>Check your email inbox for the verification code</li>
         <li>Enter the 6-digit code below</li>
-        <li>Code expires in 10 minutes</li>
+        <li>Code expires in 2 minutes</li>
         <li>You have 3 attempts to enter the correct code</li>
       </ul>
     </div>
 
     <div class="timer">
-      ⏱️ Code expires in <span id="countdown">10:00</span>
+      ⏱️ Code expires in <span id="countdown">2:00</span>
     </div>
 
     <form method="POST" action="">
@@ -349,7 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <script>
     // Countdown timer for code expiration
-    let timeRemaining = 600; // 10 minutes in seconds
+    let timeRemaining = 120; // 2 minutes in seconds
     const countdownElement = document.getElementById('countdown');
 
     function updateCountdown() {
