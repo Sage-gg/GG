@@ -191,10 +191,15 @@ function peso($n) {
 <div class="main-content">
     <div class="container-fluid mt-4 px-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="fw-bold">Reimbursement Management</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReimbursementModal">
-                <i class="bi bi-plus-circle"></i> Submit Reimbursement
-            </button>
+            <h2 class="fw-bold">Finance - Reimbursement Management</h2>
+            <div class="d-flex gap-2">
+                <a href="hr_reimbursement_dashboard.php" class="btn btn-outline-primary">
+                    <i class="bi bi-building"></i> HR Reimbursement Dashboard
+                </a>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReimbursementModal">
+                    <i class="bi bi-plus-circle"></i> Submit Reimbursement
+                </button>
+            </div>
         </div>
 
         <?php if(isset($_SESSION['flash'])): ?>
@@ -204,6 +209,13 @@ function peso($n) {
             </div>
             <?php unset($_SESSION['flash']); ?>
         <?php endif; ?>
+
+        <!-- Info Alert -->
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Workflow:</strong> When you approve a reimbursement request, it will automatically sync back to the requesting department's dashboard with approved status and payment details. Click "HR Reimbursement Dashboard" above to view the HR department's interface.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
 
         <!-- Summary Cards (removed Paid status) -->
         <div class="row mb-4">
