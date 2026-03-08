@@ -78,7 +78,6 @@ define('DB_USER', 'fina_LhayYhan');
 define('DB_PASS', 'H8@r%ml2#0myfd-n');
 define('DB_NAME', 'fina_financial_system');
 
-
 $host = DB_HOST;
 $username = DB_USER;
 $password = DB_PASS;
