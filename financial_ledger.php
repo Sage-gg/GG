@@ -1,6 +1,6 @@
 <?php
 require_once 'db.php';
-
+//financial_ledger.php
 // CRITICAL: Check authentication and session timeout BEFORE any output
 requireModuleAccess('ledger');
 
@@ -139,6 +139,39 @@ $liquidations = getLiquidationRecords();
       border-radius: 8px;
       overflow: hidden;
     }
+    
+    /* Search bar styles */
+    .search-bar-container {
+      margin-bottom: 15px;
+    }
+    
+    .search-bar {
+      position: relative;
+    }
+    
+    .search-bar input {
+      padding-left: 40px;
+    }
+    
+    .search-bar .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+      pointer-events: none;
+    }
+    
+    .no-results {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+    
+    .highlight {
+      background-color: yellow;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -224,9 +257,18 @@ $liquidations = getLiquidationRecords();
               <i class="bi bi-plus-circle me-1"></i> New Account
             </button>
           </div>
+          
+          <!-- Search Bar for COA -->
+          <div class="search-bar-container">
+            <div class="search-bar">
+              <i class="bi bi-search search-icon"></i>
+              <input type="text" id="searchCOA" class="form-control" placeholder="Search by Account Code or Account Name...">
+            </div>
+          </div>
+          
           <div class="table-wrapper">
             <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
+              <table class="table table-hover align-middle mb-0" id="coaTable">
                 <thead class="table-light">
                   <tr>
                     <th>Account Code</th>
@@ -240,8 +282,8 @@ $liquidations = getLiquidationRecords();
                 <tbody>
                   <?php foreach ($accounts as $account): ?>
                   <tr data-account-id="<?= $account['id'] ?? $account['account_code'] ?>">
-                    <td><strong><?= $account['account_code'] ?></strong></td>
-                    <td><?= htmlspecialchars($account['account_name']) ?></td>
+                    <td><strong class="account-code"><?= $account['account_code'] ?></strong></td>
+                    <td class="account-name"><?= htmlspecialchars($account['account_name']) ?></td>
                     <td>
                       <span class="badge bg-info"><?= $account['account_type'] ?></span>
                     </td>
@@ -265,6 +307,10 @@ $liquidations = getLiquidationRecords();
                   <?php endforeach; ?>
                 </tbody>
               </table>
+              <div id="noResultsCOA" class="no-results" style="display: none;">
+                <i class="bi bi-search" style="font-size: 48px;"></i>
+                <p class="mt-3">No accounts found matching your search.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -277,9 +323,18 @@ $liquidations = getLiquidationRecords();
               <i class="bi bi-plus-circle me-1"></i> New Liquidation
             </button>
           </div>
+          
+          <!-- Search Bar for Liquidation -->
+          <div class="search-bar-container">
+            <div class="search-bar">
+              <i class="bi bi-search search-icon"></i>
+              <input type="text" id="searchLiquidation" class="form-control" placeholder="Search by Liquidation ID, Employee, or Purpose...">
+            </div>
+          </div>
+          
           <div class="table-wrapper">
             <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
+              <table class="table table-hover align-middle mb-0" id="liquidationTable">
                 <thead class="table-light">
                   <tr>
                     <th>Date</th>
@@ -296,9 +351,9 @@ $liquidations = getLiquidationRecords();
                   <?php foreach ($liquidations as $liquidation): ?>
                   <tr data-liq-id="<?= $liquidation['id'] ?>">
                     <td><?= $liquidation['date'] ?></td>
-                    <td><strong><?= htmlspecialchars($liquidation['liquidation_id']) ?></strong></td>
-                    <td><?= htmlspecialchars($liquidation['employee']) ?></td>
-                    <td><?= htmlspecialchars($liquidation['purpose']) ?></td>
+                    <td><strong class="liq-id"><?= htmlspecialchars($liquidation['liquidation_id']) ?></strong></td>
+                    <td class="liq-employee"><?= htmlspecialchars($liquidation['employee']) ?></td>
+                    <td class="liq-purpose"><?= htmlspecialchars($liquidation['purpose']) ?></td>
                     <td><strong>₱<?= formatCurrency($liquidation['total_amount']) ?></strong></td>
                     <td>
                       <?php if (!empty($liquidation['receipt_filename'])): ?>
@@ -336,6 +391,10 @@ $liquidations = getLiquidationRecords();
                   <?php endforeach; ?>
                 </tbody>
               </table>
+              <div id="noResultsLiquidation" class="no-results" style="display: none;">
+                <i class="bi bi-search" style="font-size: 48px;"></i>
+                <p class="mt-3">No liquidation records found matching your search.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -348,9 +407,18 @@ $liquidations = getLiquidationRecords();
               <i class="bi bi-plus-circle me-1"></i> New Entry
             </button>
           </div>
+          
+          <!-- Search Bar for Journal Entries -->
+          <div class="search-bar-container">
+            <div class="search-bar">
+              <i class="bi bi-search search-icon"></i>
+              <input type="text" id="searchJournal" class="form-control" placeholder="Search by Entry ID, Account Code, Account Name, or Description...">
+            </div>
+          </div>
+          
           <div class="table-wrapper">
             <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
+              <table class="table table-hover align-middle mb-0" id="journalTable">
                 <thead class="table-light">
                   <tr>
                     <th>Date</th>
@@ -368,12 +436,12 @@ $liquidations = getLiquidationRecords();
                   <?php foreach ($entries as $entry): ?>
                   <tr data-journal-id="<?= $entry['id'] ?>">
                     <td><?= $entry['date'] ?></td>
-                    <td><strong><?= htmlspecialchars($entry['entry_id']) ?></strong></td>
+                    <td><strong class="journal-entry-id"><?= htmlspecialchars($entry['entry_id']) ?></strong></td>
                     <td><?= htmlspecialchars($entry['reference']) ?></td>
-                    <td><?= htmlspecialchars($entry['description']) ?></td>
+                    <td class="journal-description"><?= htmlspecialchars($entry['description']) ?></td>
                     <td>
-                      <div class="text-muted small"><?= $entry['account_code'] ?></div>
-                      <div><?= htmlspecialchars($entry['account_name']) ?></div>
+                      <div class="text-muted small journal-account-code"><?= $entry['account_code'] ?></div>
+                      <div class="journal-account-name"><?= htmlspecialchars($entry['account_name']) ?></div>
                     </td>
                     <td class="text-danger fw-semibold"><?= $entry['debit'] > 0 ? '₱' . formatCurrency($entry['debit']) : '—' ?></td>
                     <td class="text-success fw-semibold"><?= $entry['credit'] > 0 ? '₱' . formatCurrency($entry['credit']) : '—' ?></td>
@@ -392,6 +460,10 @@ $liquidations = getLiquidationRecords();
                   <?php endforeach; ?>
                 </tbody>
               </table>
+              <div id="noResultsJournal" class="no-results" style="display: none;">
+                <i class="bi bi-search" style="font-size: 48px;"></i>
+                <p class="mt-3">No journal entries found matching your search.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -421,6 +493,85 @@ $liquidations = getLiquidationRecords();
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="js/ledger_scripts.js"></script>
+
+<!-- Search functionality script -->
+<script>
+// Search functionality for Chart of Accounts
+document.getElementById('searchCOA').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const table = document.getElementById('coaTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    let visibleCount = 0;
+    
+    for (let row of rows) {
+        const accountCode = row.querySelector('.account-code').textContent.toLowerCase();
+        const accountName = row.querySelector('.account-name').textContent.toLowerCase();
+        
+        if (accountCode.includes(searchTerm) || accountName.includes(searchTerm)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    }
+    
+    // Show/hide "no results" message
+    document.getElementById('noResultsCOA').style.display = visibleCount === 0 ? 'block' : 'none';
+    table.style.display = visibleCount === 0 ? 'none' : '';
+});
+
+// Search functionality for Liquidation Records
+document.getElementById('searchLiquidation').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const table = document.getElementById('liquidationTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    let visibleCount = 0;
+    
+    for (let row of rows) {
+        const liqId = row.querySelector('.liq-id').textContent.toLowerCase();
+        const employee = row.querySelector('.liq-employee').textContent.toLowerCase();
+        const purpose = row.querySelector('.liq-purpose').textContent.toLowerCase();
+        
+        if (liqId.includes(searchTerm) || employee.includes(searchTerm) || purpose.includes(searchTerm)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    }
+    
+    // Show/hide "no results" message
+    document.getElementById('noResultsLiquidation').style.display = visibleCount === 0 ? 'block' : 'none';
+    table.style.display = visibleCount === 0 ? 'none' : '';
+});
+
+// Search functionality for Journal Entries
+document.getElementById('searchJournal').addEventListener('keyup', function() {
+    const searchTerm = this.value.toLowerCase();
+    const table = document.getElementById('journalTable');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    let visibleCount = 0;
+    
+    for (let row of rows) {
+        const entryId = row.querySelector('.journal-entry-id').textContent.toLowerCase();
+        const accountCode = row.querySelector('.journal-account-code').textContent.toLowerCase();
+        const accountName = row.querySelector('.journal-account-name').textContent.toLowerCase();
+        const description = row.querySelector('.journal-description').textContent.toLowerCase();
+        
+        if (entryId.includes(searchTerm) || accountCode.includes(searchTerm) || 
+            accountName.includes(searchTerm) || description.includes(searchTerm)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    }
+    
+    // Show/hide "no results" message
+    document.getElementById('noResultsJournal').style.display = visibleCount === 0 ? 'block' : 'none';
+    table.style.display = visibleCount === 0 ? 'none' : '';
+});
+</script>
 
 </body>
 </html>
