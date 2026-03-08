@@ -1,6 +1,6 @@
 <?php
 require_once 'db.php';
-
+//ledger_functions.php
 // ===================
 // JOURNAL ENTRIES FUNCTIONS
 // ===================
